@@ -1,0 +1,11 @@
+{
+    "name": "NIU-SAT",
+    "short_name": "NIU-SAT",
+    "start_url": ".",
+    "display": "standalone",
+    "background_color": "#003087",
+    "theme_color": "#003087",
+    "description": "NIU Student Aptitude Test Portal",
+    "orientation": "portrait-primary",
+    "prefer_related_applications": false
+}
