@@ -92,7 +92,7 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.15),
+                      color: Colors.white.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
@@ -385,12 +385,10 @@ class _QuestionDot extends StatelessWidget {
 class _LegendItem extends StatelessWidget {
   final Color color;
   final String label;
-  final Color? borderColor;
 
   const _LegendItem({
     required this.color,
     required this.label,
-    this.borderColor,
   });
 
   @override
@@ -404,8 +402,6 @@ class _LegendItem extends StatelessWidget {
           decoration: BoxDecoration(
             color: color,
             borderRadius: BorderRadius.circular(3),
-            border:
-                borderColor != null ? Border.all(color: borderColor!) : null,
           ),
         ),
         const SizedBox(width: 4),

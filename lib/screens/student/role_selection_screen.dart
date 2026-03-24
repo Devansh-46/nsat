@@ -165,7 +165,7 @@ class _RoleButton extends StatelessWidget {
               style: TextStyle(
                 fontSize: 10,
                 color: isPrimary
-                    ? Colors.white.withOpacity(0.8)
+                    ? Colors.white.withValues(alpha: 0.8)
                     : AppColors.textMuted,
               ),
             ),

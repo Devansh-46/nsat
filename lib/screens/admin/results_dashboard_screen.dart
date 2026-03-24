@@ -271,7 +271,7 @@ class _ResultsDashboardScreenState extends State<ResultsDashboardScreen> {
                               ],
                             ),
                           );
-                        }).toList(),
+                        }),
 
                         const SizedBox(height: 12),
                         Row(
