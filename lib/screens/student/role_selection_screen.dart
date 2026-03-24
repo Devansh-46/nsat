@@ -73,7 +73,7 @@ class RoleSelectionScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     const Text(
-                      '2025 — 26 Admissions',
+                      '2026 — 27 Admissions',
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
@@ -93,7 +93,8 @@ class RoleSelectionScreen extends StatelessWidget {
                 label: 'Student login',
                 subtitle: 'Login with your ACCSOFT ID',
                 isPrimary: true,
-                onTap: () => Navigator.pushNamed(context, AppRoutes.studentLogin),
+                onTap: () =>
+                    Navigator.pushNamed(context, AppRoutes.studentLogin),
               ),
             ),
             const SizedBox(height: 10),
