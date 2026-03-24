@@ -10,8 +10,10 @@ class TestDataService {
     return await _dataStore.getPublishedTestForCategory(category);
   }
 
-  Future<List<QuestionModel>> fetchQuestionsForCategory(String category, int count) async {
-    await Future.delayed(const Duration(milliseconds: 800)); // Simulate network load
+  Future<List<QuestionModel>> fetchQuestionsForCategory(
+      String category, int count) async {
+    await Future.delayed(
+        const Duration(milliseconds: 800)); // Simulate network load
     return _dataStore.getQuestionsByCategory(category, count);
   }
 }

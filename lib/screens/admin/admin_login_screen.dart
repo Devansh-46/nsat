@@ -14,8 +14,10 @@ class AdminLoginScreen extends StatefulWidget {
 }
 
 class _AdminLoginScreenState extends State<AdminLoginScreen> {
-  final TextEditingController _emailController = TextEditingController(text: 'admin@niu.edu.in');
-  final TextEditingController _passwordController = TextEditingController(text: 'admin123');
+  final TextEditingController _emailController =
+      TextEditingController(text: 'admin@niu.edu.in');
+  final TextEditingController _passwordController =
+      TextEditingController(text: 'admin123');
 
   @override
   void dispose() {
@@ -26,7 +28,8 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
 
   void _login() async {
     final provider = context.read<AuthProvider>();
-    final success = await provider.adminLogin(_emailController.text, _passwordController.text);
+    final success = await provider.adminLogin(
+        _emailController.text, _passwordController.text);
     if (success && mounted) {
       Navigator.pushReplacementNamed(context, AppRoutes.adminDashboard);
     }
@@ -40,7 +43,8 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
       backgroundColor: Colors.white,
       body: Column(
         children: [
-          const NiuAppBar(title: 'Admin login', subtitle: 'NIU examination team'),
+          const NiuAppBar(
+              title: 'Admin login', subtitle: 'NIU examination team'),
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(16),
@@ -66,8 +70,10 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                     ),
                     child: TextField(
                       controller: _emailController,
-                      style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
-                      decoration: const InputDecoration(border: InputBorder.none),
+                      style: const TextStyle(
+                          fontSize: 13, color: AppColors.textPrimary),
+                      decoration:
+                          const InputDecoration(border: InputBorder.none),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -91,15 +97,18 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                     child: TextField(
                       controller: _passwordController,
                       obscureText: true,
-                      style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
-                      decoration: const InputDecoration(border: InputBorder.none),
+                      style: const TextStyle(
+                          fontSize: 13, color: AppColors.textPrimary),
+                      decoration:
+                          const InputDecoration(border: InputBorder.none),
                     ),
                   ),
                   const SizedBox(height: 20),
                   if (provider.error != null) ...[
                     Text(
                       provider.error!,
-                      style: const TextStyle(color: AppColors.red, fontSize: 12),
+                      style:
+                          const TextStyle(color: AppColors.red, fontSize: 12),
                     ),
                     const SizedBox(height: 10),
                   ],

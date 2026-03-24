@@ -76,7 +76,8 @@ class DataStore {
         return QuestionModel(
           id: 'q_mba_$index',
           category: category,
-          text: 'MBA Question ${index + 1}: Which of the following is NOT a characteristic of a perfectly competitive market?',
+          text:
+              'MBA Question ${index + 1}: Which of the following is NOT a characteristic of a perfectly competitive market?',
           options: [
             'Large number of buyers and sellers',
             'Product differentiation',
@@ -89,7 +90,8 @@ class DataStore {
         return QuestionModel(
           id: 'q_bt_$index',
           category: category,
-          text: 'B.Tech Question ${index + 1}: What is the time complexity of binary search?',
+          text:
+              'B.Tech Question ${index + 1}: What is the time complexity of binary search?',
           options: ['O(1)', 'O(n)', 'O(log n)', 'O(n^2)'],
           correctAnswerIndex: 2,
         );
@@ -97,7 +99,8 @@ class DataStore {
         return QuestionModel(
           id: 'q_gen_$index',
           category: category,
-          text: 'General Question ${index + 1} for $category. Identify the correct option.',
+          text:
+              'General Question ${index + 1} for $category. Identify the correct option.',
           options: ['Option A', 'Option B', 'Option C', 'Option D'],
           correctAnswerIndex: index % 4,
         );
@@ -129,9 +132,10 @@ class DataStore {
     List<String> resultsJson = prefs.getStringList('test_results') ?? [];
     resultsJson.add(jsonEncode(session.toJson()));
     await prefs.setStringList('test_results', resultsJson);
-    
+
     // Also mark student as attempted
-    await markStudentAttempted(session.studentId); // Assuming studentId here is the accsoftId
+    await markStudentAttempted(
+        session.studentId); // Assuming studentId here is the accsoftId
   }
 
   Future<List<TestSessionModel>> getAllTestResults() async {
@@ -148,7 +152,8 @@ class DataStore {
     List<String>? configsJson = prefs.getStringList('test_configs');
     if (configsJson == null) {
       // Initialize with defaults if empty
-      final defaultJsonList = _defaultTestConfigs.map((c) => jsonEncode(c.toJson())).toList();
+      final defaultJsonList =
+          _defaultTestConfigs.map((c) => jsonEncode(c.toJson())).toList();
       await prefs.setStringList('test_configs', defaultJsonList);
       return _defaultTestConfigs;
     }

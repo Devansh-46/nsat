@@ -15,11 +15,18 @@ class PushNotificationScreen extends StatefulWidget {
 class _PushNotificationScreenState extends State<PushNotificationScreen> {
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _bodyController = TextEditingController();
-  
+
   bool _scheduleLater = false;
   String _selectedCategory = 'All';
 
-  final List<String> _categories = ['All', 'MBA', 'B.Tech', 'BBA', 'LLB', 'B.Com'];
+  final List<String> _categories = [
+    'All',
+    'MBA',
+    'B.Tech',
+    'BBA',
+    'LLB',
+    'B.Com'
+  ];
 
   @override
   void initState() {
@@ -38,23 +45,22 @@ class _PushNotificationScreenState extends State<PushNotificationScreen> {
 
   void _sendNotification() async {
     if (_titleController.text.isEmpty || _bodyController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter title and message body')));
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please enter title and message body')));
       return;
     }
 
     final provider = context.read<AdminProvider>();
-    final success = await provider.sendNotification(
-      _titleController.text, 
-      _bodyController.text, 
-      _selectedCategory, 
-      _scheduleLater
-    );
+    final success = await provider.sendNotification(_titleController.text,
+        _bodyController.text, _selectedCategory, _scheduleLater);
 
     if (success && mounted) {
       _titleController.clear();
       _bodyController.clear();
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(provider.successMessage ?? 'Sent successfully'), backgroundColor: AppColors.green),
+        SnackBar(
+            content: Text(provider.successMessage ?? 'Sent successfully'),
+            backgroundColor: AppColors.green),
       );
     }
   }
@@ -75,10 +81,11 @@ class _PushNotificationScreenState extends State<PushNotificationScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                   if (provider.error != null) ...[
+                  if (provider.error != null) ...[
                     Text(
                       provider.error!,
-                      style: const TextStyle(color: AppColors.red, fontSize: 12),
+                      style:
+                          const TextStyle(color: AppColors.red, fontSize: 12),
                     ),
                     const SizedBox(height: 10),
                   ],
@@ -105,7 +112,8 @@ class _PushNotificationScreenState extends State<PushNotificationScreen> {
                           ),
                           child: TextField(
                             controller: _titleController,
-                            style: const TextStyle(fontSize: 12, color: AppColors.textPrimary),
+                            style: const TextStyle(
+                                fontSize: 12, color: AppColors.textPrimary),
                             decoration: const InputDecoration(
                               border: InputBorder.none,
                               hintText: 'e.g. MBA test starts in 2 hours',
@@ -129,7 +137,10 @@ class _PushNotificationScreenState extends State<PushNotificationScreen> {
                             controller: _bodyController,
                             maxLines: 4,
                             minLines: 2,
-                            style: const TextStyle(fontSize: 12, color: AppColors.textPrimary, height: 1.5),
+                            style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textPrimary,
+                                height: 1.5),
                             decoration: const InputDecoration(
                               border: InputBorder.none,
                               hintText: 'Dear student...',
@@ -245,8 +256,8 @@ class _PushNotificationScreenState extends State<PushNotificationScreen> {
                               child: Container(
                                 width: 18,
                                 height: 18,
-                                margin: const EdgeInsets.symmetric(
-                                    horizontal: 2),
+                                margin:
+                                    const EdgeInsets.symmetric(horizontal: 2),
                                 decoration: const BoxDecoration(
                                   color: Colors.white,
                                   shape: BoxShape.circle,
@@ -261,36 +272,52 @@ class _PushNotificationScreenState extends State<PushNotificationScreen> {
                   const SizedBox(height: 12),
 
                   if (provider.isLoading)
-                     const Center(child: CircularProgressIndicator())
+                    const Center(child: CircularProgressIndicator())
                   else
                     NiuButton(
-                      label: _scheduleLater ? 'Schedule notification' : 'Send notification now',
+                      label: _scheduleLater
+                          ? 'Schedule notification'
+                          : 'Send notification now',
                       onTap: _sendNotification,
                     ),
                   const SizedBox(height: 16),
-                  
+
                   if (provider.notifications.isNotEmpty) ...[
-                     const Padding(
-                       padding: EdgeInsets.only(bottom: 8.0, top: 4.0),
-                       child: Text('Recent Notifications', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.primary)),
-                     ),
-                     ...provider.notifications.take(3).map((n) => Container(
-                       margin: const EdgeInsets.only(bottom: 8),
-                       padding: const EdgeInsets.all(10),
-                       decoration: BoxDecoration(color: AppColors.bgCard, borderRadius: BorderRadius.circular(6)),
-                       child: Column(
-                         crossAxisAlignment: CrossAxisAlignment.start,
-                         children: [
-                           Text(n.title, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 11)),
-                           Text('${n.deliveredCount} delivered to ${n.targetCategory}', style: const TextStyle(fontSize: 10, color: AppColors.textSecondary)),
-                         ],
-                       ),
-                     )),
+                    const Padding(
+                      padding: EdgeInsets.only(bottom: 8.0, top: 4.0),
+                      child: Text('Recent Notifications',
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                              color: AppColors.primary)),
+                    ),
+                    ...provider.notifications.take(3).map((n) => Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                              color: AppColors.bgCard,
+                              borderRadius: BorderRadius.circular(6)),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(n.title,
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w500,
+                                      fontSize: 11)),
+                              Text(
+                                  '${n.deliveredCount} delivered to ${n.targetCategory}',
+                                  style: const TextStyle(
+                                      fontSize: 10,
+                                      color: AppColors.textSecondary)),
+                            ],
+                          ),
+                        )),
                   ] else ...[
-                     const Center(
+                    const Center(
                       child: Text(
                         'No notifications sent yet.',
-                        style: TextStyle(fontSize: 10, color: AppColors.textMuted),
+                        style:
+                            TextStyle(fontSize: 10, color: AppColors.textMuted),
                         textAlign: TextAlign.center,
                       ),
                     ),

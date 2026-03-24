@@ -71,14 +71,19 @@ class FeeGateScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
 
-                  _ContactRow(icon: Icons.link, text: 'admissions.niu.edu.in/pay'),
-                  _ContactRow(icon: Icons.phone, text: '1800-XXX-XXXX (Admissions)'),
-                  _ContactRow(icon: Icons.email_outlined, text: 'admissions@niu.edu.in'),
+                  _ContactRow(
+                      icon: Icons.link, text: 'admissions.niu.edu.in/pay'),
+                  _ContactRow(
+                      icon: Icons.phone, text: '1800-XXX-XXXX (Admissions)'),
+                  _ContactRow(
+                      icon: Icons.email_outlined,
+                      text: 'admissions@niu.edu.in'),
 
                   const SizedBox(height: 12),
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 10),
                     decoration: BoxDecoration(
                       color: AppColors.bgGreenLight,
                       borderRadius: BorderRadius.circular(8),

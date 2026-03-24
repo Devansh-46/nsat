@@ -72,7 +72,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   children: [
                     // Dashboard grid
                     if (adminProvider.isLoading && stats == null)
-                      const Center(child: Padding(
+                      const Center(
+                          child: Padding(
                         padding: EdgeInsets.all(24.0),
                         child: CircularProgressIndicator(),
                       ))
@@ -85,16 +86,22 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         crossAxisSpacing: 8,
                         childAspectRatio: 2.0,
                         children: [
-                          StatCard(value: '${stats['onlineToday']}', label: 'Online today'),
+                          StatCard(
+                              value: '${stats['onlineToday']}',
+                              label: 'Online today'),
                           StatCard(
                               value: '${stats['activeTests']}',
                               label: 'Active tests',
                               valueColor: AppColors.green),
-                          StatCard(value: '${stats['totalAttempts']}', label: 'Total attempts'),
+                          StatCard(
+                              value: '${stats['totalAttempts']}',
+                              label: 'Total attempts'),
                           StatCard(
                               value: '${stats['pushFailed']}',
                               label: 'CRM push failed',
-                              valueColor: stats['pushFailed'] == 0 ? AppColors.green : AppColors.red),
+                              valueColor: stats['pushFailed'] == 0
+                                  ? AppColors.green
+                                  : AppColors.red),
                         ],
                       ),
 
@@ -104,7 +111,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         padding: const EdgeInsets.all(8),
                         margin: const EdgeInsets.only(bottom: 12),
                         color: AppColors.bgGreenLight,
-                        child: Text(adminProvider.successMessage!, style: const TextStyle(color: AppColors.textGreen, fontSize: 12)),
+                        child: Text(adminProvider.successMessage!,
+                            style: const TextStyle(
+                                color: AppColors.textGreen, fontSize: 12)),
                       ),
                     ],
 
@@ -126,9 +135,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       subtitle: 'Set questions, timer, category',
                       onTap: () {
                         adminProvider.clearMessages();
-                        Navigator.pushNamed(context, AppRoutes.createTest).then((_) {
-                           // Refresh stats strictly just in case
-                           adminProvider.fetchDashboardStats();
+                        Navigator.pushNamed(context, AppRoutes.createTest)
+                            .then((_) {
+                          // Refresh stats strictly just in case
+                          adminProvider.fetchDashboardStats();
                         });
                       },
                     ),
@@ -156,7 +166,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       subtitle: 'Push to all / filtered students',
                       onTap: () {
                         adminProvider.clearMessages();
-                        Navigator.pushNamed(context, AppRoutes.pushNotification);
+                        Navigator.pushNamed(
+                            context, AppRoutes.pushNotification);
                       },
                     ),
                     MenuRow(
@@ -174,9 +185,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       child: OutlinedButton(
                         onPressed: () {
                           authProvider.logout();
-                          Navigator.popUntil(
-                            context,
-                            ModalRoute.withName(AppRoutes.roleSelection));
+                          Navigator.popUntil(context,
+                              ModalRoute.withName(AppRoutes.roleSelection));
                         },
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppColors.red,

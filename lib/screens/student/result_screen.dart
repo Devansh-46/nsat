@@ -55,7 +55,8 @@ class ResultScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
                       color: AppColors.bgGoldLight,
                       borderRadius: BorderRadius.circular(4),
@@ -82,11 +83,23 @@ class ResultScreen extends StatelessWidget {
                     // Stats row
                     Row(
                       children: [
-                        Expanded(child: _StatBox(value: '${session.correctCount}', label: 'Correct', color: AppColors.green)),
+                        Expanded(
+                            child: _StatBox(
+                                value: '${session.correctCount}',
+                                label: 'Correct',
+                                color: AppColors.green)),
                         const SizedBox(width: 8),
-                        Expanded(child: _StatBox(value: '${session.wrongCount}', label: 'Wrong', color: AppColors.red)),
+                        Expanded(
+                            child: _StatBox(
+                                value: '${session.wrongCount}',
+                                label: 'Wrong',
+                                color: AppColors.red)),
                         const SizedBox(width: 8),
-                        Expanded(child: _StatBox(value: '${session.skippedCount}', label: 'Skipped', color: AppColors.textMuted)),
+                        Expanded(
+                            child: _StatBox(
+                                value: '${session.skippedCount}',
+                                label: 'Skipped',
+                                color: AppColors.textMuted)),
                       ],
                     ),
                     const SizedBox(height: 12),
@@ -102,16 +115,18 @@ class ResultScreen extends StatelessWidget {
                       child: Column(
                         children: [
                           _ScoreRow(
-                            label: 'Correct (+${session.correctMarks.toStringAsFixed(2)})', 
-                            value: '+${session.correctMarks.toStringAsFixed(2)}', 
-                            color: AppColors.green
-                          ),
+                              label:
+                                  'Correct (+${session.correctMarks.toStringAsFixed(2)})',
+                              value:
+                                  '+${session.correctMarks.toStringAsFixed(2)}',
+                              color: AppColors.green),
                           const SizedBox(height: 5),
                           _ScoreRow(
-                            label: 'Wrong (${session.wrongCount} x -${session.negativeMarksPerWrong.toStringAsFixed(2)})', 
-                            value: '-${session.negativeMarks.toStringAsFixed(2)}', 
-                            color: AppColors.red
-                          ),
+                              label:
+                                  'Wrong (${session.wrongCount} x -${session.negativeMarksPerWrong.toStringAsFixed(2)})',
+                              value:
+                                  '-${session.negativeMarks.toStringAsFixed(2)}',
+                              color: AppColors.red),
                           Container(
                             margin: const EdgeInsets.symmetric(vertical: 6),
                             height: 0.5,
@@ -146,7 +161,8 @@ class ResultScreen extends StatelessWidget {
                     // Auto-sent notice
                     Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 9),
                       decoration: BoxDecoration(
                         color: AppColors.bgGreenLight,
                         borderRadius: BorderRadius.circular(8),
@@ -164,7 +180,8 @@ class ResultScreen extends StatelessWidget {
                     NiuButton(label: 'Download scorecard (PDF)'),
                     const SizedBox(height: 8),
                     NiuButton(
-                      label: 'Download ${user?.course?.split(' ').first ?? 'course'} brochure',
+                      label:
+                          'Download ${user?.course?.split(' ').first ?? 'course'} brochure',
                       variant: NiuButtonVariant.outline,
                     ),
                     const SizedBox(height: 16),
@@ -172,8 +189,11 @@ class ResultScreen extends StatelessWidget {
                       label: 'Back to home',
                       variant: NiuButtonVariant.outline,
                       onTap: () {
-                        context.read<TestProvider>().clearSession(); // Clean up state
-                        Navigator.popUntil(context, ModalRoute.withName(AppRoutes.roleSelection));
+                        context
+                            .read<TestProvider>()
+                            .clearSession(); // Clean up state
+                        Navigator.popUntil(context,
+                            ModalRoute.withName(AppRoutes.roleSelection));
                       },
                     ),
                   ],
@@ -247,7 +267,9 @@ class _ScoreRow extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+        Text(label,
+            style:
+                const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
         Text(value, style: TextStyle(fontSize: 11, color: color)),
       ],
     );

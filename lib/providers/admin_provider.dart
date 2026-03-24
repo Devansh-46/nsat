@@ -8,11 +8,11 @@ import '../services/notification_service.dart';
 class AdminProvider extends ChangeNotifier {
   final AdminService _adminService = AdminService();
   final NotificationService _notificationService = NotificationService();
-  
+
   Map<String, dynamic>? _dashboardStats;
   List<TestSessionModel> _allResults = [];
   List<NotificationModel> _notifications = [];
-  
+
   bool _isLoading = false;
   String? _error;
   String? _successMessage;
@@ -59,16 +59,19 @@ class AdminProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> sendNotification(String title, String body, String category, bool scheduleLater) async {
+  Future<bool> sendNotification(
+      String title, String body, String category, bool scheduleLater) async {
     _setLoading(true);
     try {
       await _notificationService.sendPushNotification(
-        title: title, 
-        body: body, 
+        title: title,
+        body: body,
         category: category,
         scheduleLater: scheduleLater,
       );
-      _successMessage = scheduleLater ? 'Notification scheduled successfully' : 'Notification pushed successfully';
+      _successMessage = scheduleLater
+          ? 'Notification scheduled successfully'
+          : 'Notification pushed successfully';
       await fetchNotifications();
       _setLoading(false);
       return true;

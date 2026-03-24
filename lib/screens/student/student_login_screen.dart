@@ -53,7 +53,8 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
       backgroundColor: Colors.white,
       body: Column(
         children: [
-          const NiuAppBar(title: 'Student login', subtitle: 'ACCSOFT verification'),
+          const NiuAppBar(
+              title: 'Student login', subtitle: 'ACCSOFT verification'),
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(16),
@@ -79,25 +80,25 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
                     ),
                     child: TextField(
                       controller: _idController,
-                      style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
+                      style: const TextStyle(
+                          fontSize: 13, color: AppColors.textPrimary),
                       decoration: const InputDecoration(
                         border: InputBorder.none,
                       ),
                       onChanged: (v) {
-                         if (_verified) setState(() => _verified = false);
+                        if (_verified) setState(() => _verified = false);
                       },
                     ),
                   ),
                   const SizedBox(height: 10),
-                  
                   if (provider.error != null) ...[
                     Text(
                       provider.error!,
-                      style: const TextStyle(color: AppColors.red, fontSize: 12),
+                      style:
+                          const TextStyle(color: AppColors.red, fontSize: 12),
                     ),
                     const SizedBox(height: 10),
                   ],
-
                   if (provider.isLoading)
                     const Center(child: CircularProgressIndicator())
                   else if (!_verified)
@@ -105,9 +106,7 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
                       label: 'Verify & continue',
                       onTap: _verify,
                     ),
-                  
                   const SizedBox(height: 20),
-
                   if (_verified && user != null) ...[
                     const Text(
                       'Fetched from ACCSOFT',
@@ -134,7 +133,8 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
                       value: user.feeStatusText,
                     ),
                     InfoRow(
-                      dotColor: user.hasAttempted ? AppColors.red : AppColors.primary,
+                      dotColor:
+                          user.hasAttempted ? AppColors.red : AppColors.primary,
                       label: 'Previous attempt',
                       value: user.attemptStatusText,
                     ),

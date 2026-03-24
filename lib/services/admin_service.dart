@@ -10,10 +10,10 @@ class AdminService {
 
     final results = await _dataStore.getAllTestResults();
     final configs = await _dataStore.getTestConfigs();
-    
+
     int activeTests = configs.where((c) => c.isPublished).length;
     int totalAttempts = results.length;
-    
+
     return {
       'onlineToday': 234 + totalAttempts, // Mock dynamic number
       'activeTests': activeTests,

@@ -21,7 +21,8 @@ class NiuButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final effectivePadding = padding ?? const EdgeInsets.symmetric(vertical: 14);
+    final effectivePadding =
+        padding ?? const EdgeInsets.symmetric(vertical: 14);
 
     switch (variant) {
       case NiuButtonVariant.primary:
@@ -32,11 +33,14 @@ class NiuButton extends StatelessWidget {
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
               padding: effectivePadding,
               elevation: 0,
             ),
-            child: Text(label, style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.w500)),
+            child: Text(label,
+                style:
+                    TextStyle(fontSize: fontSize, fontWeight: FontWeight.w500)),
           ),
         );
       case NiuButtonVariant.gold:
@@ -47,11 +51,14 @@ class NiuButton extends StatelessWidget {
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.gold,
               foregroundColor: AppColors.primary,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
               padding: effectivePadding,
               elevation: 0,
             ),
-            child: Text(label, style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.w500)),
+            child: Text(label,
+                style:
+                    TextStyle(fontSize: fontSize, fontWeight: FontWeight.w500)),
           ),
         );
       case NiuButtonVariant.outline:
@@ -62,10 +69,13 @@ class NiuButton extends StatelessWidget {
             style: OutlinedButton.styleFrom(
               foregroundColor: AppColors.primary,
               side: const BorderSide(color: AppColors.primary, width: 1.5),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
               padding: effectivePadding,
             ),
-            child: Text(label, style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.w500)),
+            child: Text(label,
+                style:
+                    TextStyle(fontSize: fontSize, fontWeight: FontWeight.w500)),
           ),
         );
     }

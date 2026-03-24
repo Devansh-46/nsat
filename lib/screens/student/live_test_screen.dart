@@ -165,7 +165,9 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
                         alignment: Alignment.centerRight,
                         child: TextButton(
                           onPressed: () => provider.clearAnswer(_currentIndex),
-                          child: const Text('Clear Selection', style: TextStyle(fontSize: 11, color: AppColors.red)),
+                          child: const Text('Clear Selection',
+                              style: TextStyle(
+                                  fontSize: 11, color: AppColors.red)),
                         ),
                       ),
 
@@ -302,23 +304,25 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
                   fontSize: 11,
                   padding: const EdgeInsets.symmetric(vertical: 10),
                   onTap: () {
-                     showDialog(
-                        context: context,
-                        builder: (ctx) => AlertDialog(
-                          title: const Text('Submit Test?'),
-                          content: Text('You have answered ${session.answeredCount} out of ${session.totalQuestions} questions.\n\nAre you sure you want to submit?'),
-                          actions: [
-                            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-                            ElevatedButton(
+                    showDialog(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: const Text('Submit Test?'),
+                        content: Text(
+                            'You have answered ${session.answeredCount} out of ${session.totalQuestions} questions.\n\nAre you sure you want to submit?'),
+                        actions: [
+                          TextButton(
+                              onPressed: () => Navigator.pop(ctx),
+                              child: const Text('Cancel')),
+                          ElevatedButton(
                               onPressed: () {
                                 Navigator.pop(ctx);
                                 _submitTest();
-                              }, 
-                              child: const Text('Submit')
-                            ),
-                          ],
-                        ),
-                      );
+                              },
+                              child: const Text('Submit')),
+                        ],
+                      ),
+                    );
                   },
                 ),
               ),
@@ -371,7 +375,8 @@ class _QuestionDot extends StatelessWidget {
       alignment: Alignment.center,
       child: Text(
         '$number',
-        style: TextStyle(fontSize: 9, fontWeight: FontWeight.w500, color: textColor),
+        style: TextStyle(
+            fontSize: 9, fontWeight: FontWeight.w500, color: textColor),
       ),
     );
   }
@@ -399,7 +404,8 @@ class _LegendItem extends StatelessWidget {
           decoration: BoxDecoration(
             color: color,
             borderRadius: BorderRadius.circular(3),
-            border: borderColor != null ? Border.all(color: borderColor!) : null,
+            border:
+                borderColor != null ? Border.all(color: borderColor!) : null,
           ),
         ),
         const SizedBox(width: 4),

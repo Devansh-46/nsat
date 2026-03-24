@@ -10,7 +10,7 @@ import '../services/data_store.dart';
 class TestProvider extends ChangeNotifier {
   final TestDataService _testDataService = TestDataService();
   final DataStore _dataStore = DataStore();
-  
+
   TestSessionModel? _currentSession;
   TestConfigModel? _availableTest;
   bool _isLoading = false;
@@ -25,7 +25,8 @@ class TestProvider extends ChangeNotifier {
   Future<void> fetchAvailableTest(String category) async {
     _setLoading(true);
     try {
-      _availableTest = await _testDataService.getAvailableTestForCategory(category);
+      _availableTest =
+          await _testDataService.getAvailableTestForCategory(category);
     } catch (e) {
       _error = 'Failed to load tests';
     }
@@ -34,14 +35,13 @@ class TestProvider extends ChangeNotifier {
 
   Future<bool> startTest(UserModel user) async {
     if (_availableTest == null) return false;
-    
+
     _setLoading(true);
     try {
       // Fetch dynamic questions
-      List<QuestionModel> questions = await _testDataService.fetchQuestionsForCategory(
-        _availableTest!.category, 
-        _availableTest!.questionCount
-      );
+      List<QuestionModel> questions =
+          await _testDataService.fetchQuestionsForCategory(
+              _availableTest!.category, _availableTest!.questionCount);
 
       _currentSession = TestSessionModel(
         studentId: user.accsoftId,
@@ -50,7 +50,9 @@ class TestProvider extends ChangeNotifier {
         totalQuestions: _availableTest!.questionCount,
         durationMinutes: _availableTest!.durationMinutes,
         marksPerQuestion: _availableTest!.marksPerQuestion,
-        negativeMarksPerWrong: _availableTest!.negativeMarking ? _availableTest!.negativeMarksPerWrong : 0.0,
+        negativeMarksPerWrong: _availableTest!.negativeMarking
+            ? _availableTest!.negativeMarksPerWrong
+            : 0.0,
         questions: questions,
       );
 
@@ -97,15 +99,15 @@ class TestProvider extends ChangeNotifier {
 
   Future<void> submitTest() async {
     if (_currentSession == null || _currentSession!.isSubmitted) return;
-    
+
     _timer?.cancel();
     _setLoading(true);
-    
+
     try {
       _currentSession!.submit();
       // Save result and update attempt status
       await _dataStore.saveTestResult(_currentSession!);
-      
+
       _setLoading(false);
     } catch (e) {
       _error = 'Failed to submit test';

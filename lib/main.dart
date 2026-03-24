@@ -56,4 +56,3 @@ class NiuSatApp extends StatelessWidget {
     );
   }
 }
-

@@ -4,7 +4,7 @@ import '../services/auth_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   final AuthService _authService = AuthService();
-  
+
   UserModel? _currentUser;
   bool _isLoading = false;
   String? _error;
@@ -18,9 +18,9 @@ class AuthProvider extends ChangeNotifier {
   Future<void> initAuth() async {
     _isLoading = true;
     notifyListeners();
-    
+
     _currentUser = await _authService.getSavedSession();
-    
+
     _isLoading = false;
     notifyListeners();
   }

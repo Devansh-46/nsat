@@ -49,14 +49,14 @@ class _TestCategoryScreenState extends State<TestCategoryScreen> {
   void _startTest() async {
     final authProvider = context.read<AuthProvider>();
     final testProvider = context.read<TestProvider>();
-    
+
     if (authProvider.currentUser == null) return;
-    
+
     final success = await testProvider.startTest(authProvider.currentUser!);
     if (success && mounted) {
       Navigator.pushReplacementNamed(context, AppRoutes.liveTest);
     } else if (mounted) {
-       ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(testProvider.error ?? 'Failed to start test')),
       );
     }
@@ -72,18 +72,21 @@ class _TestCategoryScreenState extends State<TestCategoryScreen> {
       backgroundColor: Colors.white,
       body: Column(
         children: [
-          NiuAppBar(title: 'Select test category', subtitle: 'Hello, ${user?.name ?? ''}'),
+          NiuAppBar(
+              title: 'Select test category',
+              subtitle: 'Hello, ${user?.name ?? ''}'),
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                   // Dropdown
+                  // Dropdown
                   GestureDetector(
                     onTap: () => setState(() => _dropdownOpen = !_dropdownOpen),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 10),
                       decoration: BoxDecoration(
                         color: const Color(0xFFFAFAFA),
                         border: Border.all(color: AppColors.border),
@@ -140,8 +143,9 @@ class _TestCategoryScreenState extends State<TestCategoryScreen> {
                                   color: selected
                                       ? AppColors.primary
                                       : AppColors.textSecondary,
-                                  fontWeight:
-                                      selected ? FontWeight.w500 : FontWeight.normal,
+                                  fontWeight: selected
+                                      ? FontWeight.w500
+                                      : FontWeight.normal,
                                 ),
                               ),
                             ),
@@ -152,9 +156,10 @@ class _TestCategoryScreenState extends State<TestCategoryScreen> {
                   ],
 
                   const SizedBox(height: 16),
-                  
+
                   if (testProvider.isLoading)
-                    const Center(child: Padding(
+                    const Center(
+                        child: Padding(
                       padding: EdgeInsets.all(32.0),
                       child: CircularProgressIndicator(),
                     ))
@@ -178,13 +183,21 @@ class _TestCategoryScreenState extends State<TestCategoryScreen> {
                       crossAxisSpacing: 8,
                       childAspectRatio: 2.2,
                       children: [
-                        _DetailCard(value: testConfig.questionCount.toString(), label: 'Questions'),
-                        _DetailCard(value: testConfig.durationMinutes.toString(), label: 'Minutes'),
-                        _DetailCard(value: testConfig.marksPerQuestion.toStringAsFixed(1), label: 'Mark per Q'),
                         _DetailCard(
-                          value: testConfig.negativeMarking ? '-${testConfig.negativeMarksPerWrong}' : '0', 
-                          label: 'Wrong ans.'
-                        ),
+                            value: testConfig.questionCount.toString(),
+                            label: 'Questions'),
+                        _DetailCard(
+                            value: testConfig.durationMinutes.toString(),
+                            label: 'Minutes'),
+                        _DetailCard(
+                            value:
+                                testConfig.marksPerQuestion.toStringAsFixed(1),
+                            label: 'Mark per Q'),
+                        _DetailCard(
+                            value: testConfig.negativeMarking
+                                ? '-${testConfig.negativeMarksPerWrong}'
+                                : '0',
+                            label: 'Wrong ans.'),
                       ],
                     ),
                     const SizedBox(height: 12),
@@ -192,7 +205,8 @@ class _TestCategoryScreenState extends State<TestCategoryScreen> {
                     // Warning
                     Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 10),
                       decoration: BoxDecoration(
                         color: AppColors.bgGoldLight,
                         border: Border.all(color: AppColors.borderGold),
@@ -215,7 +229,7 @@ class _TestCategoryScreenState extends State<TestCategoryScreen> {
                     ),
                     const SizedBox(height: 8),
                   ] else ...[
-                     Container(
+                    Container(
                       width: double.infinity,
                       padding: const EdgeInsets.all(24),
                       decoration: BoxDecoration(
@@ -226,17 +240,22 @@ class _TestCategoryScreenState extends State<TestCategoryScreen> {
                       child: const Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                           Icon(Icons.check_circle_outline, color: AppColors.textMuted, size: 40),
-                           SizedBox(height: 12),
-                           Text(
+                          Icon(Icons.check_circle_outline,
+                              color: AppColors.textMuted, size: 40),
+                          SizedBox(height: 12),
+                          Text(
                             'No test scheduled',
-                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                            style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.textPrimary),
                           ),
                           SizedBox(height: 4),
-                           Text(
+                          Text(
                             'There are no active tests for this category at the moment.',
                             textAlign: TextAlign.center,
-                            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                            style: TextStyle(
+                                fontSize: 12, color: AppColors.textSecondary),
                           ),
                         ],
                       ),

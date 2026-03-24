@@ -14,11 +14,16 @@ class CreateTestScreen extends StatefulWidget {
 }
 
 class _CreateTestScreenState extends State<CreateTestScreen> {
-  final TextEditingController _titleController = TextEditingController(text: 'NIU-SAT Entrance');
-  final TextEditingController _qCountController = TextEditingController(text: '60');
-  final TextEditingController _durationController = TextEditingController(text: '60');
-  final TextEditingController _marksController = TextEditingController(text: '1.0');
-  final TextEditingController _startDateController = TextEditingController(text: '15-Jun-2025');
+  final TextEditingController _titleController =
+      TextEditingController(text: 'NIU-SAT Entrance');
+  final TextEditingController _qCountController =
+      TextEditingController(text: '60');
+  final TextEditingController _durationController =
+      TextEditingController(text: '60');
+  final TextEditingController _marksController =
+      TextEditingController(text: '1.0');
+  final TextEditingController _startDateController =
+      TextEditingController(text: '15-Jun-2025');
 
   String _selectedCategory = 'MBA — Management';
   bool _dropdownOpen = false;
@@ -47,7 +52,7 @@ class _CreateTestScreenState extends State<CreateTestScreen> {
 
   void _saveTest() async {
     final provider = context.read<AdminProvider>();
-    
+
     final config = TestConfigModel(
       id: 'test_${DateTime.now().millisecondsSinceEpoch}',
       title: _titleController.text,
@@ -82,10 +87,11 @@ class _CreateTestScreenState extends State<CreateTestScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                   if (provider.error != null) ...[
+                  if (provider.error != null) ...[
                     Text(
                       provider.error!,
-                      style: const TextStyle(color: AppColors.red, fontSize: 12),
+                      style:
+                          const TextStyle(color: AppColors.red, fontSize: 12),
                     ),
                     const SizedBox(height: 10),
                   ],
@@ -104,7 +110,8 @@ class _CreateTestScreenState extends State<CreateTestScreen> {
                   GestureDetector(
                     onTap: () => setState(() => _dropdownOpen = !_dropdownOpen),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 10),
                       decoration: BoxDecoration(
                         border: Border.all(color: AppColors.border),
                         borderRadius: BorderRadius.circular(7),
@@ -115,16 +122,19 @@ class _CreateTestScreenState extends State<CreateTestScreen> {
                         children: [
                           Text(_selectedCategory,
                               style: const TextStyle(
-                                  fontSize: 12,
-                                  color: AppColors.textPrimary)),
-                          Icon(_dropdownOpen ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
-                              color: AppColors.textMuted, size: 18),
+                                  fontSize: 12, color: AppColors.textPrimary)),
+                          Icon(
+                              _dropdownOpen
+                                  ? Icons.keyboard_arrow_up
+                                  : Icons.keyboard_arrow_down,
+                              color: AppColors.textMuted,
+                              size: 18),
                         ],
                       ),
                     ),
                   ),
 
-                   // Dropdown options
+                  // Dropdown options
                   if (_dropdownOpen) ...[
                     const SizedBox(height: 4),
                     Container(
@@ -154,8 +164,9 @@ class _CreateTestScreenState extends State<CreateTestScreen> {
                                   color: selected
                                       ? AppColors.primary
                                       : AppColors.textSecondary,
-                                  fontWeight:
-                                      selected ? FontWeight.w500 : FontWeight.normal,
+                                  fontWeight: selected
+                                      ? FontWeight.w500
+                                      : FontWeight.normal,
                                 ),
                               ),
                             ),
@@ -172,23 +183,30 @@ class _CreateTestScreenState extends State<CreateTestScreen> {
                     children: [
                       Expanded(
                           child: _TextInputField(
-                              label: 'No. of questions', controller: _qCountController, isNumber: true)),
+                              label: 'No. of questions',
+                              controller: _qCountController,
+                              isNumber: true)),
                       const SizedBox(width: 8),
                       Expanded(
                           child: _TextInputField(
-                              label: 'Duration (mins)', controller: _durationController, isNumber: true)),
+                              label: 'Duration (mins)',
+                              controller: _durationController,
+                              isNumber: true)),
                     ],
                   ),
                   const SizedBox(height: 10),
                   Row(
                     children: [
                       Expanded(
-                          child:
-                              _TextInputField(label: 'Marks per Q', controller: _marksController, isNumber: true)),
+                          child: _TextInputField(
+                              label: 'Marks per Q',
+                              controller: _marksController,
+                              isNumber: true)),
                       const SizedBox(width: 8),
                       Expanded(
                           child: _TextInputField(
-                              label: 'Start date', controller: _startDateController)),
+                              label: 'Start date',
+                              controller: _startDateController)),
                     ],
                   ),
                   const SizedBox(height: 10),
@@ -198,8 +216,7 @@ class _CreateTestScreenState extends State<CreateTestScreen> {
                     label: 'Negative marking',
                     subtitle: '-0.25 per wrong answer',
                     value: _negativeMarking,
-                    onChanged: (v) =>
-                        setState(() => _negativeMarking = v),
+                    onChanged: (v) => setState(() => _negativeMarking = v),
                   ),
 
                   // Published toggle
@@ -285,7 +302,10 @@ class _TextInputField extends StatelessWidget {
             controller: controller,
             keyboardType: isNumber ? TextInputType.number : TextInputType.text,
             style: const TextStyle(fontSize: 12, color: AppColors.textPrimary),
-            decoration: const InputDecoration(border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.symmetric(vertical: 10)),
+            decoration: const InputDecoration(
+                border: InputBorder.none,
+                isDense: true,
+                contentPadding: EdgeInsets.symmetric(vertical: 10)),
           ),
         ),
       ],
@@ -312,8 +332,7 @@ class _ToggleRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 9),
       decoration: const BoxDecoration(
         border: Border(
-            bottom:
-                BorderSide(color: AppColors.borderLight, width: 0.5)),
+            bottom: BorderSide(color: AppColors.borderLight, width: 0.5)),
       ),
       child: Row(
         children: [
@@ -342,9 +361,7 @@ class _ToggleRow extends StatelessWidget {
               ),
               child: AnimatedAlign(
                 duration: const Duration(milliseconds: 200),
-                alignment: value
-                    ? Alignment.centerRight
-                    : Alignment.centerLeft,
+                alignment: value ? Alignment.centerRight : Alignment.centerLeft,
                 child: Container(
                   width: 18,
                   height: 18,
