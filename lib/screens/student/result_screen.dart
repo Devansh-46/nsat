@@ -1,13 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../theme/app_colors.dart';
 import '../../routes/app_routes.dart';
 import '../../widgets/niu_button.dart';
+import '../../providers/test_provider.dart';
+import '../../providers/auth_provider.dart';
 
 class ResultScreen extends StatelessWidget {
   const ResultScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final session = context.watch<TestProvider>().currentSession;
+    final user = context.watch<AuthProvider>().currentUser;
+
+    if (session == null) {
+      return const Scaffold(
+        body: Center(child: Text('No test results found.')),
+      );
+    }
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -25,9 +37,9 @@ class ResultScreen extends StatelessWidget {
                     style: TextStyle(color: Colors.white, fontSize: 12),
                   ),
                   const SizedBox(height: 6),
-                  const Text(
-                    '39.50',
-                    style: TextStyle(
+                  Text(
+                    session.formattedNetScore,
+                    style: const TextStyle(
                       color: AppColors.gold,
                       fontSize: 34,
                       fontWeight: FontWeight.w700,
@@ -35,7 +47,7 @@ class ResultScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    'Net score out of 60.00',
+                    'Net score out of ${session.formattedMaxScore}',
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.8),
                       fontSize: 11,
@@ -48,9 +60,9 @@ class ResultScreen extends StatelessWidget {
                       color: AppColors.bgGoldLight,
                       borderRadius: BorderRadius.circular(4),
                     ),
-                    child: const Text(
-                      'MBA — NIU-SAT',
-                      style: TextStyle(
+                    child: Text(
+                      '${session.categoryName} — NIU-SAT',
+                      style: const TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w500,
                         color: AppColors.textGold,
@@ -70,11 +82,11 @@ class ResultScreen extends StatelessWidget {
                     // Stats row
                     Row(
                       children: [
-                        Expanded(child: _StatBox(value: '42', label: 'Correct', color: AppColors.green)),
+                        Expanded(child: _StatBox(value: '${session.correctCount}', label: 'Correct', color: AppColors.green)),
                         const SizedBox(width: 8),
-                        Expanded(child: _StatBox(value: '10', label: 'Wrong', color: AppColors.red)),
+                        Expanded(child: _StatBox(value: '${session.wrongCount}', label: 'Wrong', color: AppColors.red)),
                         const SizedBox(width: 8),
-                        Expanded(child: _StatBox(value: '8', label: 'Skipped', color: AppColors.textMuted)),
+                        Expanded(child: _StatBox(value: '${session.skippedCount}', label: 'Skipped', color: AppColors.textMuted)),
                       ],
                     ),
                     const SizedBox(height: 12),
@@ -89,9 +101,17 @@ class ResultScreen extends StatelessWidget {
                       ),
                       child: Column(
                         children: [
-                          _ScoreRow(label: 'Correct (+42.00)', value: '+42.00', color: AppColors.green),
+                          _ScoreRow(
+                            label: 'Correct (+${session.correctMarks.toStringAsFixed(2)})', 
+                            value: '+${session.correctMarks.toStringAsFixed(2)}', 
+                            color: AppColors.green
+                          ),
                           const SizedBox(height: 5),
-                          _ScoreRow(label: 'Wrong (10 x -0.25)', value: '-2.50', color: AppColors.red),
+                          _ScoreRow(
+                            label: 'Wrong (${session.wrongCount} x -${session.negativeMarksPerWrong.toStringAsFixed(2)})', 
+                            value: '-${session.negativeMarks.toStringAsFixed(2)}', 
+                            color: AppColors.red
+                          ),
                           Container(
                             margin: const EdgeInsets.symmetric(vertical: 6),
                             height: 0.5,
@@ -99,8 +119,8 @@ class ResultScreen extends StatelessWidget {
                           ),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: const [
-                              Text(
+                            children: [
+                              const Text(
                                 'Net score',
                                 style: TextStyle(
                                   fontSize: 13,
@@ -109,8 +129,8 @@ class ResultScreen extends StatelessWidget {
                                 ),
                               ),
                               Text(
-                                '39.50 / 60',
-                                style: TextStyle(
+                                '${session.formattedNetScore} / ${session.formattedMaxScore}',
+                                style: const TextStyle(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w500,
                                   color: AppColors.primary,
@@ -132,7 +152,7 @@ class ResultScreen extends StatelessWidget {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: const Text(
-                        'Your result has been sent to NIU admissions automatically.',
+                        'Your result has been saved and sent to NIU admissions automatically.',
                         style: TextStyle(
                           fontSize: 11,
                           color: AppColors.textGreen,
@@ -144,15 +164,17 @@ class ResultScreen extends StatelessWidget {
                     NiuButton(label: 'Download scorecard (PDF)'),
                     const SizedBox(height: 8),
                     NiuButton(
-                      label: 'Download MBA brochure',
+                      label: 'Download ${user?.course?.split(' ').first ?? 'course'} brochure',
                       variant: NiuButtonVariant.outline,
                     ),
                     const SizedBox(height: 16),
                     NiuButton(
                       label: 'Back to home',
                       variant: NiuButtonVariant.outline,
-                      onTap: () => Navigator.popUntil(
-                          context, ModalRoute.withName(AppRoutes.roleSelection)),
+                      onTap: () {
+                        context.read<TestProvider>().clearSession(); // Clean up state
+                        Navigator.popUntil(context, ModalRoute.withName(AppRoutes.roleSelection));
+                      },
                     ),
                   ],
                 ),

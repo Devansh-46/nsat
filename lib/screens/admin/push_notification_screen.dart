@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/niu_app_bar.dart';
 import '../../widgets/niu_button.dart';
+import '../../providers/admin_provider.dart';
 
 class PushNotificationScreen extends StatefulWidget {
   const PushNotificationScreen({super.key});
@@ -11,13 +13,56 @@ class PushNotificationScreen extends StatefulWidget {
 }
 
 class _PushNotificationScreenState extends State<PushNotificationScreen> {
+  final TextEditingController _titleController = TextEditingController();
+  final TextEditingController _bodyController = TextEditingController();
+  
   bool _scheduleLater = false;
-  String _selectedCategory = 'MBA';
+  String _selectedCategory = 'All';
 
-  final List<String> _categories = ['MBA', 'B.Tech', 'BBA', 'LLB', 'B.Com'];
+  final List<String> _categories = ['All', 'MBA', 'B.Tech', 'BBA', 'LLB', 'B.Com'];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<AdminProvider>().fetchNotifications();
+    });
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _bodyController.dispose();
+    super.dispose();
+  }
+
+  void _sendNotification() async {
+    if (_titleController.text.isEmpty || _bodyController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter title and message body')));
+      return;
+    }
+
+    final provider = context.read<AdminProvider>();
+    final success = await provider.sendNotification(
+      _titleController.text, 
+      _bodyController.text, 
+      _selectedCategory, 
+      _scheduleLater
+    );
+
+    if (success && mounted) {
+      _titleController.clear();
+      _bodyController.clear();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(provider.successMessage ?? 'Sent successfully'), backgroundColor: AppColors.green),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final provider = context.watch<AdminProvider>();
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: Column(
@@ -30,6 +75,14 @@ class _PushNotificationScreenState extends State<PushNotificationScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                   if (provider.error != null) ...[
+                    Text(
+                      provider.error!,
+                      style: const TextStyle(color: AppColors.red, fontSize: 12),
+                    ),
+                    const SizedBox(height: 10),
+                  ],
+
                   // Notification form card
                   Container(
                     padding: const EdgeInsets.all(12),
@@ -44,18 +97,20 @@ class _PushNotificationScreenState extends State<PushNotificationScreen> {
                         const SizedBox(height: 3),
                         Container(
                           width: double.infinity,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 9),
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
                           decoration: BoxDecoration(
                             color: Colors.white,
                             border: Border.all(color: AppColors.primary),
                             borderRadius: BorderRadius.circular(7),
                           ),
-                          child: const Text(
-                            'MBA test starts in 2 hours',
-                            style: TextStyle(
-                                fontSize: 12,
-                                color: AppColors.textPrimary),
+                          child: TextField(
+                            controller: _titleController,
+                            style: const TextStyle(fontSize: 12, color: AppColors.textPrimary),
+                            decoration: const InputDecoration(
+                              border: InputBorder.none,
+                              hintText: 'e.g. MBA test starts in 2 hours',
+                              hintStyle: TextStyle(color: AppColors.textMuted),
+                            ),
                           ),
                         ),
                         const SizedBox(height: 10),
@@ -64,43 +119,24 @@ class _PushNotificationScreenState extends State<PushNotificationScreen> {
                         Container(
                           width: double.infinity,
                           constraints: const BoxConstraints(minHeight: 56),
-                          padding: const EdgeInsets.all(10),
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
                           decoration: BoxDecoration(
                             color: Colors.white,
                             border: Border.all(color: AppColors.border),
                             borderRadius: BorderRadius.circular(7),
                           ),
-                          child: const Text(
-                            'Dear student, your NIU-SAT for MBA begins at 10:00 AM today. Ensure you are ready.',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: AppColors.textPrimary,
-                              height: 1.5,
+                          child: TextField(
+                            controller: _bodyController,
+                            maxLines: 4,
+                            minLines: 2,
+                            style: const TextStyle(fontSize: 12, color: AppColors.textPrimary, height: 1.5),
+                            decoration: const InputDecoration(
+                              border: InputBorder.none,
+                              hintText: 'Dear student...',
+                              hintStyle: TextStyle(color: AppColors.textMuted),
                             ),
                           ),
                         ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Send to
-                  const _FormLabel(text: 'Send to'),
-                  const SizedBox(height: 3),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 10),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: AppColors.border),
-                      borderRadius: BorderRadius.circular(7),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: const [
-                        Text('All students (1,842 devices)',
-                            style: TextStyle(fontSize: 12)),
-                        Icon(Icons.keyboard_arrow_down,
-                            color: AppColors.textMuted, size: 18),
                       ],
                     ),
                   ),
@@ -117,7 +153,7 @@ class _PushNotificationScreenState extends State<PushNotificationScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          'Or filter by category',
+                          'Filter target users',
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w500,
@@ -133,7 +169,8 @@ class _PushNotificationScreenState extends State<PushNotificationScreen> {
                             return GestureDetector(
                               onTap: () =>
                                   setState(() => _selectedCategory = cat),
-                              child: Container(
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 200),
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 10, vertical: 5),
                                 decoration: BoxDecoration(
@@ -223,19 +260,41 @@ class _PushNotificationScreenState extends State<PushNotificationScreen> {
                   ),
                   const SizedBox(height: 12),
 
-                  NiuButton(
-                    label: 'Send notification now',
-                    onTap: () => Navigator.pop(context),
-                  ),
-                  const SizedBox(height: 10),
-                  Center(
-                    child: Text(
-                      'Previous: "Test reminder sent" — 1,820 delivered, 22 failed',
-                      style: TextStyle(
-                          fontSize: 10, color: AppColors.textMuted),
-                      textAlign: TextAlign.center,
+                  if (provider.isLoading)
+                     const Center(child: CircularProgressIndicator())
+                  else
+                    NiuButton(
+                      label: _scheduleLater ? 'Schedule notification' : 'Send notification now',
+                      onTap: _sendNotification,
                     ),
-                  ),
+                  const SizedBox(height: 16),
+                  
+                  if (provider.notifications.isNotEmpty) ...[
+                     const Padding(
+                       padding: EdgeInsets.only(bottom: 8.0, top: 4.0),
+                       child: Text('Recent Notifications', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.primary)),
+                     ),
+                     ...provider.notifications.take(3).map((n) => Container(
+                       margin: const EdgeInsets.only(bottom: 8),
+                       padding: const EdgeInsets.all(10),
+                       decoration: BoxDecoration(color: AppColors.bgCard, borderRadius: BorderRadius.circular(6)),
+                       child: Column(
+                         crossAxisAlignment: CrossAxisAlignment.start,
+                         children: [
+                           Text(n.title, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 11)),
+                           Text('${n.deliveredCount} delivered to ${n.targetCategory}', style: const TextStyle(fontSize: 10, color: AppColors.textSecondary)),
+                         ],
+                       ),
+                     )),
+                  ] else ...[
+                     const Center(
+                      child: Text(
+                        'No notifications sent yet.',
+                        style: TextStyle(fontSize: 10, color: AppColors.textMuted),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),

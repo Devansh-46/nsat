@@ -105,7 +105,7 @@ class RoleSelectionScreen extends StatelessWidget {
                 label: 'Admin login',
                 subtitle: 'For NIU examination team',
                 isPrimary: false,
-                onTap: () => Navigator.pushNamed(context, AppRoutes.adminDashboard),
+                onTap: () => Navigator.pushNamed(context, AppRoutes.adminLogin),
               ),
             ),
 

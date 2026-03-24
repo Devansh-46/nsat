@@ -1,32 +1,55 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/niu_app_bar.dart';
 import '../../widgets/niu_button.dart';
 import '../../widgets/stat_card.dart';
+import '../../providers/admin_provider.dart';
 
-class ResultsDashboardScreen extends StatelessWidget {
+class ResultsDashboardScreen extends StatefulWidget {
   const ResultsDashboardScreen({super.key});
 
-  static const List<_ResultEntry> _entries = [
-    _ResultEntry('NIU2025MBA0472', 'MBA', '39.5', true),
-    _ResultEntry('NIU2025BT0183', 'B.Tech', '44.0', true),
-    _ResultEntry('NIU2025LLB0091', 'LLB', '51.0', true),
-    _ResultEntry('NIU2025MBA0513', 'MBA', '28.75', false),
-    _ResultEntry('NIU2025BBA0044', 'BBA', '36.25', true),
-    _ResultEntry('NIU2025BCM0207', 'B.Com', '42.0', true),
-  ];
+  @override
+  State<ResultsDashboardScreen> createState() => _ResultsDashboardScreenState();
+}
+
+class _ResultsDashboardScreenState extends State<ResultsDashboardScreen> {
+  String _selectedCourse = 'All courses';
+  final List<String> _courseFilters = ['All courses', 'MBA', 'B.Tech', 'BBA', 'LLB', 'B.Com'];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<AdminProvider>().fetchAllResults();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
+    final provider = context.watch<AdminProvider>();
+    final results = provider.allResults;
+
+    final filteredResults = _selectedCourse == 'All courses'
+        ? results
+        : results.where((r) => r.categoryName.startsWith(_selectedCourse)).toList();
+
+    final totalSubmissions = filteredResults.length;
+    final avgScore = totalSubmissions > 0
+        ? (filteredResults.map((e) => e.netScore).reduce((a, b) => a + b) / totalSubmissions).toStringAsFixed(1)
+        : '0.0';
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: Column(
         children: [
-          const NiuAppBar(
+          NiuAppBar(
               title: 'Results dashboard',
-              subtitle: '1,842 total submissions'),
+              subtitle: '${results.length} total submissions'),
           Expanded(
-            child: SingleChildScrollView(
+            child: provider.isLoading 
+              ? const Center(child: CircularProgressIndicator()) 
+              : SingleChildScrollView(
               padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -34,25 +57,52 @@ class ResultsDashboardScreen extends StatelessWidget {
                   // Filters
                   Row(
                     children: [
-                      Expanded(child: _FilterDropdown(label: 'All courses')),
+                      Expanded(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: AppColors.border),
+                            borderRadius: BorderRadius.circular(7),
+                          ),
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<String>(
+                              value: _selectedCourse,
+                              isExpanded: true,
+                              icon: const Icon(Icons.keyboard_arrow_down, color: AppColors.textMuted, size: 18),
+                              style: const TextStyle(fontSize: 11, color: AppColors.textPrimary),
+                              onChanged: (String? newValue) {
+                                if (newValue != null) {
+                                  setState(() => _selectedCourse = newValue);
+                                }
+                              },
+                              items: _courseFilters.map<DropdownMenuItem<String>>((String value) {
+                                return DropdownMenuItem<String>(
+                                  value: value,
+                                  child: Text(value),
+                                );
+                              }).toList(),
+                            ),
+                          ),
+                        ),
+                      ),
                       const SizedBox(width: 8),
-                      Expanded(child: _FilterDropdown(label: 'All dates')),
+                      Expanded(child: _FilterDropdown(label: 'All dates')), // Placeholder for now
                     ],
                   ),
                   const SizedBox(height: 12),
 
                   // Summary stats
                   Row(
-                    children: const [
+                    children: [
                       Expanded(
-                          child: StatCard(value: '1842', label: 'Submitted')),
-                      SizedBox(width: 6),
+                          child: StatCard(value: '$totalSubmissions', label: 'Submitted')),
+                      const SizedBox(width: 6),
                       Expanded(
-                          child: StatCard(value: '38.4', label: 'Avg score')),
-                      SizedBox(width: 6),
-                      Expanded(
+                          child: StatCard(value: avgScore, label: 'Avg score')),
+                      const SizedBox(width: 6),
+                      const Expanded(
                           child: StatCard(
-                              value: '12',
+                              value: '0',
                               label: 'Push failed',
                               valueColor: AppColors.red)),
                     ],
@@ -67,20 +117,21 @@ class ResultsDashboardScreen extends StatelessWidget {
                         bottom: BorderSide(color: AppColors.borderLight),
                       ),
                     ),
-                    child: Row(
-                      children: const [
+                    child: const Row(
+                      children: [
                         Expanded(
-                          child: Text('ACCSOFT ID',
+                          flex: 3,
+                          child: Text('STUDENT ID',
                               style: TextStyle(
                                 fontSize: 9,
                                 fontWeight: FontWeight.w500,
                                 color: AppColors.textMuted,
                               )),
                         ),
-                        SizedBox(
-                          width: 44,
+                        Expanded(
+                          flex: 2,
                           child: Text('COURSE',
-                              textAlign: TextAlign.center,
+                              textAlign: TextAlign.left,
                               style: TextStyle(
                                 fontSize: 9,
                                 fontWeight: FontWeight.w500,
@@ -112,8 +163,13 @@ class ResultsDashboardScreen extends StatelessWidget {
                   ),
 
                   // Table rows
-                  ...List.generate(_entries.length, (i) {
-                    final e = _entries[i];
+                  if (filteredResults.isEmpty)
+                     const Padding(
+                       padding: EdgeInsets.symmetric(vertical: 32),
+                       child: Center(child: Text('No results found.', style: TextStyle(color: AppColors.textMuted, fontSize: 12))),
+                     ),
+
+                  ...filteredResults.map((session) {
                     return Container(
                       padding: const EdgeInsets.symmetric(vertical: 9),
                       decoration: const BoxDecoration(
@@ -125,8 +181,9 @@ class ResultsDashboardScreen extends StatelessWidget {
                       child: Row(
                         children: [
                           Expanded(
+                            flex: 3,
                             child: Text(
-                              e.id,
+                              session.studentId,
                               style: const TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w500,
@@ -135,20 +192,21 @@ class ResultsDashboardScreen extends StatelessWidget {
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          SizedBox(
-                            width: 44,
+                          Expanded(
+                            flex: 2,
                             child: Text(
-                              e.course,
-                              textAlign: TextAlign.center,
+                              session.categoryName.replaceAll(' NIU-SAT', '').split('—').first.trim(),
+                              textAlign: TextAlign.left,
                               style: const TextStyle(
-                                  fontSize: 11,
+                                  fontSize: 10,
                                   color: AppColors.textMuted),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                           SizedBox(
                             width: 36,
                             child: Text(
-                              e.score,
+                              session.formattedNetScore,
                               textAlign: TextAlign.right,
                               style: const TextStyle(
                                 fontSize: 11,
@@ -165,19 +223,15 @@ class ResultsDashboardScreen extends StatelessWidget {
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 6, vertical: 2),
                                 decoration: BoxDecoration(
-                                  color: e.pushed
-                                      ? AppColors.bgGreenLight
-                                      : AppColors.bgRedLight,
+                                  color: AppColors.bgGreenLight,
                                   borderRadius: BorderRadius.circular(4),
                                 ),
-                                child: Text(
-                                  e.pushed ? 'Pushed' : 'Failed',
+                                child: const Text(
+                                  'Pushed',
                                   style: TextStyle(
                                     fontSize: 9,
                                     fontWeight: FontWeight.w500,
-                                    color: e.pushed
-                                        ? AppColors.textGreen
-                                        : AppColors.textRed,
+                                    color: AppColors.textGreen,
                                   ),
                                 ),
                               ),
@@ -186,7 +240,7 @@ class ResultsDashboardScreen extends StatelessWidget {
                         ],
                       ),
                     );
-                  }),
+                  }).toList(),
 
                   const SizedBox(height: 12),
                   Row(
@@ -228,6 +282,7 @@ class _FilterDropdown extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      height: 38,
       decoration: BoxDecoration(
         border: Border.all(color: AppColors.border),
         borderRadius: BorderRadius.circular(7),
@@ -242,13 +297,4 @@ class _FilterDropdown extends StatelessWidget {
       ),
     );
   }
-}
-
-class _ResultEntry {
-  final String id;
-  final String course;
-  final String score;
-  final bool pushed;
-
-  const _ResultEntry(this.id, this.course, this.score, this.pushed);
 }

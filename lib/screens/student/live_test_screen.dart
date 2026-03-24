@@ -1,8 +1,9 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../theme/app_colors.dart';
 import '../../routes/app_routes.dart';
 import '../../widgets/niu_button.dart';
+import '../../providers/test_provider.dart';
 
 class LiveTestScreen extends StatefulWidget {
   const LiveTestScreen({super.key});
@@ -12,55 +13,57 @@ class LiveTestScreen extends StatefulWidget {
 }
 
 class _LiveTestScreenState extends State<LiveTestScreen> {
-  int _currentQuestion = 13; // 0-indexed, showing Q14
-  int _selectedOption = 1; // 0-indexed, option B selected by default
-  int _timerSeconds = 46 * 60 + 23;
-  Timer? _timer;
+  int _currentIndex = 0;
 
-  // Track question states: 0=empty, 1=answered, 2=visited, 3=current
-  final List<int> _questionStates = List.generate(60, (i) {
-    if (i < 13 && i != 3 && i != 7 && i != 11) return 1; // answered
-    if (i == 3 || i == 7 || i == 11) return 2; // visited
-    if (i == 13) return 3; // current
-    return 0; // empty
-  });
-
-  final String _questionText =
-      'Which of the following is NOT a characteristic of a perfectly competitive market?';
-
-  final List<String> _options = [
-    'Large number of buyers and sellers',
-    'Product differentiation',
-    'Free entry and exit of firms',
-    'Perfect information to all parties',
-  ];
-
-  @override
-  void initState() {
-    super.initState();
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (_timerSeconds > 0) {
-        setState(() => _timerSeconds--);
-      } else {
-        timer.cancel();
-      }
-    });
+  String _formatTime(int seconds) {
+    if (seconds < 0) return '00:00';
+    final minutes = seconds ~/ 60;
+    final secs = seconds % 60;
+    return '${minutes.toString().padLeft(2, '0')}:${secs.toString().padLeft(2, '0')}';
   }
 
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  String get _formattedTime {
-    final minutes = _timerSeconds ~/ 60;
-    final seconds = _timerSeconds % 60;
-    return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+  void _submitTest() async {
+    final provider = context.read<TestProvider>();
+    await provider.submitTest();
+    if (mounted) {
+      Navigator.pushReplacementNamed(context, AppRoutes.result);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final provider = context.watch<TestProvider>();
+    final session = provider.currentSession;
+
+    // Safety fallback if accessed without session
+    if (session == null) {
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text('No active test session found.'),
+              const SizedBox(height: 16),
+              NiuButton(
+                label: 'Go Back',
+                onTap: () => Navigator.pop(context),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final currentQuestion = session.questions[_currentIndex];
+    final selectedOption = session.answers[_currentIndex];
+
+    // Check if auto-submitted
+    if (session.isSubmitted) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Navigator.pushReplacementNamed(context, AppRoutes.result);
+      });
+    }
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -74,16 +77,16 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Q ${_currentQuestion + 1} / 60',
+                    'Q ${_currentIndex + 1} / ${session.totalQuestions}',
                     style: const TextStyle(
                       color: AppColors.gold,
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-                  const Text(
-                    'MBA — NIU-SAT',
-                    style: TextStyle(color: Colors.white, fontSize: 11),
+                  Text(
+                    session.categoryName,
+                    style: const TextStyle(color: Colors.white, fontSize: 11),
                   ),
                   Container(
                     padding:
@@ -93,7 +96,7 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      _formattedTime,
+                      _formatTime(session.timeRemainingSeconds),
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 13,
@@ -112,11 +115,12 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
               child: Wrap(
                 spacing: 4,
                 runSpacing: 4,
-                children: List.generate(18, (i) {
-                  final state = i < _questionStates.length
-                      ? _questionStates[i]
-                      : 0;
-                  return _QuestionDot(number: i + 1, state: state);
+                children: List.generate(session.totalQuestions, (i) {
+                  final state = session.getQuestionState(i, _currentIndex);
+                  return GestureDetector(
+                    onTap: () => setState(() => _currentIndex = i),
+                    child: _QuestionDot(number: i + 1, state: state),
+                  );
                 }),
               ),
             ),
@@ -124,16 +128,15 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
             // Legend
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-              child: Row(
+              child: const Row(
                 children: [
                   _LegendItem(color: AppColors.green, label: 'Answered'),
-                  const SizedBox(width: 12),
+                  SizedBox(width: 12),
                   _LegendItem(
-                    color: AppColors.bgGoldLight,
-                    label: 'Visited',
-                    borderColor: AppColors.borderGold,
+                    color: Color(0xFFF0F0F0),
+                    label: 'Unanswered',
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: 12),
                   _LegendItem(color: AppColors.primary, label: 'Current'),
                 ],
               ),
@@ -147,7 +150,7 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      _questionText,
+                      currentQuestion.text,
                       style: const TextStyle(
                         fontSize: 13,
                         color: AppColors.textPrimary,
@@ -156,11 +159,21 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
                     ),
                     const SizedBox(height: 12),
 
+                    // Clear selection btn
+                    if (selectedOption != null)
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          onPressed: () => provider.clearAnswer(_currentIndex),
+                          child: const Text('Clear Selection', style: TextStyle(fontSize: 11, color: AppColors.red)),
+                        ),
+                      ),
+
                     // Options
-                    ...List.generate(_options.length, (i) {
-                      final isSelected = i == _selectedOption;
+                    ...List.generate(currentQuestion.options.length, (i) {
+                      final isSelected = i == selectedOption;
                       return GestureDetector(
-                        onTap: () => setState(() => _selectedOption = i),
+                        onTap: () => provider.selectAnswer(_currentIndex, i),
                         child: Container(
                           margin: const EdgeInsets.only(bottom: 7),
                           padding: const EdgeInsets.symmetric(
@@ -207,7 +220,7 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
                               const SizedBox(width: 10),
                               Expanded(
                                 child: Text(
-                                  _options[i],
+                                  currentQuestion.options[i],
                                   style: TextStyle(
                                     fontSize: 12,
                                     color: isSelected
@@ -236,15 +249,9 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
                 children: [
                   Expanded(
                     child: OutlinedButton(
-                      onPressed: () {
-                        if (_currentQuestion > 0) {
-                          setState(() {
-                            _questionStates[_currentQuestion] = 2;
-                            _currentQuestion--;
-                            _questionStates[_currentQuestion] = 3;
-                          });
-                        }
-                      },
+                      onPressed: _currentIndex > 0
+                          ? () => setState(() => _currentIndex--)
+                          : null,
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.primary,
                         side: const BorderSide(color: AppColors.primary),
@@ -260,15 +267,9 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: () {
-                        if (_currentQuestion < 59) {
-                          setState(() {
-                            _questionStates[_currentQuestion] = 1;
-                            _currentQuestion++;
-                            _questionStates[_currentQuestion] = 3;
-                          });
-                        }
-                      },
+                      onPressed: _currentIndex < session.totalQuestions - 1
+                          ? () => setState(() => _currentIndex++)
+                          : null,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
@@ -287,17 +288,40 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
             ),
 
             // Submit button
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 8, 14, 14),
-              child: NiuButton(
-                label: 'Submit test',
-                variant: NiuButtonVariant.gold,
-                fontSize: 11,
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                onTap: () =>
-                    Navigator.pushReplacementNamed(context, AppRoutes.result),
+            if (provider.isLoading)
+              const Padding(
+                padding: EdgeInsets.all(16.0),
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 8, 14, 14),
+                child: NiuButton(
+                  label: 'Submit test',
+                  variant: NiuButtonVariant.gold,
+                  fontSize: 11,
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  onTap: () {
+                     showDialog(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: const Text('Submit Test?'),
+                          content: Text('You have answered ${session.answeredCount} out of ${session.totalQuestions} questions.\n\nAre you sure you want to submit?'),
+                          actions: [
+                            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                            ElevatedButton(
+                              onPressed: () {
+                                Navigator.pop(ctx);
+                                _submitTest();
+                              }, 
+                              child: const Text('Submit')
+                            ),
+                          ],
+                        ),
+                      );
+                  },
+                ),
               ),
-            ),
           ],
         ),
       ),
@@ -307,7 +331,7 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
 
 class _QuestionDot extends StatelessWidget {
   final int number;
-  final int state; // 0=empty, 1=answered, 2=visited, 3=current
+  final int state; // 0=unanswered, 1=answered, 2=visited, 3=current
 
   const _QuestionDot({required this.number, required this.state});
 

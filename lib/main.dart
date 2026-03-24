@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'providers/auth_provider.dart';
+import 'providers/test_provider.dart';
+import 'providers/admin_provider.dart';
 import 'theme/app_theme.dart';
 import 'routes/app_routes.dart';
 import 'screens/student/role_selection_screen.dart';
@@ -7,13 +11,23 @@ import 'screens/student/fee_gate_screen.dart';
 import 'screens/student/test_category_screen.dart';
 import 'screens/student/live_test_screen.dart';
 import 'screens/student/result_screen.dart';
+import 'screens/admin/admin_login_screen.dart';
 import 'screens/admin/admin_dashboard_screen.dart';
 import 'screens/admin/create_test_screen.dart';
 import 'screens/admin/push_notification_screen.dart';
 import 'screens/admin/results_dashboard_screen.dart';
 
 void main() {
-  runApp(const NiuSatApp());
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AuthProvider()..initAuth()),
+        ChangeNotifierProvider(create: (_) => TestProvider()),
+        ChangeNotifierProvider(create: (_) => AdminProvider()),
+      ],
+      child: const NiuSatApp(),
+    ),
+  );
 }
 
 class NiuSatApp extends StatelessWidget {
@@ -33,6 +47,7 @@ class NiuSatApp extends StatelessWidget {
         AppRoutes.testCategory: (_) => const TestCategoryScreen(),
         AppRoutes.liveTest: (_) => const LiveTestScreen(),
         AppRoutes.result: (_) => const ResultScreen(),
+        AppRoutes.adminLogin: (_) => const AdminLoginScreen(),
         AppRoutes.adminDashboard: (_) => const AdminDashboardScreen(),
         AppRoutes.createTest: (_) => const CreateTestScreen(),
         AppRoutes.pushNotification: (_) => const PushNotificationScreen(),
@@ -41,3 +56,4 @@ class NiuSatApp extends StatelessWidget {
     );
   }
 }
+

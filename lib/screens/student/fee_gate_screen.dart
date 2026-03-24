@@ -4,16 +4,23 @@ import '../../routes/app_routes.dart';
 import '../../widgets/niu_app_bar.dart';
 import '../../widgets/niu_button.dart';
 
+import 'package:provider/provider.dart';
+import '../../providers/auth_provider.dart';
+
 class FeeGateScreen extends StatelessWidget {
   const FeeGateScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final user = context.read<AuthProvider>().currentUser;
+    final feeAmount = user?.feeAmount ?? 1100.0;
+    final name = user?.name ?? 'Student';
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: Column(
         children: [
-          const NiuAppBar(title: 'Access restricted'),
+          NiuAppBar(title: 'Access restricted', subtitle: name),
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(16),
@@ -41,9 +48,9 @@ class FeeGateScreen extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 6),
-                        const Text(
-                          'Your Rs.1,100 application fee has not been received by NIU. Please complete payment to access the NIU-SAT.',
-                          style: TextStyle(
+                        Text(
+                          'Your Rs.${feeAmount.toStringAsFixed(0)} application fee has not been received by NIU. Please complete payment to access the NIU-SAT.',
+                          style: const TextStyle(
                             fontSize: 12,
                             color: AppColors.textSecondary,
                             height: 1.5,

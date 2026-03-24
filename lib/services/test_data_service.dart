@@ -1,22 +1,17 @@
 import '../models/question_model.dart';
+import '../models/test_config_model.dart';
+import 'data_store.dart';
 
 class TestDataService {
-  Future<List<QuestionModel>> fetchQuestionsForCategory(String categoryId) async {
-    await Future.delayed(const Duration(seconds: 1)); // Simulate network fetch
-    
-    // Generate 50 mock questions
-    return List.generate(50, (index) {
-      return QuestionModel(
-        id: 'q_$index',
-        text: 'This is a sample question ${index + 1} for $categoryId. What is the correct answer?',
-        options: [
-          'Option A for question ${index + 1}',
-          'Option B for question ${index + 1}',
-          'Option C for question ${index + 1}',
-          'Option D for question ${index + 1}',
-        ],
-        correctAnswerIndex: index % 4, // Pseudo-random actual answer
-      );
-    });
+  final DataStore _dataStore = DataStore();
+
+  Future<TestConfigModel?> getAvailableTestForCategory(String category) async {
+    await Future.delayed(const Duration(milliseconds: 500));
+    return await _dataStore.getPublishedTestForCategory(category);
+  }
+
+  Future<List<QuestionModel>> fetchQuestionsForCategory(String category, int count) async {
+    await Future.delayed(const Duration(milliseconds: 800)); // Simulate network load
+    return _dataStore.getQuestionsByCategory(category, count);
   }
 }

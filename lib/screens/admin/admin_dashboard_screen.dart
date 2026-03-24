@@ -1,14 +1,34 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../theme/app_colors.dart';
 import '../../routes/app_routes.dart';
 import '../../widgets/menu_row.dart';
 import '../../widgets/stat_card.dart';
+import '../../providers/admin_provider.dart';
+import '../../providers/auth_provider.dart';
 
-class AdminDashboardScreen extends StatelessWidget {
+class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
 
   @override
+  State<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
+}
+
+class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<AdminProvider>().fetchDashboardStats();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final authProvider = context.watch<AuthProvider>();
+    final adminProvider = context.watch<AdminProvider>();
+    final stats = adminProvider.dashboardStats;
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -21,8 +41,8 @@ class AdminDashboardScreen extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  Text(
+                children: [
+                  const Text(
                     'NIU-SAT Admin',
                     style: TextStyle(
                       color: AppColors.gold,
@@ -30,10 +50,10 @@ class AdminDashboardScreen extends StatelessWidget {
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-                  SizedBox(height: 2),
+                  const SizedBox(height: 2),
                   Text(
-                    'Good morning, Admin',
-                    style: TextStyle(
+                    'Good morning, ${authProvider.currentUser?.name ?? "Admin"}',
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 15,
                       fontWeight: FontWeight.w500,
@@ -51,27 +71,42 @@ class AdminDashboardScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Dashboard grid
-                    GridView.count(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      crossAxisCount: 2,
-                      mainAxisSpacing: 8,
-                      crossAxisSpacing: 8,
-                      childAspectRatio: 2.0,
-                      children: const [
-                        StatCard(value: '234', label: 'Online today'),
-                        StatCard(
-                            value: '3',
-                            label: 'Active tests',
-                            valueColor: AppColors.green),
-                        StatCard(value: '1,842', label: 'Total attempts'),
-                        StatCard(
-                            value: '12',
-                            label: 'CRM push failed',
-                            valueColor: AppColors.red),
-                      ],
-                    ),
+                    if (adminProvider.isLoading && stats == null)
+                      const Center(child: Padding(
+                        padding: EdgeInsets.all(24.0),
+                        child: CircularProgressIndicator(),
+                      ))
+                    else if (stats != null)
+                      GridView.count(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        crossAxisCount: 2,
+                        mainAxisSpacing: 8,
+                        crossAxisSpacing: 8,
+                        childAspectRatio: 2.0,
+                        children: [
+                          StatCard(value: '${stats['onlineToday']}', label: 'Online today'),
+                          StatCard(
+                              value: '${stats['activeTests']}',
+                              label: 'Active tests',
+                              valueColor: AppColors.green),
+                          StatCard(value: '${stats['totalAttempts']}', label: 'Total attempts'),
+                          StatCard(
+                              value: '${stats['pushFailed']}',
+                              label: 'CRM push failed',
+                              valueColor: stats['pushFailed'] == 0 ? AppColors.green : AppColors.red),
+                        ],
+                      ),
+
                     const SizedBox(height: 16),
+                    if (adminProvider.successMessage != null) ...[
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        margin: const EdgeInsets.only(bottom: 12),
+                        color: AppColors.bgGreenLight,
+                        child: Text(adminProvider.successMessage!, style: const TextStyle(color: AppColors.textGreen, fontSize: 12)),
+                      ),
+                    ],
 
                     const Text(
                       'Actions',
@@ -89,8 +124,13 @@ class AdminDashboardScreen extends StatelessWidget {
                       iconColor: AppColors.primary,
                       title: 'Create new test',
                       subtitle: 'Set questions, timer, category',
-                      onTap: () =>
-                          Navigator.pushNamed(context, AppRoutes.createTest),
+                      onTap: () {
+                        adminProvider.clearMessages();
+                        Navigator.pushNamed(context, AppRoutes.createTest).then((_) {
+                           // Refresh stats strictly just in case
+                           adminProvider.fetchDashboardStats();
+                        });
+                      },
                     ),
                     MenuRow(
                       icon: Icons.menu_book_outlined,
@@ -114,8 +154,10 @@ class AdminDashboardScreen extends StatelessWidget {
                       iconColor: const Color(0xFF791F1F),
                       title: 'Send notification',
                       subtitle: 'Push to all / filtered students',
-                      onTap: () => Navigator.pushNamed(
-                          context, AppRoutes.pushNotification),
+                      onTap: () {
+                        adminProvider.clearMessages();
+                        Navigator.pushNamed(context, AppRoutes.pushNotification);
+                      },
                     ),
                     MenuRow(
                       icon: Icons.search,
@@ -130,9 +172,12 @@ class AdminDashboardScreen extends StatelessWidget {
                     SizedBox(
                       width: double.infinity,
                       child: OutlinedButton(
-                        onPressed: () => Navigator.popUntil(
+                        onPressed: () {
+                          authProvider.logout();
+                          Navigator.popUntil(
                             context,
-                            ModalRoute.withName(AppRoutes.roleSelection)),
+                            ModalRoute.withName(AppRoutes.roleSelection));
+                        },
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppColors.red,
                           side: const BorderSide(color: AppColors.red),

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../theme/app_colors.dart';
 import '../../routes/app_routes.dart';
 import '../../widgets/niu_app_bar.dart';
 import '../../widgets/niu_button.dart';
 import '../../widgets/info_row.dart';
+import '../../providers/auth_provider.dart';
 
 class StudentLoginScreen extends StatefulWidget {
   const StudentLoginScreen({super.key});
@@ -15,7 +17,7 @@ class StudentLoginScreen extends StatefulWidget {
 class _StudentLoginScreenState extends State<StudentLoginScreen> {
   final TextEditingController _idController =
       TextEditingController(text: 'NIU2025MBA0472');
-  bool _verified = true;
+  bool _verified = false;
 
   @override
   void dispose() {
@@ -23,8 +25,30 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
     super.dispose();
   }
 
+  void _verify() async {
+    final provider = context.read<AuthProvider>();
+    final success = await provider.studentLogin(_idController.text);
+    if (success && mounted) {
+      setState(() => _verified = true);
+    }
+  }
+
+  void _proceed(BuildContext context) {
+    final user = context.read<AuthProvider>().currentUser;
+    if (user == null) return;
+
+    if (!user.feePaid) {
+      Navigator.pushNamed(context, AppRoutes.feeGate);
+    } else {
+      Navigator.pushNamed(context, AppRoutes.testCategory);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final provider = context.watch<AuthProvider>();
+    final user = provider.currentUser;
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: Column(
@@ -47,25 +71,44 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
                   const SizedBox(height: 4),
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       border: Border.all(color: AppColors.primary),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Text(
-                      _idController.text,
+                    child: TextField(
+                      controller: _idController,
                       style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
+                      decoration: const InputDecoration(
+                        border: InputBorder.none,
+                      ),
+                      onChanged: (v) {
+                         if (_verified) setState(() => _verified = false);
+                      },
                     ),
                   ),
                   const SizedBox(height: 10),
-                  NiuButton(
-                    label: 'Verify & continue',
-                    onTap: () => setState(() => _verified = true),
-                  ),
+                  
+                  if (provider.error != null) ...[
+                    Text(
+                      provider.error!,
+                      style: const TextStyle(color: AppColors.red, fontSize: 12),
+                    ),
+                    const SizedBox(height: 10),
+                  ],
+
+                  if (provider.isLoading)
+                    const Center(child: CircularProgressIndicator())
+                  else if (!_verified)
+                    NiuButton(
+                      label: 'Verify & continue',
+                      onTap: _verify,
+                    ),
+                  
                   const SizedBox(height: 20),
 
-                  if (_verified) ...[
+                  if (_verified && user != null) ...[
                     const Text(
                       'Fetched from ACCSOFT',
                       style: TextStyle(
@@ -75,31 +118,31 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    const InfoRow(
+                    InfoRow(
                       dotColor: AppColors.green,
                       label: 'Student name',
-                      value: 'Rahul Sharma',
+                      value: user.name,
                     ),
-                    const InfoRow(
+                    InfoRow(
                       dotColor: AppColors.primary,
                       label: 'Course applied',
-                      value: 'MBA — Management',
+                      value: user.course ?? 'N/A',
                     ),
-                    const InfoRow(
-                      dotColor: AppColors.green,
+                    InfoRow(
+                      dotColor: user.feePaid ? AppColors.green : AppColors.red,
                       label: 'Application fee',
-                      value: 'Paid — Rs.1,100 confirmed',
+                      value: user.feeStatusText,
                     ),
-                    const InfoRow(
-                      dotColor: AppColors.primary,
+                    InfoRow(
+                      dotColor: user.hasAttempted ? AppColors.red : AppColors.primary,
                       label: 'Previous attempt',
-                      value: 'None — eligible to attempt',
+                      value: user.attemptStatusText,
                     ),
                     const SizedBox(height: 4),
                     NiuButton(
                       label: 'Proceed to test selection',
                       variant: NiuButtonVariant.gold,
-                      onTap: () => Navigator.pushNamed(context, AppRoutes.testCategory),
+                      onTap: () => _proceed(context),
                     ),
                   ],
                 ],
