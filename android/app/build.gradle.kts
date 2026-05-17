@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.niu_sat_app"
+    namespace = "in.edu.niu.nsat"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -20,10 +20,8 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.niu_sat_app"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
+        // NSAT — NIU Student Aptitude Test. Permanent app identifier; do not change after publishing.
+        applicationId = "in.edu.niu.nsat"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
@@ -32,8 +30,8 @@ android {
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
+            // TODO: Replace with a dedicated release signing config before publishing.
+            // Currently signed with debug keys so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
         }
     }
