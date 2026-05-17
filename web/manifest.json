@@ -1,6 +1,6 @@
 {
-    "name": "NIU-SAT",
-    "short_name": "NIU-SAT",
+    "name": "NSAT",
+    "short_name": "NSAT",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#003087",
