@@ -1,5 +1,5 @@
 name: niu_sat_app
-description: NIU Student Aptitude Test Portal - Flutter App
+description: NSAT - NIU Student Aptitude Test Portal
 publish_to: 'none'
 version: 1.0.0+1
 
@@ -12,6 +12,21 @@ dependencies:
   cupertino_icons: ^1.0.6
   provider: ^6.1.2
   shared_preferences: ^2.2.3
+
+  # --- Firebase core (required) ---
+  firebase_core: ^3.6.0
+
+  # --- Firestore: students, tests, questions, results, attempts, otps ---
+  cloud_firestore: ^5.4.4
+
+  # --- Firebase Auth: holds the verified session after email OTP ---
+  firebase_auth: ^5.3.1
+
+  # --- Cloud Functions: NPF sync, fee-check, email-fetch, OTP ---
+  cloud_functions: ^5.1.3
+
+  # --- FCM: Tier-1 push notifications ---
+  firebase_messaging: ^15.1.3
 
 dev_dependencies:
   flutter_test:
