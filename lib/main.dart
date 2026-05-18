@@ -50,6 +50,7 @@ class NiuSatApp extends StatelessWidget {
       routes: {
         AppRoutes.roleSelection: (_) => const RoleSelectionScreen(),
         AppRoutes.studentLogin: (_) => const StudentLoginScreen(),
+        AppRoutes.emailVerification: (_) => const EmailVerificationScreen(),
         AppRoutes.feeGate: (_) => const FeeGateScreen(),
         AppRoutes.testCategory: (_) => const TestCategoryScreen(),
         AppRoutes.liveTest: (_) => const LiveTestScreen(),

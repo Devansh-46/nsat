@@ -4,66 +4,34 @@ import '../../theme/app_colors.dart';
 import '../../routes/app_routes.dart';
 import '../../widgets/niu_app_bar.dart';
 import '../../widgets/niu_button.dart';
+import '../../widgets/info_row.dart';
 import '../../providers/auth_provider.dart';
 
-/// Step 1 of the NSAT login flow: the student enters their NIU ID,
-/// and the app checks it against the synced `students` collection
-/// (the fee gate).
+/// PLACEHOLDER screen.
 ///
-/// What this screen does today:
-///   - NIU ID entry
-///   - Fee gate check via AuthProvider.checkNiuIdFeeGate()
-///   - approved    -> go to the email-verification step (placeholder for now)
-///   - notApproved -> show "Case 1" message
-///   - notFound    -> show "Case 2" message
-///   - error       -> show a network error with retry
+/// In the finished flow this is where the app will:
+///   1. fetch the student's registered email from NPF (via a Cloud Function),
+///   2. show the masked email for the student to confirm,
+///   3. send and verify an email OTP,
+///   4. then show name / course / attempt status.
 ///
-/// NOT yet built (needs Cloud Functions / Blaze):
-///   - live NPF email fetch, masked email confirm, email OTP.
-class StudentLoginScreen extends StatefulWidget {
-  const StudentLoginScreen({super.key});
-
-  @override
-  State<StudentLoginScreen> createState() => _StudentLoginScreenState();
-}
-
-class _StudentLoginScreenState extends State<StudentLoginScreen> {
-  final TextEditingController _idController = TextEditingController();
-
-  @override
-  void dispose() {
-    _idController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _continue() async {
-    FocusScope.of(context).unfocus();
-    final provider = context.read<AuthProvider>();
-
-    final outcome =
-        await provider.checkNiuIdFeeGate(_idController.text);
-
-    if (!mounted) return;
-
-    if (outcome == FeeGateOutcome.approved) {
-      Navigator.pushNamed(context, AppRoutes.emailVerification);
-    }
-    // For every other outcome, the UI rebuilds and shows the
-    // relevant message below (handled in build()).
-  }
+/// None of that is built yet — it needs Cloud Functions (Blaze plan).
+/// For now this screen just confirms the fee gate passed and shows the
+/// data we already have, so the flow has an honest stopping point.
+class EmailVerificationScreen extends StatelessWidget {
+  const EmailVerificationScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<AuthProvider>();
-    final outcome = provider.lastFeeGateOutcome;
+    final student = context.read<AuthProvider>().verifiedStudent;
 
     return Scaffold(
       backgroundColor: Colors.white,
       body: Column(
         children: [
           const NiuAppBar(
-            title: 'Student login',
-            subtitle: 'NIU ID verification',
+            title: 'Verify your email',
+            subtitle: 'Step 2 of 4',
           ),
           Expanded(
             child: SingleChildScrollView(
@@ -71,161 +39,99 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Enter your NIU ID',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: AppColors.textMuted,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: Colors.white,
-                      border: Border.all(color: AppColors.primary),
-                      borderRadius: BorderRadius.circular(8),
+                      color: AppColors.bgGreenLight,
+                      border: Border.all(color: AppColors.green),
+                      borderRadius: BorderRadius.circular(10),
                     ),
-                    child: TextField(
-                      controller: _idController,
-                      textCapitalization: TextCapitalization.characters,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: AppColors.textPrimary,
-                      ),
-                      decoration: const InputDecoration(
-                        border: InputBorder.none,
-                        hintText: 'e.g. NIU2025MBA0472',
-                        hintStyle: TextStyle(
-                          fontSize: 13,
-                          color: AppColors.textMuted,
+                    child: const Row(
+                      children: [
+                        Icon(Icons.check_circle,
+                            color: AppColors.green, size: 18),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Application fee confirmed. Your NIU ID is '
+                            'verified.',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textGreen,
+                              height: 1.4,
+                            ),
+                          ),
                         ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  if (student != null) ...[
+                    const Text(
+                      'From your record',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.primary,
                       ),
-                      onChanged: (_) {
-                        // Editing the field clears any previous result.
-                        if (provider.lastFeeGateOutcome != null) {
-                          provider.resetFeeGate();
-                        }
-                      },
                     ),
-                  ),
-                  const SizedBox(height: 6),
-                  const Text(
-                    'Same as your application number.',
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: AppColors.textMuted,
+                    const SizedBox(height: 8),
+                    InfoRow(
+                      dotColor: AppColors.primary,
+                      label: 'NIU ID',
+                      value: student.applicationNo,
+                    ),
+                    InfoRow(
+                      dotColor: AppColors.green,
+                      label: 'Fee status',
+                      value: student.paymentStatus,
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: AppColors.bgInfo,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Email verification — coming next',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                        SizedBox(height: 6),
+                        Text(
+                          'The next steps — fetching your registered email, '
+                          'confirming it, and verifying a one-time code — '
+                          'are still being built. They will appear here.',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: AppColors.textSecondary,
+                            height: 1.5,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 16),
-
-                  // Loading spinner or the Continue button.
-                  if (provider.isLoading)
-                    const Center(child: CircularProgressIndicator())
-                  else
-                    NiuButton(
-                      label: 'Continue',
-                      onTap: _continue,
+                  NiuButton(
+                    label: 'Back to home',
+                    variant: NiuButtonVariant.outline,
+                    onTap: () => Navigator.popUntil(
+                      context,
+                      ModalRoute.withName(AppRoutes.roleSelection),
                     ),
-
-                  const SizedBox(height: 16),
-
-                  // --- Outcome messages ---
-                  if (outcome == FeeGateOutcome.notApproved)
-                    _MessageBox(
-                      bg: AppColors.bgWarning,
-                      border: AppColors.borderWarning,
-                      titleColor: AppColors.textOrange,
-                      title: "Your test access isn't active yet",
-                      // TODO: confirm final wording + timing with director.
-                      body:
-                          'We found your NIU ID, but your application fee '
-                          "hasn't been confirmed as paid yet.\n\n"
-                          "If you've already paid, it can take some time to "
-                          'reflect. Please check again later, or contact your '
-                          'admission counsellor if it has been a while.',
-                    ),
-
-                  if (outcome == FeeGateOutcome.notFound)
-                    _MessageBox(
-                      bg: AppColors.bgRedLight,
-                      border: AppColors.red,
-                      titleColor: AppColors.textRed,
-                      title: "We couldn't find this NIU ID",
-                      // TODO: confirm final wording + contact details.
-                      body:
-                          'Please double-check the NIU ID you entered — it '
-                          'should match your application number exactly.\n\n'
-                          "If it's correct and you still see this, please "
-                          'contact your admission counsellor for help.',
-                    ),
-
-                  if (outcome == FeeGateOutcome.error)
-                    _MessageBox(
-                      bg: AppColors.bgRedLight,
-                      border: AppColors.red,
-                      titleColor: AppColors.textRed,
-                      title: 'Something went wrong',
-                      body: provider.error ??
-                          'Could not reach the server. Please check your '
-                              'connection and try again.',
-                    ),
+                  ),
                 ],
               ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// A simple coloured message box used for the fee-gate outcomes.
-class _MessageBox extends StatelessWidget {
-  final Color bg;
-  final Color border;
-  final Color titleColor;
-  final String title;
-  final String body;
-
-  const _MessageBox({
-    required this.bg,
-    required this.border,
-    required this.titleColor,
-    required this.title,
-    required this.body,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: bg,
-        border: Border.all(color: border),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: titleColor,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            body,
-            style: const TextStyle(
-              fontSize: 12,
-              color: AppColors.textSecondary,
-              height: 1.5,
             ),
           ),
         ],
