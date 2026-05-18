@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "63606791509",
+    "project_id": "nsat-niu-app",
+    "storage_bucket": "nsat-niu-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:63606791509:android:3dabd236666c7b71d863dc",
+        "android_client_info": {
+          "package_name": "in.edu.niu.nsat"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDbU7fmb2j2ekDi37Bx1Jup4HO6toezy5M"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

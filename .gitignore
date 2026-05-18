@@ -43,3 +43,36 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Flutter/Dart/Pub related (additional)
+.flutter-plugins
+
+# Firebase related
+.firebase/
+firebase-debug.log
+
+# Android related
+**/android/local.properties
+key.properties
+**/*.jks
+**/android/app/src/main/google-services.json
+
+# iOS/macOS related
+**/ios/Pods/
+**/ios/.symlinks/
+**/macos/Pods/
+**/macos/Flutter/ephemeral/
+**/macos/Flutter/GeneratedPluginRegistrant.swift
+
+# Windows related
+**/windows/flutter/ephemeral/
+**/windows/flutter/generated_plugin_registrant.cc
+**/windows/flutter/generated_plugin_registrant.h
+**/windows/flutter/generated_plugins.cmake
+
+# Linux related
+**/linux/flutter/ephemeral/
+
+# Environment variables
+.env
+

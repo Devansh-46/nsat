@@ -1,0 +1,1 @@
+{"flutter":{"platforms":{"android":{"default":{"projectId":"nsat-niu-app","appId":"1:63606791509:android:3dabd236666c7b71d863dc","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"nsat-niu-app","configurations":{"android":"1:63606791509:android:3dabd236666c7b71d863dc","web":"1:63606791509:web:3dcf7b4988abdc67d863dc"}}}}}}
