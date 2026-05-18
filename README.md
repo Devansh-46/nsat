@@ -231,7 +231,7 @@ This project is developed and maintained for Noida International University. For
 
 ## 📄 License
 
-This project is developed for Noida International University. All rights reserved.
+This project is developed for Noida International University ([niu.edu.in](http://niu.edu.in/)). All rights reserved.
 
 ---
 
