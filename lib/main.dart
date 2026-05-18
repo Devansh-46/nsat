@@ -18,6 +18,7 @@ import 'screens/admin/admin_dashboard_screen.dart';
 import 'screens/admin/create_test_screen.dart';
 import 'screens/admin/push_notification_screen.dart';
 import 'screens/admin/results_dashboard_screen.dart';
+import 'screens/student/email_verification_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
