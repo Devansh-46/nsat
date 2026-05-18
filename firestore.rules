@@ -1,56 +1,91 @@
 rules_version = '2';
 
+// NSAT — Firestore security rules
+//
+// ⚠️  PHASE 1 / SPARK BUILD — NOT launch-ready as written.
+// Firebase Auth is not wired up yet (it arrives with the OTP flow on
+// Blaze), so rules that would normally check request.auth are instead
+// open. Every such rule is marked TEMPORARY and listed in the MUST-FIX
+// block at the bottom. Tighten all of them before 14 June.
+
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    // students — synced NPF data. App reads; only sync function writes.
-    // TEMPORARY: read open for development. Tighten once auth is built.
+    // --- students --------------------------------------------------------
+    // Synced from NPF by a Cloud Function. App reads; only sync writes.
+    // TEMPORARY: open read. Tighten to own-record once Auth exists.
     match /students/{niuId} {
       allow read: if true;
       allow write: if false;
     }
 
-    // tests — readable by app, not writable by client.
+    // --- tests -----------------------------------------------------------
+    // Readable by the app; never written from the client.
     match /tests/{testId} {
       allow read: if true;
       allow write: if false;
     }
 
-    // questions — client cannot read directly (holds correct answers).
+    // --- questions -------------------------------------------------------
+    // Holds correctAnswerIndex. In a secure build the client must NOT
+    // read these — scoring belongs server-side.
+    // TEMPORARY: open read so the test flow can be built on Spark.
+    // Before launch: set to `if false` and serve via a Cloud Function
+    // that strips correctAnswerIndex.
     match /questions/{questionId} {
-      allow read: if false;
+      allow read: if true;        // TEMPORARY — set to false before launch
       allow write: if false;
     }
 
-    // results — a signed-in student may create; never edit/delete.
+    // --- results ---------------------------------------------------------
+    // The app creates its own result once; never edits or deletes.
+    // TEMPORARY: create is open because Auth is not wired yet. Once Auth
+    // exists, gate create on the writer being the same student.
     match /results/{resultId} {
-      allow read: if false;
-      allow create: if isSignedIn();
-      allow update: if false;
-      allow delete: if false;
+      allow read: if true;        // TEMPORARY — needed for result screen
+      allow create: if true;      // TEMPORARY — no Auth yet
+      allow update, delete: if false;
     }
 
-    // attempts — the one-attempt lock. Create only; never update/delete.
+    // --- attempts --------------------------------------------------------
+    // The one-attempt lock. The crash-safe design flips status
+    // in_progress -> completed, so UPDATE must be allowed (your deployed
+    // rules had update:false, which would break submission).
+    // TEMPORARY: open create/read/update because Auth is not wired yet.
     match /attempts/{niuId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if false;
+      allow read: if true;        // TEMPORARY — no Auth yet
+      allow create: if true;      // TEMPORARY — no Auth yet
+      allow update: if true;      // status flip on submit — REQUIRED
       allow delete: if false;
     }
 
-    // otps — fully closed to clients. Cloud Functions only.
+    // --- otps ------------------------------------------------------------
+    // Email OTP codes — never accessible from the client. Cloud
+    // Functions only. Stays fully closed even in the Spark build.
     match /otps/{niuId} {
-      allow read: if false;
-      allow write: if false;
+      allow read, write: if false;
     }
 
-    // deny everything else
+    // --- catch-all -------------------------------------------------------
     match /{document=**} {
       allow read, write: if false;
     }
   }
 }
+
+// =============================================================================
+// MUST-FIX BEFORE 14 JUNE LAUNCH
+// =============================================================================
+// 1. questions: set `allow read: if false;` and serve questions through a
+//    Cloud Function that strips correctAnswerIndex. Pair with flipping
+//    QuestionService._stripAnswers to true and moving scoring server-side.
+// 2. students: restrict read to the student's own record once Firebase
+//    Auth is wired into the login flow.
+// 3. results.create / attempts.create+read+update: replace `if true` with
+//    a check that request.auth identifies the same student (niuId /
+//    application_no) the document belongs to.
+//    Attempts MUST keep `update` allowed for the status flip — but scope
+//    it to the owner, e.g.:
+//      allow update: if request.auth != null
+//                    && request.auth.uid == niuId;
+// =============================================================================
