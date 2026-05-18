@@ -8,22 +8,32 @@ import '../../providers/auth_provider.dart';
 
 /// Step 2 of the NSAT login flow: email verification.
 ///
-/// PHASE 1 / SPARK BUILD — this is a STUB.
-/// The real flow (needs Blaze + Cloud Functions) is:
-///   - live NPF API 2 call by lead_id -> registered email
-///   - email shown masked for confirmation
-///   - email OTP sent, entered, verified
-///
-/// None of that can run on Spark, so for the June 7 dry run this screen
-/// just confirms the student and continues. The screen and its route
-/// stay in place so the real OTP UI drops in here later with no
-/// navigation changes.
+/// PHASE 1 / SPARK BUILD — partial STUB.
+/// On Continue this calls AuthProvider.fetchLeadDetails(), which on
+/// Spark returns dev data and in production calls the NPF API 2 Cloud
+/// Function. The real OTP UI (masked email, code entry) drops into this
+/// screen later with no navigation change.
 class EmailVerificationScreen extends StatelessWidget {
   const EmailVerificationScreen({super.key});
 
+  Future<void> _continue(BuildContext context) async {
+    final auth = context.read<AuthProvider>();
+    final ok = await auth.fetchLeadDetails();
+    if (!context.mounted) return;
+
+    if (ok) {
+      Navigator.pushReplacementNamed(context, AppRoutes.testCategory);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(auth.error ?? 'Could not fetch details.')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final student = context.watch<AuthProvider>().verifiedStudent;
+    final auth = context.watch<AuthProvider>();
+    final student = auth.verifiedStudent;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -39,7 +49,6 @@ class EmailVerificationScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Confirmed student card.
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(14),
@@ -72,7 +81,6 @@ class EmailVerificationScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
 
-                  // Stub notice — remove when real OTP is built.
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(14),
@@ -94,15 +102,13 @@ class EmailVerificationScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 20),
 
-                  NiuButton(
-                    label: 'Continue',
-                    onTap: () {
-                      Navigator.pushReplacementNamed(
-                        context,
-                        AppRoutes.testCategory,
-                      );
-                    },
-                  ),
+                  if (auth.isLoading)
+                    const Center(child: CircularProgressIndicator())
+                  else
+                    NiuButton(
+                      label: 'Continue',
+                      onTap: () => _continue(context),
+                    ),
                 ],
               ),
             ),

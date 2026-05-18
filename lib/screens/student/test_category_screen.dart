@@ -7,6 +7,12 @@ import '../../widgets/niu_button.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/test_provider.dart';
 
+/// Shows the published test for the verified student's course and lets
+/// them start it.
+///
+/// Identity comes from AuthProvider.verifiedStudent (set by the fee
+/// gate) — a StudentModel carrying applicationNo, name and course.
+/// No UserModel, no ACCSOFT.
 class TestCategoryScreen extends StatefulWidget {
   const TestCategoryScreen({super.key});
 
@@ -15,166 +21,114 @@ class TestCategoryScreen extends StatefulWidget {
 }
 
 class _TestCategoryScreenState extends State<TestCategoryScreen> {
-  String _selectedCourse = 'MBA — Management';
-  bool _dropdownOpen = false;
-
-  final List<String> _courses = [
-    'B.Tech / Engineering',
-    'MBA — Management',
-    'BBA',
-    'B.Com',
-    'LLB',
-    'B.Sc',
-    'B.Ed / MCA / BA...',
-  ];
-
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final user = context.read<AuthProvider>().currentUser;
-      if (user != null && user.course != null) {
-        setState(() {
-          _selectedCourse = user.course!;
-        });
+      final lead = context.read<AuthProvider>().leadDetails;
+      if (lead != null) {
+        // lead.courseKey is the canonical key (e.g. "btech").
+        context.read<TestProvider>().fetchAvailableTest(lead.courseKey);
       }
-      _fetchTest();
     });
   }
 
-  void _fetchTest() {
-    context.read<TestProvider>().fetchAvailableTest(_selectedCourse);
-  }
-
   void _startTest() async {
-    final authProvider = context.read<AuthProvider>();
+    final auth = context.read<AuthProvider>();
     final testProvider = context.read<TestProvider>();
 
-    if (authProvider.currentUser == null) return;
+    final student = auth.verifiedStudent;
+    final lead = auth.leadDetails;
+    if (student == null || lead == null) return;
 
-    final success = await testProvider.startTest(authProvider.currentUser!);
-    if (success && mounted) {
+    final started = await testProvider.startTest(
+      applicationNo: student.applicationNo,
+      studentName: lead.name,
+      course: lead.courseKey,
+    );
+
+    if (!mounted) return;
+
+    if (started) {
       Navigator.pushReplacementNamed(context, AppRoutes.liveTest);
-    } else if (mounted) {
+      return;
+    }
+
+    // Not started — show why.
+    if (testProvider.alreadyCompleted) {
+      _showBlocked(
+        'Test already completed',
+        'Our records show this NIU ID has already taken the test. '
+            'It can only be attempted once.',
+      );
+    } else if (testProvider.hasResumableAttempt) {
+      _showBlocked(
+        'Unfinished attempt found',
+        'An earlier attempt for this NIU ID was started but not '
+            'finished. Please contact an invigilator.',
+      );
+    } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(testProvider.error ?? 'Failed to start test')),
+        SnackBar(
+          content: Text(testProvider.error ?? 'Could not start the test.'),
+        ),
       );
     }
   }
 
+  void _showBlocked(String title, String body) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        content: Text(body),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final user = context.watch<AuthProvider>().currentUser;
+    final lead = context.watch<AuthProvider>().leadDetails;
     final testProvider = context.watch<TestProvider>();
-    final testConfig = testProvider.availableTest;
+    final test = testProvider.availableTest;
 
     return Scaffold(
       backgroundColor: Colors.white,
       body: Column(
         children: [
           NiuAppBar(
-              title: 'Select test category',
-              subtitle: 'Hello, ${user?.name ?? ''}'),
+            title: 'Your test',
+            subtitle: 'Hello, ${lead?.name ?? ''}',
+          ),
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Dropdown
-                  GestureDetector(
-                    onTap: () => setState(() => _dropdownOpen = !_dropdownOpen),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFAFAFA),
-                        border: Border.all(color: AppColors.border),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            _selectedCourse,
-                            style: const TextStyle(
-                                fontSize: 13, color: AppColors.textPrimary),
-                          ),
-                          Icon(
-                            _dropdownOpen
-                                ? Icons.keyboard_arrow_up
-                                : Icons.keyboard_arrow_down,
-                            color: AppColors.textMuted,
-                            size: 20,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  // Dropdown options
-                  if (_dropdownOpen) ...[
-                    const SizedBox(height: 4),
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: AppColors.bgCard,
-                        border: Border.all(color: AppColors.borderLight),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: _courses.map((c) {
-                          final selected = c == _selectedCourse;
-                          return GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                _selectedCourse = c;
-                                _dropdownOpen = false;
-                              });
-                              _fetchTest(); // Fetch test config for new category
-                            },
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 4),
-                              child: Text(
-                                selected ? '$c  (selected)' : c,
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: selected
-                                      ? AppColors.primary
-                                      : AppColors.textSecondary,
-                                  fontWeight: selected
-                                      ? FontWeight.w500
-                                      : FontWeight.normal,
-                                ),
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                    ),
-                  ],
-
-                  const SizedBox(height: 16),
-
                   if (testProvider.isLoading)
                     const Center(
-                        child: Padding(
-                      padding: EdgeInsets.all(32.0),
-                      child: CircularProgressIndicator(),
-                    ))
-                  else if (testConfig != null) ...[
-                    const Text(
-                      'Test details',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
+                      child: Padding(
+                        padding: EdgeInsets.all(32.0),
+                        child: CircularProgressIndicator(),
+                      ),
+                    )
+                  else if (test != null) ...[
+                    Text(
+                      test.title,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
                         color: AppColors.primary,
                       ),
                     ),
-                    const SizedBox(height: 8),
-
-                    // Test details grid
+                    const SizedBox(height: 12),
                     GridView.count(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
@@ -184,25 +138,26 @@ class _TestCategoryScreenState extends State<TestCategoryScreen> {
                       childAspectRatio: 2.2,
                       children: [
                         _DetailCard(
-                            value: testConfig.questionCount.toString(),
-                            label: 'Questions'),
+                          value: test.questionCount.toString(),
+                          label: 'Questions',
+                        ),
                         _DetailCard(
-                            value: testConfig.durationMinutes.toString(),
-                            label: 'Minutes'),
+                          value: test.durationMinutes.toString(),
+                          label: 'Minutes',
+                        ),
                         _DetailCard(
-                            value:
-                                testConfig.marksPerQuestion.toStringAsFixed(1),
-                            label: 'Mark per Q'),
+                          value: test.marksPerQuestion.toStringAsFixed(1),
+                          label: 'Mark per Q',
+                        ),
                         _DetailCard(
-                            value: testConfig.negativeMarking
-                                ? '-${testConfig.negativeMarksPerWrong}'
-                                : '0',
-                            label: 'Wrong ans.'),
+                          value: test.negativeMarking
+                              ? '-${test.negativeMarksPerWrong}'
+                              : '0',
+                          label: 'Wrong ans.',
+                        ),
                       ],
                     ),
                     const SizedBox(height: 12),
-
-                    // Warning
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(
@@ -213,7 +168,8 @@ class _TestCategoryScreenState extends State<TestCategoryScreen> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: const Text(
-                        'One attempt only. The test cannot be retaken once started.',
+                        'One attempt only. The test cannot be retaken '
+                        'once started.',
                         style: TextStyle(
                           fontSize: 11,
                           color: AppColors.textGold,
@@ -222,12 +178,7 @@ class _TestCategoryScreenState extends State<TestCategoryScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
-
-                    NiuButton(
-                      label: 'Start test',
-                      onTap: _startTest,
-                    ),
-                    const SizedBox(height: 8),
+                    NiuButton(label: 'Start test', onTap: _startTest),
                   ] else ...[
                     Container(
                       width: double.infinity,
@@ -237,35 +188,34 @@ class _TestCategoryScreenState extends State<TestCategoryScreen> {
                         border: Border.all(color: AppColors.borderLight),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                      child: Column(
                         children: [
-                          Icon(Icons.check_circle_outline,
+                          const Icon(Icons.info_outline,
                               color: AppColors.textMuted, size: 40),
-                          SizedBox(height: 12),
-                          Text(
-                            'No test scheduled',
+                          const SizedBox(height: 12),
+                          const Text(
+                            'No test available',
                             style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.textPrimary),
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textPrimary,
+                            ),
                           ),
-                          SizedBox(height: 4),
+                          const SizedBox(height: 4),
                           Text(
-                            'There are no active tests for this category at the moment.',
+                            testProvider.error ??
+                                'There is no published test for your '
+                                    'course yet.',
                             textAlign: TextAlign.center,
-                            style: TextStyle(
-                                fontSize: 12, color: AppColors.textSecondary),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textSecondary,
+                            ),
                           ),
                         ],
                       ),
                     ),
                   ],
-
-                  NiuButton(
-                    label: 'Download brochure',
-                    variant: NiuButtonVariant.outline,
-                  ),
                 ],
               ),
             ),

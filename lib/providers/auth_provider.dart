@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/user_model.dart';
 import '../models/student_model.dart';
+import '../models/lead_details_model.dart';
 import '../services/auth_service.dart';
 import '../services/student_service.dart';
 
@@ -28,9 +29,13 @@ class AuthProvider extends ChangeNotifier {
   bool _isLoading = false;
   String? _error;
 
-  // --- NEW: state for the NIU ID fee-gate flow ---
+  // --- NIU ID fee-gate flow ---
   StudentModel? _verifiedStudent;
   FeeGateOutcome? _lastFeeGateOutcome;
+
+  /// Applicant detail from NPF API 2. Fetched live after the fee gate
+  /// passes; held in memory for this session only, never stored.
+  LeadDetailsModel? _leadDetails;
 
   UserModel? get currentUser => _currentUser;
   bool get isLoading => _isLoading;
@@ -38,9 +43,9 @@ class AuthProvider extends ChangeNotifier {
   bool get isAuthenticated => _currentUser != null;
   bool get isAdmin => _currentUser?.role == 'admin';
 
-  // --- NEW: getters for the fee-gate flow ---
   StudentModel? get verifiedStudent => _verifiedStudent;
   FeeGateOutcome? get lastFeeGateOutcome => _lastFeeGateOutcome;
+  LeadDetailsModel? get leadDetails => _leadDetails;
 
   Future<void> initAuth() async {
     _isLoading = true;
@@ -52,16 +57,14 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// NEW — Step 1 of the real login flow.
+  /// Step 1 of the login flow — the fee gate.
   ///
-  /// Takes a NIU ID, looks it up in the synced `students` collection,
-  /// and applies the fee gate. Returns a [FeeGateOutcome] the screen
-  /// uses to decide what to show next.
-  ///
-  /// This does NOT yet do the email fetch / OTP steps — those need
-  /// Cloud Functions and will be added later.
+  /// Looks the NIU ID up in the synced `students` collection and applies
+  /// the fee gate. Returns a [FeeGateOutcome] the screen uses to decide
+  /// what to show next.
   Future<FeeGateOutcome> checkNiuIdFeeGate(String niuId) async {
     _setLoading(true);
+    _leadDetails = null; // clear any stale detail from a previous attempt
 
     final result = await _studentService.getStudentByNiuId(niuId);
 
@@ -93,15 +96,57 @@ class AuthProvider extends ChangeNotifier {
     return outcome;
   }
 
+  /// Step 2 of the login flow — fetch the applicant's NPF detail.
+  ///
+  /// Called ONLY after the fee gate passes, using the verified student's
+  /// lead_id. In production this is an NPF API 2 call via a Cloud
+  /// Function, which also maps the NPF course string to the canonical
+  /// course key.
+  ///
+  /// SPARK BUILD — STUB:
+  /// Cloud Functions need Blaze, so on Spark this returns hardcoded dev
+  /// data instead of calling the function. Replace the stub body with
+  /// the real callable when Blaze is enabled — the signature stays the
+  /// same, so nothing else changes.
+  Future<bool> fetchLeadDetails() async {
+    if (_verifiedStudent == null) return false;
+
+    _setLoading(true);
+
+    try {
+      // ----- DEV STUB (remove when the API 2 Cloud Function exists) -----
+      // Real version: call the Cloud Function with
+      // _verifiedStudent!.leadId, map the returned course string to a
+      // canonical key, then build LeadDetailsModel.fromApiDetails(...).
+      await Future.delayed(const Duration(milliseconds: 400));
+      _leadDetails = LeadDetailsModel(
+        leadId: _verifiedStudent!.leadId,
+        name: 'Test Student',
+        courseKey: 'btech',
+        email: 'teststudent@example.com',
+        mobile: '9999999999',
+      );
+      // ------------------------------------------------------------------
+
+      _setLoading(false);
+      return true;
+    } catch (e) {
+      _error = 'Could not fetch your details. Please try again.';
+      _setLoading(false);
+      return false;
+    }
+  }
+
   /// Clears the NIU ID flow state (e.g. when the user edits the field).
   void resetFeeGate() {
     _verifiedStudent = null;
     _lastFeeGateOutcome = null;
+    _leadDetails = null;
     _error = null;
     notifyListeners();
   }
 
-  // --- OLD CODE BELOW — kept intact until the new flow fully replaces it ---
+  // --- OLD CODE BELOW — kept intact for the admin path ---
 
   Future<bool> studentLogin(String accsoftId) async {
     _setLoading(true);
@@ -138,6 +183,7 @@ class AuthProvider extends ChangeNotifier {
     _currentUser = null;
     _verifiedStudent = null;
     _lastFeeGateOutcome = null;
+    _leadDetails = null;
     notifyListeners();
   }
 

@@ -1,26 +1,20 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-/// Represents one document in the `students` Firestore collection.
+/// One document in the `students` Firestore collection.
 ///
-/// This collection is a local copy of NoPaperForms (NPF) applicant data,
-/// refreshed by the NPF sync Cloud Function. The app only ever READS this
-/// collection — it never writes to it.
+/// A local copy of NoPaperForms (NPF) data, synced from NPF API 1
+/// (`application/v1/list`) every 30 minutes by a Cloud Function.
+/// The app only ever READS this collection.
+///
+/// API 1 returns ONLY these fields — name, course, email and phone are
+/// NOT here. Those come from a live NPF API 2 call at login (see
+/// LeadDetailsModel), and are never stored in Firestore.
 ///
 /// Document ID = the NIU ID (application number).
 class StudentModel {
-  /// NIU ID — the student's application number. Same as the document ID.
   final String applicationNo;
-
-  /// Payment status from NPF. Expected values: "Payment Approved"
-  /// or "Payment Pending". Only "Payment Approved" passes the fee gate.
   final String paymentStatus;
-
-  /// NPF lead identifier. Used later to fetch the registered email
-  /// via a live NPF call (the email is not stored in this collection).
   final String leadId;
-
-  /// When this record was last refreshed from NPF. May be null if a
-  /// document was created manually for testing.
   final DateTime? lastSyncedAt;
 
   StudentModel({
@@ -31,10 +25,9 @@ class StudentModel {
   });
 
   /// True only when NPF has approved the application fee.
-  /// This is the single check the fee gate relies on.
+  /// The single check the fee gate relies on.
   bool get isFeeApproved => paymentStatus == 'Payment Approved';
 
-  /// Builds a StudentModel from a Firestore document.
   factory StudentModel.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>? ?? {};
     return StudentModel(
@@ -47,14 +40,11 @@ class StudentModel {
     );
   }
 
-  Map<String, dynamic> toMap() {
-    return {
-      'application_no': applicationNo,
-      'payment_status': paymentStatus,
-      'lead_id': leadId,
-      'lastSyncedAt': lastSyncedAt != null
-          ? Timestamp.fromDate(lastSyncedAt!)
-          : null,
-    };
-  }
+  Map<String, dynamic> toMap() => {
+        'application_no': applicationNo,
+        'payment_status': paymentStatus,
+        'lead_id': leadId,
+        'lastSyncedAt':
+            lastSyncedAt != null ? Timestamp.fromDate(lastSyncedAt!) : null,
+      };
 }

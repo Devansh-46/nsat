@@ -60,7 +60,6 @@ class NiuSatApp extends StatelessWidget {
         AppRoutes.createTest: (_) => const CreateTestScreen(),
         AppRoutes.pushNotification: (_) => const PushNotificationScreen(),
         AppRoutes.resultsDashboard: (_) => const ResultsDashboardScreen(),
-        AppRoutes.emailVerification: (_) => const EmailVerificationScreen(),
       },
     );
   }
