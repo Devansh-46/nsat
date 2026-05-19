@@ -89,7 +89,7 @@ class FeeGateScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: const Text(
-                      'After payment is processed, re-login with your ACCSOFT ID to access the test.',
+                      'After your payment is confirmed, log in again with your NIU ID to access the test.',
                       style: TextStyle(
                         fontSize: 11,
                         color: AppColors.textGreen,

@@ -91,7 +91,7 @@ class RoleSelectionScreen extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: _RoleButton(
                 label: 'Student login',
-                subtitle: 'Login with your ACCSOFT ID',
+                subtitle: 'Login with your NIU ID',
                 isPrimary: true,
                 onTap: () =>
                     Navigator.pushNamed(context, AppRoutes.studentLogin),
