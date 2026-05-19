@@ -13,12 +13,11 @@ import 'screens/student/fee_gate_screen.dart';
 import 'screens/student/test_category_screen.dart';
 import 'screens/student/live_test_screen.dart';
 import 'screens/student/result_screen.dart';
+import 'screens/student/email_verification_screen.dart';
 import 'screens/admin/admin_login_screen.dart';
 import 'screens/admin/admin_dashboard_screen.dart';
-import 'screens/admin/create_test_screen.dart';
 import 'screens/admin/push_notification_screen.dart';
 import 'screens/admin/results_dashboard_screen.dart';
-import 'screens/student/email_verification_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -57,7 +56,6 @@ class NiuSatApp extends StatelessWidget {
         AppRoutes.result: (_) => const ResultScreen(),
         AppRoutes.adminLogin: (_) => const AdminLoginScreen(),
         AppRoutes.adminDashboard: (_) => const AdminDashboardScreen(),
-        AppRoutes.createTest: (_) => const CreateTestScreen(),
         AppRoutes.pushNotification: (_) => const PushNotificationScreen(),
         AppRoutes.resultsDashboard: (_) => const ResultsDashboardScreen(),
       },

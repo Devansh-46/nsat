@@ -13,6 +13,9 @@ dependencies:
   provider: ^6.1.2
   shared_preferences: ^2.2.3
   google_fonts: ^6.2.1
+  csv: ^6.0.0
+  path_provider: ^2.1.4
+  share_plus: ^10.1.2
 
   # --- Firebase core (required) ---
   firebase_core: ^3.6.0

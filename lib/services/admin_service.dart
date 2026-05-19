@@ -1,34 +1,38 @@
-import '../models/test_config_model.dart';
-import '../models/test_session_model.dart';
-import 'data_store.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../models/result_model.dart';
+import 'result_service.dart';
 
+/// Admin-side data, backed by Firestore.
+///
+/// PHASE 1 SCOPE: results and test counts are real. "Online today" and
+/// "CRM push failed" have no real data source on Spark, so they are not
+/// reported here — the dashboard shows "—" for those. Notifications are
+/// a separate screen, still pending the Blaze/FCM build.
 class AdminService {
-  final DataStore _dataStore = DataStore();
+  final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final ResultService _resultService = ResultService();
 
-  Future<Map<String, dynamic>> getDashboardStats() async {
-    await Future.delayed(const Duration(milliseconds: 600)); // Simulate network
+  /// Dashboard summary numbers that CAN be real on Spark.
+  ///
+  /// Returns:
+  ///   - totalAttempts : number of completed tests (results docs)
+  ///   - activeTests   : number of published test documents
+  Future<Map<String, int>> getDashboardStats() async {
+    final totalAttempts = await _resultService.resultsCount();
 
-    final results = await _dataStore.getAllTestResults();
-    final configs = await _dataStore.getTestConfigs();
-
-    int activeTests = configs.where((c) => c.isPublished).length;
-    int totalAttempts = results.length;
+    final testsSnap = await _db
+        .collection('tests')
+        .where('isPublished', isEqualTo: true)
+        .get();
 
     return {
-      'onlineToday': 234 + totalAttempts, // Mock dynamic number
-      'activeTests': activeTests,
       'totalAttempts': totalAttempts,
-      'pushFailed': 0, // Simplified for now
+      'activeTests': testsSnap.docs.length,
     };
   }
 
-  Future<void> createTestConfig(TestConfigModel config) async {
-    await Future.delayed(const Duration(milliseconds: 800)); // Simulate publish
-    await _dataStore.saveTestConfig(config);
-  }
-
-  Future<List<TestSessionModel>> getAllResults() async {
-    await Future.delayed(const Duration(milliseconds: 500));
-    return await _dataStore.getAllTestResults();
+  /// All results for the results dashboard, newest first.
+  Future<List<ResultModel>> getAllResults() {
+    return _resultService.getAllResults();
   }
 }

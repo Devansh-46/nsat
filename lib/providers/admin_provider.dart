@@ -1,24 +1,28 @@
 import 'package:flutter/material.dart';
-import '../models/test_session_model.dart';
-import '../models/test_config_model.dart';
+import '../models/result_model.dart';
 import '../models/notification_model.dart';
 import '../services/admin_service.dart';
 import '../services/notification_service.dart';
 
+/// Admin-side state.
+///
+/// Results and dashboard stats are backed by real Firestore data.
+/// Notifications remain on the mock NotificationService until the
+/// Blaze/FCM Cloud Function is built — that screen is unchanged.
 class AdminProvider extends ChangeNotifier {
   final AdminService _adminService = AdminService();
   final NotificationService _notificationService = NotificationService();
 
-  Map<String, dynamic>? _dashboardStats;
-  List<TestSessionModel> _allResults = [];
+  Map<String, int>? _dashboardStats;
+  List<ResultModel> _allResults = [];
   List<NotificationModel> _notifications = [];
 
   bool _isLoading = false;
   String? _error;
   String? _successMessage;
 
-  Map<String, dynamic>? get dashboardStats => _dashboardStats;
-  List<TestSessionModel> get allResults => _allResults;
+  Map<String, int>? get dashboardStats => _dashboardStats;
+  List<ResultModel> get allResults => _allResults;
   List<NotificationModel> get notifications => _notifications;
   bool get isLoading => _isLoading;
   String? get error => _error;
@@ -44,20 +48,7 @@ class AdminProvider extends ChangeNotifier {
     _setLoading(false);
   }
 
-  Future<bool> createTest(TestConfigModel config) async {
-    _setLoading(true);
-    try {
-      await _adminService.createTestConfig(config);
-      _successMessage = 'Test "${config.title}" published successfully';
-      await fetchDashboardStats(); // Refresh stats
-      _setLoading(false);
-      return true;
-    } catch (e) {
-      _error = 'Failed to create test';
-      _setLoading(false);
-      return false;
-    }
-  }
+  // --- Notifications: unchanged, still mock until Blaze/FCM ---
 
   Future<bool> sendNotification(
       String title, String body, String category, bool scheduleLater) async {
@@ -87,7 +78,7 @@ class AdminProvider extends ChangeNotifier {
       _notifications = await _notificationService.getHistory();
       notifyListeners();
     } catch (e) {
-      // Silently fail history load
+      // Silently fail history load.
     }
   }
 
