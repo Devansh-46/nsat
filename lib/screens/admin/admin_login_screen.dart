@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
-import '../../theme/app_colors.dart';
-import '../../routes/app_routes.dart';
-import '../../widgets/niu_app_bar.dart';
-import '../../widgets/niu_button.dart';
 import 'package:provider/provider.dart';
+import '../../theme/app_colors.dart';
+import '../../theme/app_theme.dart';
+import '../../routes/app_routes.dart';
 import '../../providers/auth_provider.dart';
+import '../../widgets/mesh_background.dart';
+import '../../widgets/glass_card.dart';
+import '../../widgets/niu_field.dart';
+import '../../widgets/niu_button.dart';
 
+/// Admin login — Verdant Daylight reskin. Logic unchanged.
 class AdminLoginScreen extends StatefulWidget {
   const AdminLoginScreen({super.key});
 
@@ -14,10 +18,8 @@ class AdminLoginScreen extends StatefulWidget {
 }
 
 class _AdminLoginScreenState extends State<AdminLoginScreen> {
-  final TextEditingController _emailController =
-      TextEditingController(text: 'admin@niu.edu.in');
-  final TextEditingController _passwordController =
-      TextEditingController(text: 'admin123');
+  final _emailController = TextEditingController(text: 'admin@niu.edu.in');
+  final _passwordController = TextEditingController(text: 'admin123');
 
   @override
   void dispose() {
@@ -28,9 +30,9 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
 
   void _login() async {
     final provider = context.read<AuthProvider>();
-    final success = await provider.adminLogin(
+    final ok = await provider.adminLogin(
         _emailController.text, _passwordController.text);
-    if (success && mounted) {
+    if (ok && mounted) {
       Navigator.pushReplacementNamed(context, AppRoutes.adminDashboard);
     }
   }
@@ -38,92 +40,98 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<AuthProvider>();
+    final topPad = MediaQuery.of(context).padding.top;
 
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: Column(
-        children: [
-          const NiuAppBar(
-              title: 'Admin login', subtitle: 'NIU examination team'),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Admin Email',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: AppColors.textMuted,
-                      fontWeight: FontWeight.w500,
-                    ),
+      backgroundColor: AppColors.bgBase,
+      body: MeshBackground(
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.fromLTRB(22, topPad > 0 ? 12 : 28, 22, 32),
+            child: Column(
+              children: [
+                Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    color: AppColors.forest,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x332C6B42),
+                        offset: Offset(0, 8),
+                        blurRadius: 22,
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 4),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      border: Border.all(color: AppColors.primary),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: TextField(
-                      controller: _emailController,
-                      style: const TextStyle(
-                          fontSize: 13, color: AppColors.textPrimary),
-                      decoration:
-                          const InputDecoration(border: InputBorder.none),
-                    ),
+                  alignment: Alignment.center,
+                  child: const Icon(Icons.shield_outlined,
+                      size: 28, color: Colors.white),
+                ),
+                const SizedBox(height: 14),
+                Text.rich(
+                  TextSpan(
+                    text: 'Admin ',
+                    style: AppTheme.displaySm(size: 22),
+                    children: [AppTheme.italicSpan('sign in.')],
                   ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Password',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: AppColors.textMuted,
-                      fontWeight: FontWeight.w500,
-                    ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'NIU examination team only',
+                  style: AppTheme.body(size: 12.5, color: AppColors.ink4),
+                ),
+                const SizedBox(height: 24),
+
+                GlassCard(
+                  padding: const EdgeInsets.fromLTRB(22, 22, 22, 22),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      NiuField(
+                        label: 'Admin email',
+                        icon: Icons.email_outlined,
+                        controller: _emailController,
+                        keyboardType: TextInputType.emailAddress,
+                      ),
+                      const SizedBox(height: 16),
+                      NiuField(
+                        label: 'Password',
+                        icon: Icons.lock_outline,
+                        controller: _passwordController,
+                        obscureText: true,
+                      ),
+                      const SizedBox(height: 20),
+                      if (provider.error != null) ...[
+                        Text(
+                          provider.error!,
+                          style: AppTheme.body(size: 12.5, color: AppColors.clay),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                      if (provider.isLoading)
+                        const SizedBox(
+                          height: 48,
+                          child: Center(
+                            child: SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                color: AppColors.forest,
+                              ),
+                            ),
+                          ),
+                        )
+                      else
+                        NiuButton(label: 'Sign in', onTap: _login),
+                    ],
                   ),
-                  const SizedBox(height: 4),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      border: Border.all(color: AppColors.primary),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: TextField(
-                      controller: _passwordController,
-                      obscureText: true,
-                      style: const TextStyle(
-                          fontSize: 13, color: AppColors.textPrimary),
-                      decoration:
-                          const InputDecoration(border: InputBorder.none),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  if (provider.error != null) ...[
-                    Text(
-                      provider.error!,
-                      style:
-                          const TextStyle(color: AppColors.red, fontSize: 12),
-                    ),
-                    const SizedBox(height: 10),
-                  ],
-                  if (provider.isLoading)
-                    const Center(child: CircularProgressIndicator())
-                  else
-                    NiuButton(
-                      label: 'Sign in',
-                      onTap: _login,
-                    ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }

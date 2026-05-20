@@ -2,14 +2,18 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../theme/app_colors.dart';
+import '../../theme/app_theme.dart';
 import '../../routes/app_routes.dart';
+import '../../widgets/mesh_background.dart';
+import '../../widgets/glass_card.dart';
+import '../../widgets/eyebrow.dart';
 import '../../widgets/niu_button.dart';
+import '../../widgets/note_box.dart';
 import '../../providers/test_provider.dart';
 import '../../providers/auth_provider.dart';
 
-/// Result screen — calm, factual. Shows the score ring, a stat grid,
-/// the test detail rows, and a neutral disclaimer. No loud pass/fail
-/// verdict. Follows the approved result mockup (deep forest theme).
+/// Result screen — calm, factual. Verdant Daylight reskin.
+/// Score ring, stat grid, detail rows, disclaimer. No loud pass/fail.
 class ResultScreen extends StatelessWidget {
   const ResultScreen({super.key});
 
@@ -19,304 +23,236 @@ class ResultScreen extends StatelessWidget {
     final lead = context.watch<AuthProvider>().leadDetails;
 
     if (session == null) {
-      return const Scaffold(
-        backgroundColor: AppColors.bgLight,
-        body: Center(child: Text('No test results found.')),
+      return Scaffold(
+        backgroundColor: AppColors.bgBase,
+        body: MeshBackground(
+          child: Center(
+            child: Text('No test results found.',
+                style: AppTheme.body(color: AppColors.ink3)),
+          ),
+        ),
       );
     }
 
-    // Percentage of the maximum score actually achieved.
     final pct = session.maxScore > 0
         ? (session.netScore / session.maxScore * 100)
         : 0.0;
     final pctText = '${pct.toStringAsFixed(1)}%';
 
     final submitted = session.submittedAt;
-    final submittedText = submitted != null
-        ? _formatDateTime(submitted)
-        : '—';
+    final submittedText =
+        submitted != null ? _formatDateTime(submitted) : '—';
 
     return Scaffold(
-      backgroundColor: AppColors.bgLight,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // --- Header ---
-              Row(
-                children: [
-                  Container(
-                    width: 38,
-                    height: 38,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(9),
-                    ),
-                    alignment: Alignment.center,
-                    child: const Text(
-                      'NIU',
-                      style: TextStyle(
-                        color: AppColors.primary,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
+      backgroundColor: AppColors.bgBase,
+      body: MeshBackground(
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(22, 16, 22, 32),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ── Header ──
+                Row(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        gradient: AppColors.glassBgStrong,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: AppColors.glassBorder),
                       ),
+                      alignment: Alignment.center,
+                      child: Text('NIU',
+                          style: AppTheme.display(
+                              size: 13, color: AppColors.forest)),
                     ),
+                    const SizedBox(width: 12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Noida International University',
+                            style: AppTheme.body(
+                                size: 10.5, color: AppColors.ink4)),
+                        Text('NSAT — Test Complete',
+                            style: AppTheme.displaySm(size: 14)),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 22),
+
+                const Eyebrow('result'),
+                const SizedBox(height: 4),
+                Text.rich(
+                  TextSpan(
+                    text: 'Your test has been ',
+                    style: AppTheme.display(size: 24),
+                    children: [AppTheme.italicSpan('submitted.')],
                   ),
-                  const SizedBox(width: 10),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
-                      Text(
-                        'Noida International University',
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: AppColors.textMuted,
-                        ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  [
+                    session.studentName,
+                    if (lead != null) lead.courseKey.toUpperCase(),
+                    session.studentId,
+                  ].join('  ·  '),
+                  style: AppTheme.mono(size: 11.5, color: AppColors.ink3),
+                ),
+                const SizedBox(height: 20),
+
+                // ── Score card ──
+                GlassCard(
+                  padding: const EdgeInsets.all(20),
+                  child: Row(
+                    children: [
+                      _ScoreRing(
+                        fraction: session.maxScore > 0
+                            ? (session.netScore / session.maxScore)
+                                .clamp(0.0, 1.0)
+                            : 0.0,
+                        centerTop: session.netScore.toStringAsFixed(
+                            session.netScore % 1 == 0 ? 0 : 1),
+                        centerBottom:
+                            'of ${session.maxScore.toStringAsFixed(0)}',
                       ),
-                      Text(
-                        'NSAT — Test Complete',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
+                      const SizedBox(width: 20),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Eyebrow('score'),
+                            const SizedBox(height: 4),
+                            Text(
+                              pctText,
+                              style: AppTheme.mono(
+                                  size: 28, color: AppColors.forest),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Net score after negative marking. '
+                              'Your result has been recorded.',
+                              style: AppTheme.body(
+                                  size: 11.5, color: AppColors.ink3),
+                            ),
+                          ],
                         ),
                       ),
                     ],
                   ),
-                ],
-              ),
-              const SizedBox(height: 18),
-
-              const Text(
-                'Your test has been submitted',
-                style: TextStyle(
-                  fontSize: 19,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
                 ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                [
-                  session.studentName,
-                  if (lead != null) lead.courseKey.toUpperCase(),
-                  session.studentId,
-                ].join('  ·  '),
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: 16),
+                const SizedBox(height: 12),
 
-              // --- Score card: ring + percentage ---
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(18),
-                decoration: _cardDecoration(),
-                child: Row(
+                // ── Stat grid ──
+                Row(
                   children: [
-                    _ScoreRing(
-                      // Ring fills by net score out of max.
-                      fraction: session.maxScore > 0
-                          ? (session.netScore / session.maxScore)
-                              .clamp(0.0, 1.0)
-                          : 0.0,
-                      centerTop: session.netScore
-                          .toStringAsFixed(
-                              session.netScore % 1 == 0 ? 0 : 1),
-                      centerBottom:
-                          'of ${session.maxScore.toStringAsFixed(0)}',
-                    ),
-                    const SizedBox(width: 18),
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'SCORE',
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: AppColors.textMuted,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            pctText,
-                            style: const TextStyle(
-                              fontSize: 26,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.primary,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          const Text(
-                            'Net score after negative marking. '
-                            'Your result has been recorded.',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: AppColors.textSecondary,
-                              height: 1.4,
-                            ),
-                          ),
-                        ],
+                      child: _StatTile(
+                        icon: Icons.check,
+                        tint: AppColors.forestTint,
+                        iconColor: AppColors.forest,
+                        value: '${session.correctCount}',
+                        label: 'Correct',
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _StatTile(
+                        icon: Icons.close,
+                        tint: AppColors.clayTint,
+                        iconColor: AppColors.clay,
+                        value: '${session.wrongCount}',
+                        label: 'Incorrect',
                       ),
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(height: 12),
-
-              // --- Stat grid: correct / wrong / skipped / answered ---
-              Row(
-                children: [
-                  Expanded(
-                    child: _StatTile(
-                      icon: Icons.check,
-                      iconBg: AppColors.bgGreenLight,
-                      iconColor: AppColors.textGreen,
-                      value: '${session.correctCount}',
-                      label: 'Correct',
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _StatTile(
-                      icon: Icons.close,
-                      iconBg: AppColors.bgRedLight,
-                      iconColor: AppColors.textRed,
-                      value: '${session.wrongCount}',
-                      label: 'Incorrect',
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(
-                    child: _StatTile(
-                      icon: Icons.remove,
-                      iconBg: AppColors.bgCard,
-                      iconColor: AppColors.textMuted,
-                      value: '${session.skippedCount}',
-                      label: 'Skipped',
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _StatTile(
-                      icon: Icons.task_alt,
-                      iconBg: AppColors.bgInfo,
-                      iconColor: AppColors.primary,
-                      value: '${session.answeredCount}',
-                      label: 'Answered',
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-
-              // --- Detail rows ---
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 14, vertical: 4),
-                decoration: _cardDecoration(),
-                child: Column(
+                const SizedBox(height: 10),
+                Row(
                   children: [
-                    _DetailRow(
-                      label: 'Test',
-                      value: session.categoryName,
-                    ),
-                    const _RowDivider(),
-                    _DetailRow(
-                      label: 'Total questions',
-                      value: '${session.totalQuestions}',
-                    ),
-                    const _RowDivider(),
-                    _DetailRow(
-                      label: 'Marking',
-                      value:
-                          '+${session.marksPerQuestion.toStringAsFixed(0)} '
-                          'correct · '
-                          '-${session.negativeMarksPerWrong.toStringAsFixed(2)} '
-                          'wrong',
-                    ),
-                    const _RowDivider(),
-                    _DetailRow(
-                      label: 'Submitted',
-                      value: submittedText,
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-
-              // --- Neutral disclaimer ---
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(13),
-                decoration: BoxDecoration(
-                  color: AppColors.bgGoldLight,
-                  border: Border.all(
-                      color: AppColors.borderGold.withValues(alpha: 0.5)),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    Icon(Icons.info_outline,
-                        size: 16, color: AppColors.textGold),
-                    SizedBox(width: 8),
                     Expanded(
-                      child: Text(
-                        'This is your test score only. Admission '
-                        'decisions are made separately by the NIU '
-                        'admissions team.',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textGold,
-                          height: 1.45,
-                        ),
+                      child: _StatTile(
+                        icon: Icons.remove,
+                        tint: AppColors.bone,
+                        iconColor: AppColors.ink4,
+                        value: '${session.skippedCount}',
+                        label: 'Skipped',
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _StatTile(
+                        icon: Icons.task_alt,
+                        tint: AppColors.forestTint,
+                        iconColor: AppColors.forest,
+                        value: '${session.answeredCount}',
+                        label: 'Answered',
                       ),
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(height: 16),
+                const SizedBox(height: 14),
 
-              NiuButton(
-                label: 'Back to home',
-                variant: NiuButtonVariant.outline,
-                onTap: () {
-                  context.read<TestProvider>().clearSession();
-                  Navigator.popUntil(context,
-                      ModalRoute.withName(AppRoutes.roleSelection));
-                },
-              ),
-            ],
+                // ── Detail rows ──
+                GlassCard(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 6),
+                  radius: 16,
+                  child: Column(
+                    children: [
+                      _DetailRow(
+                          label: 'Test', value: session.categoryName),
+                      _divider(),
+                      _DetailRow(
+                          label: 'Total questions',
+                          value: '${session.totalQuestions}'),
+                      _divider(),
+                      _DetailRow(
+                        label: 'Marking',
+                        value:
+                            '+${session.marksPerQuestion.toStringAsFixed(0)} '
+                            'correct · '
+                            '-${session.negativeMarksPerWrong.toStringAsFixed(2)} '
+                            'wrong',
+                      ),
+                      _divider(),
+                      _DetailRow(
+                          label: 'Submitted', value: submittedText),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+
+                // ── Disclaimer ──
+                const NoteBox.gold(
+                  icon: Icons.info_outline,
+                  body: 'This is your test score only. Admission '
+                      'decisions are made separately by the NIU '
+                      'admissions team.',
+                ),
+                const SizedBox(height: 20),
+
+                NiuButton(
+                  label: 'Back to home',
+                  variant: NiuButtonVariant.outline,
+                  onTap: () {
+                    context.read<TestProvider>().clearSession();
+                    Navigator.popUntil(context,
+                        ModalRoute.withName(AppRoutes.roleSelection));
+                  },
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  static BoxDecoration _cardDecoration() => BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      );
+  static Widget _divider() =>
+      Container(height: 0.5, color: AppColors.line2);
 
   static String _formatDateTime(DateTime dt) {
     const months = [
@@ -330,9 +266,10 @@ class ResultScreen extends StatelessWidget {
   }
 }
 
-/// Circular score ring, drawn with a custom painter (no dependency).
+// ─── Score ring ─────────────────────────────────────────────────────
+
 class _ScoreRing extends StatelessWidget {
-  final double fraction; // 0.0 .. 1.0
+  final double fraction;
   final String centerTop;
   final String centerBottom;
 
@@ -345,29 +282,18 @@ class _ScoreRing extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 96,
-      height: 96,
+      width: 100,
+      height: 100,
       child: CustomPaint(
         painter: _RingPainter(fraction),
         child: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                centerTop,
-                style: const TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              Text(
-                centerBottom,
-                style: const TextStyle(
-                  fontSize: 10,
-                  color: AppColors.textMuted,
-                ),
-              ),
+              Text(centerTop,
+                  style: AppTheme.mono(size: 26, color: AppColors.ink)),
+              Text(centerBottom,
+                  style: AppTheme.body(size: 10, color: AppColors.ink4)),
             ],
           ),
         ),
@@ -382,25 +308,22 @@ class _RingPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    const stroke = 9.0;
+    const stroke = 8.0;
     final center = Offset(size.width / 2, size.height / 2);
     final radius = (size.width - stroke) / 2;
 
     final track = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = stroke
-      ..color = AppColors.border;
+      ..color = AppColors.bone;
 
     final progress = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = stroke
       ..strokeCap = StrokeCap.round
-      ..color = AppColors.primary;
+      ..color = AppColors.forest;
 
-    // Full track.
     canvas.drawCircle(center, radius, track);
-
-    // Progress arc — starts at the top, sweeps clockwise.
     final rect = Rect.fromCircle(center: center, radius: radius);
     canvas.drawArc(
       rect,
@@ -415,17 +338,18 @@ class _RingPainter extends CustomPainter {
   bool shouldRepaint(_RingPainter old) => old.fraction != fraction;
 }
 
-/// One stat tile in the result grid.
+// ─── Stat tile ──────────────────────────────────────────────────────
+
 class _StatTile extends StatelessWidget {
   final IconData icon;
-  final Color iconBg;
+  final Color tint;
   final Color iconColor;
   final String value;
   final String label;
 
   const _StatTile({
     required this.icon,
-    required this.iconBg,
+    required this.tint,
     required this.iconColor,
     required this.value,
     required this.label,
@@ -433,27 +357,18 @@ class _StatTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
+    return GlassCard(
+      padding: const EdgeInsets.all(14),
+      radius: 14,
+      blurEnabled: false,
       child: Row(
         children: [
           Container(
-            width: 30,
-            height: 30,
+            width: 32,
+            height: 32,
             decoration: BoxDecoration(
-              color: iconBg,
-              borderRadius: BorderRadius.circular(8),
+              color: tint,
+              borderRadius: BorderRadius.circular(9),
             ),
             child: Icon(icon, size: 16, color: iconColor),
           ),
@@ -461,21 +376,9 @@ class _StatTile extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 10,
-                  color: AppColors.textMuted,
-                ),
-              ),
+              Text(value, style: AppTheme.mono(size: 18, color: AppColors.ink)),
+              Text(label,
+                  style: AppTheme.body(size: 10.5, color: AppColors.ink4)),
             ],
           ),
         ],
@@ -483,6 +386,8 @@ class _StatTile extends StatelessWidget {
     );
   }
 }
+
+// ─── Detail row ─────────────────────────────────────────────────────
 
 class _DetailRow extends StatelessWidget {
   final String label;
@@ -493,40 +398,25 @@ class _DetailRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 11),
+      padding: const EdgeInsets.symmetric(vertical: 12),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 12,
-              color: AppColors.textSecondary,
-            ),
-          ),
+          Text(label, style: AppTheme.body(size: 12.5, color: AppColors.ink4)),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               value,
               textAlign: TextAlign.right,
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary,
+              style: AppTheme.body(
+                size: 12.5,
+                color: AppColors.ink,
+                weight: FontWeight.w600,
               ),
             ),
           ),
         ],
       ),
     );
-  }
-}
-
-class _RowDivider extends StatelessWidget {
-  const _RowDivider();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(height: 0.5, color: AppColors.borderLight);
   }
 }

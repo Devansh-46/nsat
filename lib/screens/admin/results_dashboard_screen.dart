@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../theme/app_colors.dart';
+import '../../theme/app_theme.dart';
 import '../../providers/admin_provider.dart';
 import '../../services/results_exporter.dart';
+import '../../widgets/glass_card.dart';
 
-/// Admin results dashboard — deep-forest styling. Reads the real
-/// `results` Firestore collection via AdminProvider.
+/// Admin results dashboard — Verdant Daylight reskin.
+/// Real Firestore results via AdminProvider.
 class ResultsDashboardScreen extends StatefulWidget {
   const ResultsDashboardScreen({super.key});
 
@@ -26,7 +28,6 @@ class _ResultsDashboardScreenState extends State<ResultsDashboardScreen> {
     });
   }
 
-
   Future<void> _exportCsv(List results) async {
     setState(() => _exporting = true);
     final result = await ResultsExporter.export(List.from(results));
@@ -36,7 +37,7 @@ class _ResultsDashboardScreenState extends State<ResultsDashboardScreen> {
       SnackBar(
         content: Text(result.message),
         backgroundColor:
-            result.success ? AppColors.green : AppColors.red,
+            result.success ? AppColors.forest : AppColors.clay,
       ),
     );
   }
@@ -58,64 +59,55 @@ class _ResultsDashboardScreenState extends State<ResultsDashboardScreen> {
         : '0.0';
 
     return Scaffold(
-      backgroundColor: AppColors.bgLight,
+      backgroundColor: AppColors.bgBase,
       body: SafeArea(
         child: Column(
           children: [
-            // --- Header ---
+            // Header
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+              padding: const EdgeInsets.fromLTRB(18, 14, 18, 8),
               child: Row(
                 children: [
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
                     child: Container(
-                      width: 34,
-                      height: 34,
+                      width: 36,
+                      height: 36,
                       decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(9),
+                        color: AppColors.bone,
+                        borderRadius: BorderRadius.circular(10),
                       ),
                       child: const Icon(Icons.chevron_left,
-                          size: 20, color: AppColors.textSecondary),
+                          size: 20, color: AppColors.ink3),
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Results',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
+                        Text('Results', style: AppTheme.displaySm(size: 18)),
                         Text(
                           '${all.length} total submissions',
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: AppColors.textMuted,
-                          ),
+                          style: AppTheme.body(
+                              size: 11.5, color: AppColors.ink4),
                         ),
                       ],
                     ),
                   ),
-                  // Export to CSV.
+                  // Export
                   GestureDetector(
                     onTap: (_exporting || all.isEmpty)
                         ? null
                         : () => _exportCsv(all),
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 8),
+                          horizontal: 14, vertical: 8),
                       decoration: BoxDecoration(
                         color: all.isEmpty
-                            ? AppColors.bgCard
-                            : AppColors.primary,
-                        borderRadius: BorderRadius.circular(9),
+                            ? AppColors.bone
+                            : AppColors.forest,
+                        borderRadius: BorderRadius.circular(10),
                       ),
                       child: _exporting
                           ? const SizedBox(
@@ -132,18 +124,18 @@ class _ResultsDashboardScreenState extends State<ResultsDashboardScreen> {
                                   Icons.download_outlined,
                                   size: 15,
                                   color: all.isEmpty
-                                      ? AppColors.textMuted
+                                      ? AppColors.ink4
                                       : Colors.white,
                                 ),
-                                const SizedBox(width: 4),
+                                const SizedBox(width: 5),
                                 Text(
                                   'Export',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
+                                  style: AppTheme.body(
+                                    size: 12,
                                     color: all.isEmpty
-                                        ? AppColors.textMuted
+                                        ? AppColors.ink4
                                         : Colors.white,
+                                    weight: FontWeight.w600,
                                   ),
                                 ),
                               ],
@@ -156,33 +148,38 @@ class _ResultsDashboardScreenState extends State<ResultsDashboardScreen> {
 
             Expanded(
               child: provider.isLoading
-                  ? const Center(child: CircularProgressIndicator())
+                  ? const Center(
+                      child: SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          color: AppColors.forest,
+                        ),
+                      ),
+                    )
                   : SingleChildScrollView(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                      padding: const EdgeInsets.fromLTRB(18, 8, 18, 24),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Summary stats.
+                          // Summary stats
                           Row(
                             children: [
                               Expanded(
                                 child: _MiniStat(
-                                  value: '$total',
-                                  label: 'Submitted',
-                                ),
+                                    value: '$total', label: 'Submitted'),
                               ),
                               const SizedBox(width: 10),
                               Expanded(
                                 child: _MiniStat(
-                                  value: avg,
-                                  label: 'Avg net score',
-                                ),
+                                    value: avg, label: 'Avg net score'),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 14),
 
-                          // Course filter chips.
+                          // Course chips
                           if (courses.length > 1) ...[
                             Wrap(
                               spacing: 6,
@@ -190,68 +187,62 @@ class _ResultsDashboardScreenState extends State<ResultsDashboardScreen> {
                               children: courses.map((c) {
                                 final selected = c == _courseFilter;
                                 return GestureDetector(
-                                  onTap: () => setState(
-                                      () => _courseFilter = c),
+                                  onTap: () =>
+                                      setState(() => _courseFilter = c),
                                   child: Container(
                                     padding: const EdgeInsets.symmetric(
-                                        horizontal: 12, vertical: 7),
+                                        horizontal: 14, vertical: 7),
                                     decoration: BoxDecoration(
                                       color: selected
-                                          ? AppColors.primary
-                                          : Colors.white,
+                                          ? AppColors.forest
+                                          : AppColors.bone,
                                       borderRadius:
-                                          BorderRadius.circular(8),
+                                          BorderRadius.circular(10),
                                       border: Border.all(
                                         color: selected
-                                            ? AppColors.primary
-                                            : AppColors.border,
+                                            ? AppColors.forest
+                                            : AppColors.line,
                                       ),
                                     ),
                                     child: Text(
                                       c == 'All'
                                           ? 'All'
                                           : c.toUpperCase(),
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w700,
+                                      style: AppTheme.body(
+                                        size: 11,
                                         color: selected
                                             ? Colors.white
-                                            : AppColors.textSecondary,
+                                            : AppColors.ink3,
+                                        weight: FontWeight.w600,
                                       ),
                                     ),
                                   ),
                                 );
                               }).toList(),
                             ),
-                            const SizedBox(height: 12),
+                            const SizedBox(height: 14),
                           ],
 
-                          // Results list.
+                          // Results list
                           if (filtered.isEmpty)
-                            Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.all(28),
-                              decoration: _cardDecoration(),
-                              child: const Column(
+                            GlassCard(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 22, vertical: 32),
+                              blurEnabled: false,
+                              child: Column(
                                 children: [
-                                  Icon(Icons.inbox_outlined,
-                                      size: 34,
-                                      color: AppColors.textMuted),
-                                  SizedBox(height: 10),
-                                  Text(
-                                    'No results yet',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w700,
-                                      color: AppColors.textPrimary,
-                                    ),
-                                  ),
+                                  const Icon(Icons.inbox_outlined,
+                                      size: 34, color: AppColors.ink4),
+                                  const SizedBox(height: 12),
+                                  Text('No results yet',
+                                      style: AppTheme.displaySm(size: 15)),
                                 ],
                               ),
                             )
                           else
-                            Container(
-                              decoration: _cardDecoration(),
+                            GlassCard(
+                              padding: EdgeInsets.zero,
+                              blurEnabled: false,
                               child: Column(
                                 children: [
                                   for (int i = 0;
@@ -267,7 +258,9 @@ class _ResultsDashboardScreenState extends State<ResultsDashboardScreen> {
                                     if (i < filtered.length - 1)
                                       Container(
                                         height: 0.5,
-                                        color: AppColors.borderLight,
+                                        margin: const EdgeInsets.symmetric(
+                                            horizontal: 14),
+                                        color: AppColors.line2,
                                       ),
                                   ],
                                 ],
@@ -282,59 +275,25 @@ class _ResultsDashboardScreenState extends State<ResultsDashboardScreen> {
       ),
     );
   }
-
-  static BoxDecoration _cardDecoration() => BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      );
 }
 
 class _MiniStat extends StatelessWidget {
   final String value;
   final String label;
-
   const _MiniStat({required this.value, required this.label});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
+    return GlassCard(
+      padding: const EdgeInsets.all(16),
+      radius: 14,
+      blurEnabled: false,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w700,
-              color: AppColors.primary,
-            ),
-          ),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 11,
-              color: AppColors.textMuted,
-            ),
-          ),
+          Text(value, style: AppTheme.mono(size: 24, color: AppColors.forest)),
+          const SizedBox(height: 1),
+          Text(label, style: AppTheme.body(size: 11.5, color: AppColors.ink4)),
         ],
       ),
     );
@@ -359,7 +318,7 @@ class _ResultRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
       child: Row(
         children: [
           Expanded(
@@ -368,20 +327,17 @@ class _ResultRow extends StatelessWidget {
               children: [
                 Text(
                   name.isEmpty ? '(no name)' : name,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
+                  style: AppTheme.body(
+                    size: 13.5,
+                    color: AppColors.ink,
+                    weight: FontWeight.w600,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 1),
+                const SizedBox(height: 2),
                 Text(
                   '$niuId  ·  ${course.toUpperCase()}',
-                  style: const TextStyle(
-                    fontSize: 10,
-                    color: AppColors.textMuted,
-                  ),
+                  style: AppTheme.mono(size: 10.5, color: AppColors.ink4),
                   overflow: TextOverflow.ellipsis,
                 ),
               ],
@@ -389,19 +345,15 @@ class _ResultRow extends StatelessWidget {
           ),
           const SizedBox(width: 10),
           Container(
-            padding: const EdgeInsets.symmetric(
-                horizontal: 10, vertical: 6),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              color: AppColors.bgGreenLight,
+              color: AppColors.forestTint,
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
               '${net.toStringAsFixed(2)} / ${max.toStringAsFixed(0)}',
-              style: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textGreen,
-              ),
+              style: AppTheme.mono(size: 11, color: AppColors.forest),
             ),
           ),
         ],

@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../theme/app_colors.dart';
+import '../../theme/app_theme.dart';
 import '../../routes/app_routes.dart';
-import '../../widgets/niu_button.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/test_provider.dart';
+import '../../widgets/mesh_background.dart';
+import '../../widgets/glass_card.dart';
+import '../../widgets/eyebrow.dart';
+import '../../widgets/niu_button.dart';
+import '../../widgets/note_box.dart';
 
-/// Shows the published test for the verified student's course and lets
-/// them start it. Identity comes from AuthProvider (verifiedStudent +
-/// leadDetails). Visual design is consistent with the approved screens.
+/// Step 3 — Shows the student's published test and lets them start it.
+/// Identity from AuthProvider (verifiedStudent + leadDetails).
 class TestCategoryScreen extends StatefulWidget {
   const TestCategoryScreen({super.key});
 
@@ -23,7 +27,6 @@ class _TestCategoryScreenState extends State<TestCategoryScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final lead = context.read<AuthProvider>().leadDetails;
       if (lead != null) {
-        // lead.courseKey is the canonical key (e.g. "btech").
         context.read<TestProvider>().fetchAvailableTest(lead.courseKey);
       }
     });
@@ -75,12 +78,23 @@ class _TestCategoryScreenState extends State<TestCategoryScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(title),
-        content: Text(body),
+        backgroundColor: AppColors.ivory,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+        ),
+        title: Text(title, style: AppTheme.displaySm(size: 18)),
+        content: Text(body, style: AppTheme.body(size: 13.5, color: AppColors.ink3)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('OK'),
+            child: Text(
+              'OK',
+              style: AppTheme.body(
+                size: 14,
+                color: AppColors.forest,
+                weight: FontWeight.w600,
+              ),
+            ),
           ),
         ],
       ),
@@ -92,210 +106,171 @@ class _TestCategoryScreenState extends State<TestCategoryScreen> {
     final lead = context.watch<AuthProvider>().leadDetails;
     final testProvider = context.watch<TestProvider>();
     final test = testProvider.availableTest;
+    final topPad = MediaQuery.of(context).padding.top;
 
     return Scaffold(
-      backgroundColor: AppColors.bgLight,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // --- Greeting ---
-              const Text(
-                'Your test',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                'Hello, ${lead?.name ?? 'Student'}',
-                style: const TextStyle(
-                  fontSize: 13,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              if (testProvider.isLoading)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 60),
-                  child: Center(child: CircularProgressIndicator()),
-                )
-              else if (test != null) ...[
-                // --- Test card ---
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(18),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05),
-                        blurRadius: 16,
-                        offset: const Offset(0, 6),
+      backgroundColor: AppColors.bgBase,
+      body: MeshBackground(
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.fromLTRB(22, topPad > 0 ? 12 : 28, 22, 32),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ── Greeting ──
+                const Eyebrow('your test'),
+                const SizedBox(height: 6),
+                Text.rich(
+                  TextSpan(
+                    text: 'Hello, ',
+                    style: AppTheme.display(size: 28),
+                    children: [
+                      AppTheme.italicSpan(
+                        '${lead?.name ?? "Student"}.',
                       ),
                     ],
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              color: AppColors.bgGreenLight,
-                              borderRadius: BorderRadius.circular(11),
+                ),
+                const SizedBox(height: 22),
+
+                if (testProvider.isLoading)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 60),
+                    child: Center(
+                      child: SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          color: AppColors.forest,
+                        ),
+                      ),
+                    ),
+                  )
+                else if (test != null) ...[
+                  // ── Test card ──
+                  GlassCard(
+                    padding: const EdgeInsets.fromLTRB(22, 22, 22, 22),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Title row
+                        Row(
+                          children: [
+                            Container(
+                              width: 42,
+                              height: 42,
+                              decoration: BoxDecoration(
+                                color: AppColors.forestTint,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Icon(Icons.assignment_outlined,
+                                  size: 20, color: AppColors.forest),
                             ),
-                            child: const Icon(Icons.assignment_outlined,
-                                size: 20, color: AppColors.primary),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              test.title,
-                              style: const TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.textPrimary,
-                                height: 1.3,
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Text(
+                                test.title,
+                                style: AppTheme.displaySm(size: 16),
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
 
-                      // Detail tiles — 2x2.
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _DetailTile(
-                              value: '${test.questionCount}',
-                              label: 'Questions',
+                        // 2×2 stat grid
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _StatTile(
+                                value: '${test.questionCount}',
+                                label: 'Questions',
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: _DetailTile(
-                              value: '${test.durationMinutes}',
-                              label: 'Minutes',
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: _StatTile(
+                                value: '${test.durationMinutes}',
+                                label: 'Minutes',
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _DetailTile(
-                              value: test.marksPerQuestion
-                                  .toStringAsFixed(0),
-                              label: 'Mark / question',
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _StatTile(
+                                value: test.marksPerQuestion
+                                    .toStringAsFixed(0),
+                                label: 'Mark / question',
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: _DetailTile(
-                              value: test.negativeMarking
-                                  ? '-${test.negativeMarksPerWrong}'
-                                  : '0',
-                              label: 'Wrong answer',
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: _StatTile(
+                                value: test.negativeMarking
+                                    ? '-${test.negativeMarksPerWrong}'
+                                    : '0',
+                                label: 'Wrong answer',
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                    ],
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(height: 14),
+                  const SizedBox(height: 16),
 
-                // --- One-attempt warning ---
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(13),
-                  decoration: BoxDecoration(
-                    color: AppColors.bgGoldLight,
-                    border: Border.all(
-                        color: AppColors.borderGold
-                            .withValues(alpha: 0.5)),
-                    borderRadius: BorderRadius.circular(10),
+                  // One-attempt warning
+                  const NoteBox.gold(
+                    icon: Icons.warning_amber_rounded,
+                    title: 'One attempt only',
+                    body: 'Once you start, the test cannot be retaken '
+                        '— make sure you are ready.',
                   ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
-                      Icon(Icons.warning_amber_rounded,
-                          size: 16, color: AppColors.textGold),
-                      SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'One attempt only. Once you start, the test '
-                          'cannot be retaken — make sure you are ready.',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: AppColors.textGold,
-                            height: 1.45,
+                  const SizedBox(height: 20),
+
+                  NiuButton(
+                    label: 'Start test',
+                    variant: NiuButtonVariant.forest,
+                    showArrow: true,
+                    onTap: _startTest,
+                  ),
+                ] else ...[
+                  // ── Empty state ──
+                  GlassCard(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 22, vertical: 36),
+                    child: Column(
+                      children: [
+                        const Icon(Icons.info_outline,
+                            size: 36, color: AppColors.ink4),
+                        const SizedBox(height: 14),
+                        Text(
+                          'No test available',
+                          style: AppTheme.displaySm(size: 17),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          testProvider.error ??
+                              'There is no published test for your '
+                                  'course yet.',
+                          textAlign: TextAlign.center,
+                          style: AppTheme.body(
+                            size: 13,
+                            color: AppColors.ink3,
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(height: 18),
+                ],
 
-                NiuButton(label: 'Start test', onTap: _startTest),
-              ] else ...[
-                // --- No test available ---
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(28),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(18),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.04),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    children: [
-                      const Icon(Icons.info_outline,
-                          size: 38, color: AppColors.textMuted),
-                      const SizedBox(height: 12),
-                      const Text(
-                        'No test available',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        testProvider.error ??
-                            'There is no published test for your '
-                                'course yet.',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textSecondary,
-                          height: 1.4,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                const SizedBox(height: 28),
+                const _StepIndicator(current: 2),
               ],
-            ],
+            ),
           ),
         ),
       ),
@@ -303,43 +278,93 @@ class _TestCategoryScreenState extends State<TestCategoryScreen> {
   }
 }
 
-/// One detail tile in the test card.
-class _DetailTile extends StatelessWidget {
+// ─── Stat tile ──────────────────────────────────────────────────────
+
+class _StatTile extends StatelessWidget {
   final String value;
   final String label;
-
-  const _DetailTile({required this.value, required this.label});
+  const _StatTile({required this.value, required this.label});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 14),
+      padding: const EdgeInsets.symmetric(vertical: 16),
       decoration: BoxDecoration(
-        color: AppColors.bgCard,
-        borderRadius: BorderRadius.circular(11),
+        color: AppColors.bone,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.line2),
       ),
       child: Column(
         children: [
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-              color: AppColors.primary,
-            ),
-          ),
-          const SizedBox(height: 2),
+          Text(value, style: AppTheme.mono(size: 22, color: AppColors.forest)),
+          const SizedBox(height: 3),
           Text(
             label.toUpperCase(),
-            style: const TextStyle(
-              fontSize: 9,
-              color: AppColors.textMuted,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.4,
-            ),
+            style: AppTheme.eyebrow(color: AppColors.ink4),
           ),
         ],
       ),
+    );
+  }
+}
+
+// ─── Step indicator (step 3) ────────────────────────────────────────
+
+class _StepIndicator extends StatelessWidget {
+  final int current;
+  const _StepIndicator({this.current = 0});
+
+  static const _labels = ['ID', 'Email', 'Verify', 'Test'];
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(4, (i) {
+            final active = i == current;
+            return AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              margin: const EdgeInsets.symmetric(horizontal: 3),
+              width: active ? 22 : 7,
+              height: 7,
+              decoration: BoxDecoration(
+                color: active ? AppColors.forest : AppColors.bone,
+                borderRadius: BorderRadius.circular(4),
+              ),
+            );
+          }),
+        ),
+        const SizedBox(height: 10),
+        Text.rich(
+          TextSpan(
+            style: AppTheme.body(size: 11.5, color: AppColors.ink4),
+            children: [
+              TextSpan(
+                text: 'Step ${current + 1} of 4',
+                style: AppTheme.body(
+                  size: 11.5,
+                  color: AppColors.ink3,
+                  weight: FontWeight.w600,
+                ),
+              ),
+              const TextSpan(text: '  ·  '),
+              for (int i = 0; i < _labels.length; i++) ...[
+                if (i > 0) const TextSpan(text: '  ›  '),
+                TextSpan(
+                  text: _labels[i],
+                  style: AppTheme.body(
+                    size: 11.5,
+                    color: i == current ? AppColors.forest : AppColors.ink4,
+                    weight: i == current ? FontWeight.w600 : FontWeight.w400,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

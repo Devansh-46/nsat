@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../theme/app_colors.dart';
+import '../../theme/app_theme.dart';
 import '../../routes/app_routes.dart';
 import '../../widgets/niu_button.dart';
 import '../../providers/test_provider.dart';
 
-/// Live test screen — one question per screen, calm progress bar and
-/// timer. Follows the approved live-test mockup (deep forest theme).
+/// Live test — one question per screen, progress bar, timer, palette.
+/// Verdant Daylight reskin. All logic identical to the previous build.
 class LiveTestScreen extends StatefulWidget {
   const LiveTestScreen({super.key});
 
@@ -32,38 +33,27 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
     }
   }
 
-  /// Opens the question palette as a bottom sheet (the "Review" action).
   void _openPalette(TestProvider provider) {
     final session = provider.currentSession!;
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.ivory,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
       ),
       builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Questions',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary,
-              ),
-            ),
+            Text('Questions', style: AppTheme.displaySm(size: 16)),
             const SizedBox(height: 4),
             Text(
               '${session.answeredCount} of ${session.totalQuestions} answered',
-              style: const TextStyle(
-                fontSize: 11,
-                color: AppColors.textMuted,
-              ),
+              style: AppTheme.body(size: 12, color: AppColors.ink4),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
             Wrap(
               spacing: 8,
               runSpacing: 8,
@@ -76,41 +66,40 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
                     Navigator.pop(ctx);
                   },
                   child: Container(
-                    width: 38,
-                    height: 38,
+                    width: 40,
+                    height: 40,
                     decoration: BoxDecoration(
                       color: current
-                          ? AppColors.primary
+                          ? AppColors.forest
                           : answered
-                              ? AppColors.bgGreenLight
-                              : AppColors.bgCard,
+                              ? AppColors.forestTint
+                              : AppColors.bone,
                       border: Border.all(
                         color: current
-                            ? AppColors.primary
+                            ? AppColors.forest
                             : answered
-                                ? AppColors.green
-                                : AppColors.border,
+                                ? AppColors.forest.withValues(alpha: 0.3)
+                                : AppColors.line,
                       ),
-                      borderRadius: BorderRadius.circular(9),
+                      borderRadius: BorderRadius.circular(10),
                     ),
                     alignment: Alignment.center,
                     child: Text(
                       '${i + 1}',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
+                      style: AppTheme.mono(
+                        size: 12,
                         color: current
                             ? Colors.white
                             : answered
-                                ? AppColors.textGreen
-                                : AppColors.textMuted,
+                                ? AppColors.forest
+                                : AppColors.ink4,
                       ),
                     ),
                   ),
                 );
               }),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
           ],
         ),
       ),
@@ -122,23 +111,34 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Submit test?'),
+        backgroundColor: AppColors.ivory,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+        ),
+        title: Text('Submit test?', style: AppTheme.displaySm(size: 18)),
         content: Text(
           'You have answered ${session.answeredCount} of '
           '${session.totalQuestions} questions.\n\n'
           'Once submitted, the test cannot be changed.',
+          style: AppTheme.body(size: 13.5, color: AppColors.ink3),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
+            child: Text('Cancel',
+                style: AppTheme.body(
+                    size: 14, color: AppColors.ink4, weight: FontWeight.w500)),
           ),
-          ElevatedButton(
+          TextButton(
             onPressed: () {
               Navigator.pop(ctx);
               _submitTest();
             },
-            child: const Text('Submit'),
+            child: Text('Submit',
+                style: AppTheme.body(
+                    size: 14,
+                    color: AppColors.forest,
+                    weight: FontWeight.w600)),
           ),
         ],
       ),
@@ -152,16 +152,21 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
 
     if (session == null) {
       return Scaffold(
-        backgroundColor: AppColors.bgLight,
+        backgroundColor: AppColors.bgBase,
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Text('No active test session found.'),
+              Text('No active test session found.',
+                  style: AppTheme.body(color: AppColors.ink3)),
               const SizedBox(height: 16),
-              NiuButton(
-                label: 'Go back',
-                onTap: () => Navigator.pop(context),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 60),
+                child: NiuButton(
+                  label: 'Go back',
+                  variant: NiuButtonVariant.outline,
+                  onTap: () => Navigator.pop(context),
+                ),
               ),
             ],
           ),
@@ -169,7 +174,6 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
       );
     }
 
-    // Auto-submitted by the timer — move to results.
     if (session.isSubmitted) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         Navigator.pushReplacementNamed(context, AppRoutes.result);
@@ -178,67 +182,62 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
 
     final question = session.questions[_currentIndex];
     final selected = session.answers[_currentIndex];
-    final progress =
-        (_currentIndex + 1) / session.totalQuestions;
-    final timeLow = session.timeRemainingSeconds <= 300; // last 5 min
+    final progress = (_currentIndex + 1) / session.totalQuestions;
+    final timeLow = session.timeRemainingSeconds <= 300;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.ivory,
       body: SafeArea(
         child: Column(
           children: [
-            // --- Header: back, title, timer ---
+            // ── Header ──
             Padding(
-              padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
               child: Row(
                 children: [
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
                     child: Container(
-                      width: 34,
-                      height: 34,
+                      width: 36,
+                      height: 36,
                       decoration: BoxDecoration(
-                        color: AppColors.bgCard,
-                        borderRadius: BorderRadius.circular(9),
+                        color: AppColors.bone,
+                        borderRadius: BorderRadius.circular(10),
                       ),
                       child: const Icon(Icons.chevron_left,
-                          size: 20, color: AppColors.textSecondary),
+                          size: 20, color: AppColors.ink3),
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           session.categoryName,
-                          style: const TextStyle(
-                            fontSize: 10,
-                            color: AppColors.textMuted,
-                          ),
+                          style: AppTheme.eyebrow(color: AppColors.ink4),
                           overflow: TextOverflow.ellipsis,
                         ),
                         Text(
                           'Question ${_currentIndex + 1} '
                           'of ${session.totalQuestions}',
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
-                          ),
+                          style: AppTheme.displaySm(size: 15),
                         ),
                       ],
                     ),
                   ),
-                  // Timer chip.
+                  // Timer
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 6),
+                        horizontal: 12, vertical: 7),
                     decoration: BoxDecoration(
-                      color: timeLow
-                          ? AppColors.bgWarning
-                          : AppColors.bgGreenLight,
-                      borderRadius: BorderRadius.circular(9),
+                      color: timeLow ? AppColors.goldTint : AppColors.forestTint,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: timeLow
+                            ? AppColors.gold.withValues(alpha: 0.3)
+                            : AppColors.forest.withValues(alpha: 0.2),
+                      ),
                     ),
                     child: Row(
                       children: [
@@ -246,18 +245,17 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
                           Icons.timer_outlined,
                           size: 14,
                           color: timeLow
-                              ? AppColors.textOrange
-                              : AppColors.textGreen,
+                              ? const Color(0xFF8A6516)
+                              : AppColors.forest,
                         ),
-                        const SizedBox(width: 4),
+                        const SizedBox(width: 5),
                         Text(
                           _formatTime(session.timeRemainingSeconds),
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
+                          style: AppTheme.mono(
+                            size: 13,
                             color: timeLow
-                                ? AppColors.textOrange
-                                : AppColors.textGreen,
+                                ? const Color(0xFF8A6516)
+                                : AppColors.forest,
                           ),
                         ),
                       ],
@@ -266,50 +264,47 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
 
-            // --- Progress bar ---
+            // ── Progress bar ──
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(4),
                 child: LinearProgressIndicator(
                   value: progress,
-                  minHeight: 6,
-                  backgroundColor: AppColors.border,
-                  valueColor: const AlwaysStoppedAnimation(
-                      AppColors.primary),
+                  minHeight: 5,
+                  backgroundColor: AppColors.bone,
+                  valueColor:
+                      const AlwaysStoppedAnimation(AppColors.forest),
                 ),
               ),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
 
-            // --- Answered count + Review ---
+            // ── Answered + Review ──
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
                     '${session.answeredCount} answered',
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: AppColors.textMuted,
-                    ),
+                    style: AppTheme.body(size: 11.5, color: AppColors.ink4),
                   ),
                   GestureDetector(
                     onTap: () => _openPalette(provider),
                     child: Row(
-                      children: const [
-                        Icon(Icons.grid_view_rounded,
-                            size: 13, color: AppColors.primary),
-                        SizedBox(width: 4),
+                      children: [
+                        const Icon(Icons.grid_view_rounded,
+                            size: 13, color: AppColors.forest),
+                        const SizedBox(width: 4),
                         Text(
                           'Review',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.primary,
+                          style: AppTheme.body(
+                            size: 11.5,
+                            color: AppColors.forest,
+                            weight: FontWeight.w600,
                           ),
                         ),
                       ],
@@ -319,65 +314,71 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
               ),
             ),
 
-            // --- Question + options ---
+            // ── Question + options ──
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+                padding: const EdgeInsets.fromLTRB(18, 18, 18, 12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       question.text,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        color: AppColors.textPrimary,
-                        height: 1.5,
+                      style: AppTheme.body(
+                        size: 15,
+                        color: AppColors.ink,
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 18),
                     ...List.generate(question.options.length, (i) {
                       final isSelected = i == selected;
-                      final letter = String.fromCharCode(65 + i); // A..D
+                      final letter = String.fromCharCode(65 + i);
                       return GestureDetector(
                         onTap: () =>
                             provider.selectAnswer(_currentIndex, i),
                         child: Container(
                           margin: const EdgeInsets.only(bottom: 10),
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 12),
+                              horizontal: 14, vertical: 13),
                           decoration: BoxDecoration(
-                            color: isSelected
-                                ? AppColors.bgGreenLight
-                                : Colors.white,
+                            gradient: isSelected
+                                ? AppColors.glassBgStrong
+                                : AppColors.glassBg,
                             border: Border.all(
                               color: isSelected
-                                  ? AppColors.primary
-                                  : AppColors.border,
+                                  ? AppColors.forest
+                                  : AppColors.glassBorder,
                               width: isSelected ? 1.5 : 1,
                             ),
-                            borderRadius: BorderRadius.circular(11),
+                            borderRadius: BorderRadius.circular(14),
+                            boxShadow: isSelected
+                                ? const [
+                                    BoxShadow(
+                                      color: Color(0x1A2C6B42),
+                                      offset: Offset(0, 0),
+                                      blurRadius: 8,
+                                    ),
+                                  ]
+                                : null,
                           ),
                           child: Row(
                             children: [
                               Container(
-                                width: 26,
-                                height: 26,
+                                width: 28,
+                                height: 28,
                                 decoration: BoxDecoration(
                                   color: isSelected
-                                      ? AppColors.primary
-                                      : AppColors.bgCard,
-                                  borderRadius:
-                                      BorderRadius.circular(7),
+                                      ? AppColors.forest
+                                      : AppColors.bone,
+                                  borderRadius: BorderRadius.circular(8),
                                 ),
                                 alignment: Alignment.center,
                                 child: Text(
                                   letter,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
+                                  style: AppTheme.mono(
+                                    size: 12,
                                     color: isSelected
                                         ? Colors.white
-                                        : AppColors.textMuted,
+                                        : AppColors.ink4,
                                   ),
                                 ),
                               ),
@@ -385,31 +386,28 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
                               Expanded(
                                 child: Text(
                                   question.options[i],
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    height: 1.4,
-                                    color: isSelected
-                                        ? AppColors.textPrimary
-                                        : AppColors.textPrimary,
-                                    fontWeight: isSelected
-                                        ? FontWeight.w700
-                                        : FontWeight.normal,
+                                  style: AppTheme.body(
+                                    size: 13.5,
+                                    color: AppColors.ink,
+                                    weight: isSelected
+                                        ? FontWeight.w600
+                                        : FontWeight.w400,
                                   ),
                                 ),
                               ),
-                              // Radio dot.
+                              // Radio dot
                               Container(
                                 width: 18,
                                 height: 18,
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
                                   color: isSelected
-                                      ? AppColors.primary
+                                      ? AppColors.forest
                                       : Colors.transparent,
                                   border: Border.all(
                                     color: isSelected
-                                        ? AppColors.primary
-                                        : AppColors.border,
+                                        ? AppColors.forest
+                                        : AppColors.ink5,
                                     width: 2,
                                   ),
                                 ),
@@ -436,11 +434,12 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
                             padding: EdgeInsets.zero,
                             minimumSize: const Size(0, 32),
                           ),
-                          child: const Text(
+                          child: Text(
                             'Clear selection',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: AppColors.textMuted,
+                            style: AppTheme.body(
+                              size: 11.5,
+                              color: AppColors.ink4,
+                            ).copyWith(
                               decoration: TextDecoration.underline,
                             ),
                           ),
@@ -451,14 +450,13 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
               ),
             ),
 
-            // --- Bottom nav: Previous / Next / Submit ---
+            // ── Bottom nav ──
             Container(
-              padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
-              decoration: const BoxDecoration(
-                color: Colors.white,
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+              decoration: BoxDecoration(
+                color: AppColors.ivory,
                 border: Border(
-                  top: BorderSide(
-                      color: AppColors.borderLight, width: 0.5),
+                  top: BorderSide(color: AppColors.line2),
                 ),
               ),
               child: Column(
@@ -466,82 +464,38 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
                   Row(
                     children: [
                       Expanded(
-                        child: OutlinedButton(
-                          onPressed: _currentIndex > 0
-                              ? () =>
-                                  setState(() => _currentIndex--)
+                        child: NiuButton(
+                          label: 'Previous',
+                          variant: NiuButtonVariant.outline,
+                          onTap: _currentIndex > 0
+                              ? () => setState(() => _currentIndex--)
                               : null,
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: AppColors.primary,
-                            side: const BorderSide(
-                                color: AppColors.border),
-                            shape: RoundedRectangleBorder(
-                                borderRadius:
-                                    BorderRadius.circular(10)),
-                            padding: const EdgeInsets.symmetric(
-                                vertical: 13),
-                          ),
-                          child: const Text('Previous',
-                              style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700)),
                         ),
                       ),
                       const SizedBox(width: 10),
                       Expanded(
-                        child:
-                            _currentIndex < session.totalQuestions - 1
-                                ? ElevatedButton(
-                                    onPressed: () => setState(
-                                        () => _currentIndex++),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor:
-                                          AppColors.primary,
-                                      foregroundColor: Colors.white,
-                                      elevation: 0,
-                                      shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(
-                                                  10)),
-                                      padding:
-                                          const EdgeInsets.symmetric(
-                                              vertical: 13),
-                                    ),
-                                    child: const Text('Next',
-                                        style: TextStyle(
-                                            fontSize: 13,
-                                            fontWeight:
-                                                FontWeight.w700)),
-                                  )
-                                : ElevatedButton(
-                                    onPressed: () =>
-                                        _confirmSubmit(provider),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor:
-                                          AppColors.gold,
-                                      foregroundColor:
-                                          AppColors.primary,
-                                      elevation: 0,
-                                      shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(
-                                                  10)),
-                                      padding:
-                                          const EdgeInsets.symmetric(
-                                              vertical: 13),
-                                    ),
-                                    child: const Text('Submit test',
-                                        style: TextStyle(
-                                            fontSize: 13,
-                                            fontWeight:
-                                                FontWeight.w700)),
-                                  ),
+                        child: _currentIndex < session.totalQuestions - 1
+                            ? NiuButton(
+                                label: 'Next',
+                                onTap: () =>
+                                    setState(() => _currentIndex++),
+                              )
+                            : NiuButton(
+                                label: 'Submit test',
+                                variant: NiuButtonVariant.gold,
+                                onTap: () => _confirmSubmit(provider),
+                              ),
                       ),
                     ],
                   ),
                   if (provider.isLoading) ...[
                     const SizedBox(height: 10),
-                    const LinearProgressIndicator(minHeight: 2),
+                    LinearProgressIndicator(
+                      minHeight: 2,
+                      backgroundColor: AppColors.bone,
+                      valueColor:
+                          const AlwaysStoppedAnimation(AppColors.forest),
+                    ),
                   ],
                 ],
               ),

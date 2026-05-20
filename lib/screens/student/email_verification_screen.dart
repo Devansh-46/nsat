@@ -1,20 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../theme/app_colors.dart';
+import '../../theme/app_theme.dart';
 import '../../routes/app_routes.dart';
-import '../../widgets/niu_button.dart';
 import '../../providers/auth_provider.dart';
+import '../../widgets/mesh_background.dart';
+import '../../widgets/glass_card.dart';
+import '../../widgets/niu_button.dart';
+import '../../widgets/note_box.dart';
 
-/// Step 2 of the NSAT login flow: email verification.
+/// Step 2 — Email verification (STUB in Phase 1 / Spark).
 ///
-/// PHASE 1 / SPARK BUILD — partial STUB.
-/// On Continue this calls AuthProvider.fetchLeadDetails(), which on
-/// Spark returns dev data and in production calls the NPF API 2 Cloud
-/// Function. The real OTP UI (masked email, code entry) drops into this
-/// screen later with no navigation change.
-///
-/// Visual design is consistent with the approved login / result screens
-/// (pale-green page, white card, deep-forest green, gold accents).
+/// On Continue: AuthProvider.fetchLeadDetails() → test category.
+/// Real OTP UI drops into this screen later with no nav change.
 class EmailVerificationScreen extends StatelessWidget {
   const EmailVerificationScreen({super.key});
 
@@ -35,154 +33,208 @@ class EmailVerificationScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     final student = auth.verifiedStudent;
+    final topPad = MediaQuery.of(context).padding.top;
 
     return Scaffold(
-      backgroundColor: AppColors.bgLight,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
-          child: Column(
-            children: [
-              // --- Header ---
-              Container(
-                width: 60,
-                height: 60,
-                decoration: BoxDecoration(
-                  color: AppColors.bgGreenLight,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                alignment: Alignment.center,
-                child: const Icon(
-                  Icons.mark_email_read_outlined,
-                  size: 28,
-                  color: AppColors.primary,
-                ),
-              ),
-              const SizedBox(height: 14),
-              const Text(
-                'Verify your identity',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 4),
-              const Text(
-                'One quick check before your test begins.',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textMuted,
-                ),
-              ),
-              const SizedBox(height: 22),
-
-              // --- Card ---
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(18),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.05),
-                      blurRadius: 16,
-                      offset: const Offset(0, 6),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Fee-verified row.
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(13),
-                      decoration: BoxDecoration(
-                        color: AppColors.bgGreenLight,
-                        borderRadius: BorderRadius.circular(10),
+      backgroundColor: AppColors.bgBase,
+      body: MeshBackground(
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.fromLTRB(22, topPad > 0 ? 12 : 28, 22, 32),
+            child: Column(
+              children: [
+                // ── Header icon ──
+                Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    gradient: AppColors.glassBgStrong,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppColors.glassBorder),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x120F2A1F),
+                        offset: Offset(0, 6),
+                        blurRadius: 18,
                       ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.check_circle,
-                              size: 18, color: AppColors.primary),
-                          const SizedBox(width: 8),
-                          Column(
-                            crossAxisAlignment:
-                                CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Fee verified',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.textGreen,
-                                ),
-                              ),
-                              Text(
-                                'NIU ID  ${student?.applicationNo ?? "-"}',
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  color: AppColors.textSecondary,
-                                ),
-                              ),
-                            ],
+                    ],
+                  ),
+                  alignment: Alignment.center,
+                  child: const Icon(
+                    Icons.mark_email_read_outlined,
+                    size: 28,
+                    color: AppColors.forest,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Text.rich(
+                  TextSpan(
+                    text: 'Verify your ',
+                    style: AppTheme.displaySm(size: 22),
+                    children: [AppTheme.italicSpan('identity.')],
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'One quick check before your test begins.',
+                  style: AppTheme.body(size: 12.5, color: AppColors.ink4),
+                ),
+                const SizedBox(height: 24),
+
+                // ── Main card ──
+                GlassCard(
+                  padding: const EdgeInsets.fromLTRB(22, 22, 22, 22),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Fee-verified row
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: AppColors.forestTint,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: AppColors.forest.withValues(alpha: 0.15),
                           ),
-                        ],
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.check_circle,
+                                size: 18, color: AppColors.forest),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Fee verified',
+                                    style: AppTheme.body(
+                                      size: 12.5,
+                                      color: AppColors.forest,
+                                      weight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 1),
+                                  Text(
+                                    'NIU ID  ${student?.applicationNo ?? "-"}',
+                                    style: AppTheme.mono(
+                                      size: 11.5,
+                                      color: AppColors.ink3,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 16),
+                      const SizedBox(height: 18),
 
-                    // Stub notice.
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(13),
-                      decoration: BoxDecoration(
-                        color: AppColors.bgGoldLight,
-                        border: Border.all(
-                            color: AppColors.borderGold
-                                .withValues(alpha: 0.5)),
-                        borderRadius: BorderRadius.circular(10),
+                      // OTP stub note
+                      const NoteBox.gold(
+                        icon: Icons.lock_outline,
+                        title: 'Email OTP — coming soon',
+                        body: 'Email OTP verification will appear here. '
+                            'It is not active in this build — tap '
+                            'Continue to proceed to your test.',
                       ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: const [
-                          Icon(Icons.lock_outline,
-                              size: 16, color: AppColors.textGold),
-                          SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'Email OTP verification will appear '
-                              'here. It is not active in this build '
-                              '— tap Continue to proceed to your '
-                              'test.',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: AppColors.textGold,
-                                height: 1.45,
+                      const SizedBox(height: 22),
+
+                      // Continue
+                      if (auth.isLoading)
+                        const SizedBox(
+                          height: 48,
+                          child: Center(
+                            child: SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                color: AppColors.forest,
                               ),
                             ),
                           ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 18),
-
-                    if (auth.isLoading)
-                      const Center(child: CircularProgressIndicator())
-                    else
-                      NiuButton(
-                        label: 'Continue',
-                        onTap: () => _continue(context),
-                      ),
-                  ],
+                        )
+                      else
+                        NiuButton(
+                          label: 'Continue',
+                          showArrow: true,
+                          onTap: () => _continue(context),
+                        ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+
+                const SizedBox(height: 28),
+
+                // ── Step indicator (step 2) ──
+                _StepIndicator(current: 1),
+              ],
+            ),
           ),
         ),
       ),
+    );
+  }
+}
+
+// Reuse the same step indicator from login (extracted as identical widget).
+class _StepIndicator extends StatelessWidget {
+  final int current;
+  const _StepIndicator({this.current = 0});
+
+  static const _labels = ['ID', 'Email', 'Verify', 'Test'];
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(4, (i) {
+            final active = i == current;
+            return AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              margin: const EdgeInsets.symmetric(horizontal: 3),
+              width: active ? 22 : 7,
+              height: 7,
+              decoration: BoxDecoration(
+                color: active ? AppColors.forest : AppColors.bone,
+                borderRadius: BorderRadius.circular(4),
+              ),
+            );
+          }),
+        ),
+        const SizedBox(height: 10),
+        Text.rich(
+          TextSpan(
+            style: AppTheme.body(size: 11.5, color: AppColors.ink4),
+            children: [
+              TextSpan(
+                text: 'Step ${current + 1} of 4',
+                style: AppTheme.body(
+                  size: 11.5,
+                  color: AppColors.ink3,
+                  weight: FontWeight.w600,
+                ),
+              ),
+              const TextSpan(text: '  ·  '),
+              for (int i = 0; i < _labels.length; i++) ...[
+                if (i > 0) const TextSpan(text: '  ›  '),
+                TextSpan(
+                  text: _labels[i],
+                  style: AppTheme.body(
+                    size: 11.5,
+                    color: i == current ? AppColors.forest : AppColors.ink4,
+                    weight: i == current ? FontWeight.w600 : FontWeight.w400,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
