@@ -1,4 +1,4 @@
-import {onCall, HttpsError} from "firebase-functions/v2/https";
+import { onCall, HttpsError } from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
 
 const db = admin.firestore();
@@ -14,7 +14,7 @@ const db = admin.firestore();
  * The client sends answers + testId; never sees correctAnswerIndex.
  */
 export const scoreSubmission = onCall(
-  {region: "asia-south1"},
+  { region: "asia-south1" },
   async (request) => {
     const applicationNo = request.data?.application_no as string | undefined;
     const studentName = request.data?.student_name as string | undefined;

@@ -29,14 +29,13 @@ export const fetchLeadDetails = onCall(
 
     try {
       // NPF API 2: get lead details by lead_id
-      const url =
-        `${NPF_BASE_URL}/lead/${leadId}` +
-        `?access-key=${encodeURIComponent(NPF_ACCESS_KEY)}` +
-        `&secret-key=${encodeURIComponent(NPF_SECRET_KEY)}`;
+      const url = `${NPF_BASE_URL}/lead/${leadId}`;
       const response = await fetch(url, {
-        method: "GET",
+        method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "access-key": NPF_ACCESS_KEY,
+          "secret-key": NPF_SECRET_KEY,
         },
       });
 
