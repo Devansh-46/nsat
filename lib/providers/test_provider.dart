@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../models/test_session_model.dart';
 import '../models/test_model.dart';
 import '../models/question_model.dart';
-import '../models/result_model.dart';
 import '../services/test_service.dart';
 import '../services/question_service.dart';
 import '../services/result_service.dart';
@@ -168,8 +167,8 @@ class TestProvider extends ChangeNotifier {
     }
   }
 
-  /// Submits the test: scores it, writes the result, and flips the
-  /// attempt lock to completed.
+  /// Submits the test: scores server-side via Cloud Function, which also
+  /// writes the result doc and flips the attempt lock.
   Future<void> submitTest() async {
     if (_currentSession == null || _currentSession!.isSubmitted) return;
 
@@ -180,35 +179,28 @@ class TestProvider extends ChangeNotifier {
       final session = _currentSession!;
       session.submit();
 
-      // Authoritative score via ScoringService (swap point for the
-      // Cloud Function in Phase 2).
-      final score = _scoringService.scoreSubmission(
-        questions: session.questions,
-        answers: session.answers,
-        test: _availableTest!,
-      );
-
-      // Write the result document.
-      final result = ResultModel(
+      // Server-side scoring — the Cloud Function reads questions,
+      // scores, writes the result, and flips the attempt lock.
+      final score = await _scoringService.scoreSubmission(
         applicationNo: session.studentId,
         studentName: session.studentName,
-        course: _availableTest!.course,
         testId: _availableTest!.id,
+        answers: session.answers,
+      );
+
+      _savedResultId = score.resultId;
+
+      // Update session with server-returned scores for the result screen.
+      session.setServerScores(
         correctCount: score.correctCount,
         wrongCount: score.wrongCount,
         skippedCount: score.skippedCount,
         netScore: score.netScore,
         maxScore: score.maxScore,
       );
-      _savedResultId = await _resultService.saveResult(result);
-
-      // Flip the attempt lock to completed.
-      await _attemptService.markCompleted(session.studentId);
 
       _setLoading(false);
     } catch (e) {
-      // The session is already marked submitted locally so the student
-      // sees their result; surface that the save needs a retry.
       _error = 'Your test was scored, but saving the result failed. '
           'Please tell an invigilator.';
       _setLoading(false);

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import '../models/user_model.dart';
 import '../models/student_model.dart';
 import '../models/lead_details_model.dart';
@@ -98,35 +99,30 @@ class AuthProvider extends ChangeNotifier {
 
   /// Step 2 of the login flow — fetch the applicant's NPF detail.
   ///
-  /// Called ONLY after the fee gate passes, using the verified student's
-  /// lead_id. In production this is an NPF API 2 call via a Cloud
-  /// Function, which also maps the NPF course string to the canonical
-  /// course key.
-  ///
-  /// SPARK BUILD — STUB:
-  /// Cloud Functions need Blaze, so on Spark this returns hardcoded dev
-  /// data instead of calling the function. Replace the stub body with
-  /// the real callable when Blaze is enabled — the signature stays the
-  /// same, so nothing else changes.
+  /// Calls the fetchLeadDetails Cloud Function with the verified
+  /// student's lead_id. The function calls NPF API 2 and maps the
+  /// course display string to the canonical key.
   Future<bool> fetchLeadDetails() async {
     if (_verifiedStudent == null) return false;
 
     _setLoading(true);
 
     try {
-      // ----- DEV STUB (remove when the API 2 Cloud Function exists) -----
-      // Real version: call the Cloud Function with
-      // _verifiedStudent!.leadId, map the returned course string to a
-      // canonical key, then build LeadDetailsModel.fromApiDetails(...).
-      await Future.delayed(const Duration(milliseconds: 400));
+      final callable = FirebaseFunctions.instanceFor(region: 'asia-south1')
+          .httpsCallable('fetchLeadDetails');
+
+      final result = await callable.call<Map<String, dynamic>>({
+        'lead_id': _verifiedStudent!.leadId,
+      });
+
+      final data = result.data;
       _leadDetails = LeadDetailsModel(
-        leadId: _verifiedStudent!.leadId,
-        name: 'Test Student',
-        courseKey: 'btech',
-        email: 'teststudent@example.com',
-        mobile: '9999999999',
+        leadId: data['leadId'] ?? _verifiedStudent!.leadId,
+        name: data['name'] ?? '',
+        courseKey: data['courseKey'] ?? '',
+        email: data['email'] ?? '',
+        mobile: data['mobile'] ?? '',
       );
-      // ------------------------------------------------------------------
 
       _setLoading(false);
       return true;

@@ -75,5 +75,13 @@ key.properties
 
 # Environment variables
 .env
+/functions/.env
+/functions/.env.local
+/functions/firebase-debug.log
 
-serviceAccountKey.json
+# Service Account Keys
+[sS]erviceAccountKey.json
+
+# Dependencies and Build Outputs
+node_modules/
+/functions/lib/
