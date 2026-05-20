@@ -5,7 +5,6 @@ import '../models/test_model.dart';
 import '../models/question_model.dart';
 import '../services/test_service.dart';
 import '../services/question_service.dart';
-import '../services/result_service.dart';
 import '../services/attempt_service.dart';
 import '../services/scoring_service.dart';
 
@@ -18,7 +17,6 @@ import '../services/scoring_service.dart';
 class TestProvider extends ChangeNotifier {
   final TestService _testService = TestService();
   final QuestionService _questionService = QuestionService();
-  final ResultService _resultService = ResultService();
   final AttemptService _attemptService = AttemptService();
   final ScoringService _scoringService = ScoringService();
 

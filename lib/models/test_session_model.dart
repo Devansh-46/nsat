@@ -14,6 +14,14 @@ class TestSessionModel {
   DateTime? submittedAt;
   List<QuestionModel> questions;
 
+  /// Override local score getters with server-authoritative values.
+  /// Called after the scoreSubmission Cloud Function returns.
+  int? _serverCorrect;
+  int? _serverWrong;
+  int? _serverSkipped;
+  double? _serverNetScore;
+  double? _serverMaxScore;
+
   TestSessionModel({
     required this.studentId,
     required this.studentName,
@@ -28,10 +36,25 @@ class TestSessionModel {
         isSubmitted = false,
         questions = questions ?? [];
 
+  void setServerScores({
+    required int correctCount,
+    required int wrongCount,
+    required int skippedCount,
+    required double netScore,
+    required double maxScore,
+  }) {
+    _serverCorrect = correctCount;
+    _serverWrong = wrongCount;
+    _serverSkipped = skippedCount;
+    _serverNetScore = netScore;
+    _serverMaxScore = maxScore;
+  }
+
   int get answeredCount => answers.length;
   int get unansweredCount => totalQuestions - answeredCount;
 
   int get correctCount {
+    if (_serverCorrect != null) return _serverCorrect!;
     int count = 0;
     answers.forEach((questionIndex, selectedOption) {
       if (questionIndex < questions.length &&
@@ -43,6 +66,7 @@ class TestSessionModel {
   }
 
   int get wrongCount {
+    if (_serverWrong != null) return _serverWrong!;
     int count = 0;
     answers.forEach((questionIndex, selectedOption) {
       if (questionIndex < questions.length &&
@@ -53,12 +77,12 @@ class TestSessionModel {
     return count;
   }
 
-  int get skippedCount => totalQuestions - answeredCount;
+  int get skippedCount => _serverSkipped ?? (totalQuestions - answeredCount);
 
   double get correctMarks => correctCount * marksPerQuestion;
   double get negativeMarks => wrongCount * negativeMarksPerWrong;
-  double get netScore => correctMarks - negativeMarks;
-  double get maxScore => totalQuestions * marksPerQuestion;
+  double get netScore => _serverNetScore ?? (correctMarks - negativeMarks);
+  double get maxScore => _serverMaxScore ?? (totalQuestions * marksPerQuestion);
 
   String get formattedNetScore => netScore.toStringAsFixed(2);
   String get formattedMaxScore => maxScore.toStringAsFixed(2);
