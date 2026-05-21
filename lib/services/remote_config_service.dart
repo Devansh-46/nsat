@@ -21,7 +21,8 @@ class RemoteConfigService {
   /// Initialize with defaults and fetch latest values.
   /// Call once at app startup (main.dart), after Firebase.initializeApp.
   Future<void> init() async {
-    // Defaults — used if Console values haven't been fetched yet
+    await _rc.ensureInitialized();
+
     await _rc.setDefaults({
       'exam_window_open': true,
       'maintenance_mode': false,
@@ -29,19 +30,22 @@ class RemoteConfigService {
       'exam_date_display': '14 June 2026',
     });
 
-    // Fetch interval: 1 minute in debug, 12 hours in production.
-    // For exam day you can force-fetch by calling fetchAndActivate()
-    // from the admin dashboard later.
     await _rc.setConfigSettings(RemoteConfigSettings(
       fetchTimeout: const Duration(seconds: 10),
-      minimumFetchInterval: const Duration(minutes: 1),
+      minimumFetchInterval: Duration.zero,
     ));
 
-    // Fetch and activate — non-blocking if it fails (uses defaults)
     try {
-      await _rc.fetchAndActivate();
-    } catch (_) {
-      // Silently use defaults if network is unavailable
+      await _rc.fetch();
+      print('[RemoteConfig] lastFetchStatus: ${_rc.lastFetchStatus}');
+      final activated = await _rc.activate();
+      print('[RemoteConfig] activated: $activated');
+      final all = _rc.getAll();
+      for (final key in all.keys) {
+        print('[RemoteConfig] $key = ${all[key]!.asString()} (${all[key]!.source})');
+      }
+    } catch (e) {
+      print('[RemoteConfig] ERROR: $e');
     }
   }
 

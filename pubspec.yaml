@@ -37,6 +37,7 @@ dependencies:
 
   # --- Remote Config: exam window toggle, maintenance mode ---
   firebase_remote_config: ^5.1.3
+  firebase_analytics: ^11.6.0
 
 dev_dependencies:
   flutter_test:

@@ -56,6 +56,7 @@ class DefaultFirebaseOptions {
     projectId: 'nsat-niu-app',
     authDomain: 'nsat-niu-app.firebaseapp.com',
     storageBucket: 'nsat-niu-app.firebasestorage.app',
+    measurementId: "G-E9E0FG700D"
   );
 
   static const FirebaseOptions android = FirebaseOptions(
