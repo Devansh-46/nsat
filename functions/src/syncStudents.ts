@@ -28,15 +28,13 @@ export const syncStudents = onSchedule(
     let hasMore = true;
 
     try {
-      // Read last successful sync time from metadata doc
+      // Metadata doc — tracks last successful sync for logging
       const metaRef = db.collection("_meta").doc("npfSync");
-      const metaDoc = await metaRef.get();
-      const lastSyncTime = metaDoc.exists
-        ? (metaDoc.data()?.lastSuccessfulSync as admin.firestore.Timestamp)?.toDate()
-        : null;
 
-      // Build date filter: only leads updated since last sync
-      // On first run (no metadata), fetch everything
+      // Full sync every run: fetch all leads by payment status.
+      // NPF doesn't support an updated_on filter, so we always
+      // pull the full list and upsert. The dataset is small enough
+      // (one form, fee-paid + pending only) that this is fast.
       const filters: Array<{ field: string; operator: string; value: unknown }> = [
         {
           field: "payment_status",
@@ -45,18 +43,7 @@ export const syncStudents = onSchedule(
         },
       ];
 
-      if (lastSyncTime) {
-        // NPF date format: YYYY-MM-DD
-        const since = lastSyncTime.toISOString().split("T")[0];
-        filters.push({
-          field: "updated_on",
-          operator: "greater_than_equals",
-          value: since,
-        });
-        console.log(`Incremental sync: fetching leads updated since ${since}`);
-      } else {
-        console.log("Full sync: no previous sync timestamp found");
-      }
+      console.log("Full sync: fetching all students by payment status");
 
       while (hasMore) {
         const url = `${NPF_BASE_URL}/application/v1/list`;
