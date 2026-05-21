@@ -21,6 +21,27 @@ class PushNotificationScreen extends StatefulWidget {
 class _PushNotificationScreenState extends State<PushNotificationScreen> {
   final _titleController = TextEditingController();
   final _bodyController = TextEditingController();
+  String _target = 'all';
+
+  static const _targets = [
+    ('all', 'All Students'),
+    ('set_ug', 'SET UG (Engineering)'),
+    ('set_pg', 'SET PG (M.Tech)'),
+    ('sbm_ug', 'SBM UG (BBA/B.Com)'),
+    ('sbm_pg', 'SBM PG (MBA)'),
+    ('soahs_ug', 'SOAHS UG (Health Sci)'),
+    ('soahs_pg', 'SOAHS PG'),
+    ('sos_ug', 'SOS UG (Sciences/BCA)'),
+    ('sos_pg', 'SOS PG (MCA/M.Sc)'),
+    ('solla_ug', 'SOLLA UG (Law 5yr)'),
+    ('solla_pg', 'SOLLA PG (LLB/LLM)'),
+    ('sjmc', 'SJMC (Journalism)'),
+    ('sola', 'SOLA (Liberal Arts)'),
+    ('sofad', 'SOFAD (Fine Arts)'),
+    ('soe', 'SOE (Education)'),
+    ('sop', 'SOP (Pharmacy)'),
+    ('son', 'SON (Nursing)'),
+  ];
 
   @override
   void initState() {
@@ -40,14 +61,13 @@ class _PushNotificationScreenState extends State<PushNotificationScreen> {
   void _send() async {
     if (_titleController.text.isEmpty || _bodyController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Please enter a title and message body')),
+        const SnackBar(content: Text('Please enter a title and message body')),
       );
       return;
     }
     final provider = context.read<AdminProvider>();
     final ok = await provider.sendNotification(
-        _titleController.text, _bodyController.text, 'All', false);
+        _titleController.text, _bodyController.text, _target, false);
     if (ok && mounted) {
       _titleController.clear();
       _bodyController.clear();
@@ -100,11 +120,11 @@ class _PushNotificationScreenState extends State<PushNotificationScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const NoteBox.gold(
-                      icon: Icons.info_outline,
-                      body: 'Push delivery is not active in this '
-                          'build. Messages are recorded but not '
-                          'yet sent to devices.',
+                    const NoteBox.green(
+                      icon: Icons.send,
+                      body: 'Notifications are sent via FCM to '
+                          'subscribed students. Choose a target '
+                          'audience below.',
                     ),
                     const SizedBox(height: 16),
 
@@ -114,6 +134,30 @@ class _PushNotificationScreenState extends State<PushNotificationScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          // Target selector
+                          const Eyebrow('Send to'),
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14),
+                            decoration: BoxDecoration(
+                              gradient: AppColors.glassBg,
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(color: AppColors.glassBorder),
+                            ),
+                            child: DropdownButton<String>(
+                              value: _target,
+                              isExpanded: true,
+                              underline: const SizedBox(),
+                              dropdownColor: AppColors.ivory,
+                              style: AppTheme.body(size: 13.5, color: AppColors.ink),
+                              items: _targets.map((t) => DropdownMenuItem(
+                                value: t.$1,
+                                child: Text(t.$2),
+                              )).toList(),
+                              onChanged: (v) => setState(() => _target = v ?? 'all'),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
                           NiuField(
                             label: 'Title',
                             hint: 'e.g. Test starts in 2 hours',

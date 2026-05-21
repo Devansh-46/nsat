@@ -5,6 +5,7 @@ import '../../theme/app_theme.dart';
 import '../../routes/app_routes.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/test_provider.dart';
+import '../../services/fcm_service.dart';
 import '../../widgets/mesh_background.dart';
 import '../../widgets/glass_card.dart';
 import '../../widgets/eyebrow.dart';
@@ -28,6 +29,8 @@ class _TestCategoryScreenState extends State<TestCategoryScreen> {
       final lead = context.read<AuthProvider>().leadDetails;
       if (lead != null) {
         context.read<TestProvider>().fetchAvailableTest(lead.courseKey);
+        // Subscribe to FCM topics for this student's school
+        FcmService().initializeForStudent(lead.courseKey);
       }
     });
   }

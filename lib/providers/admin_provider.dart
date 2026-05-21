@@ -48,21 +48,15 @@ class AdminProvider extends ChangeNotifier {
     _setLoading(false);
   }
 
-  // --- Notifications: unchanged, still mock until Blaze/FCM ---
+  // --- Notifications: real FCM via Cloud Function ---
 
   Future<bool> sendNotification(
-      String title, String body, String category, bool scheduleLater) async {
+      String title, String body, String target, bool scheduleLater) async {
     _setLoading(true);
     try {
-      await _notificationService.sendPushNotification(
-        title: title,
-        body: body,
-        category: category,
-        scheduleLater: scheduleLater,
-      );
-      _successMessage = scheduleLater
-          ? 'Notification scheduled successfully'
-          : 'Notification pushed successfully';
+      final ok = await _notificationService.send(title, body, target);
+      if (!ok) throw Exception('Send failed');
+      _successMessage = 'Notification sent to ${target == "all" ? "all students" : target}';
       await fetchNotifications();
       _setLoading(false);
       return true;

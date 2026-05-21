@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_theme.dart';
 import '../../routes/app_routes.dart';
@@ -12,10 +13,14 @@ import '../../widgets/niu_field.dart';
 import '../../widgets/niu_button.dart';
 import '../../widgets/note_box.dart';
 
-/// Step 2 — Email OTP verification.
+/// Step 2 — Two-factor verification: Email OTP + Phone OTP.
 ///
-/// Flow: shows masked email → sendOtp Cloud Function → student enters
-/// 6-digit code → verifyOtp Cloud Function → fetchLeadDetails → test.
+/// Flow:
+/// 1. fetchLeadDetails → get email + mobile from NPF
+/// 2. sendOtp Cloud Function → email OTP
+/// 3. Student verifies email OTP
+/// 4. Firebase Auth phone verification → SMS OTP
+/// 5. Student verifies phone OTP → proceed to test
 class EmailVerificationScreen extends StatefulWidget {
   const EmailVerificationScreen({super.key});
 
@@ -24,53 +29,59 @@ class EmailVerificationScreen extends StatefulWidget {
       _EmailVerificationScreenState();
 }
 
+enum _VerifyStage { sendingEmail, emailOtp, sendingPhone, phoneOtp, done }
+
 class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
-  final _otpController = TextEditingController();
-  bool _otpSent = false;
-  bool _sending = false;
-  bool _verifying = false;
+  final _emailOtpController = TextEditingController();
+  final _phoneOtpController = TextEditingController();
+
+  _VerifyStage _stage = _VerifyStage.sendingEmail;
+  bool _busy = false;
   String? _error;
   String? _maskedEmail;
+  String? _maskedPhone;
+  String? _fullPhone;
+
+  // Firebase Auth phone verification
+  String? _verificationId;
+  int? _resendToken;
 
   @override
   void initState() {
     super.initState();
-    // Auto-send OTP on screen load
-    WidgetsBinding.instance.addPostFrameCallback((_) => _sendOtp());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _startEmailOtp());
   }
 
   @override
   void dispose() {
-    _otpController.dispose();
+    _emailOtpController.dispose();
+    _phoneOtpController.dispose();
     super.dispose();
   }
 
-  Future<void> _sendOtp() async {
+  // ── Step 1: Fetch lead details + send email OTP ──
+
+  Future<void> _startEmailOtp() async {
     final auth = context.read<AuthProvider>();
     final student = auth.verifiedStudent;
     if (student == null) return;
 
-    setState(() {
-      _sending = true;
-      _error = null;
-    });
+    setState(() { _stage = _VerifyStage.sendingEmail; _busy = true; _error = null; });
 
     try {
-      // First fetch lead details to get the email
       final leadOk = await auth.fetchLeadDetails();
       if (!mounted) return;
       if (!leadOk) {
-        setState(() {
-          _sending = false;
-          _error = auth.error ?? 'Could not fetch your details.';
-        });
+        setState(() { _busy = false; _error = auth.error ?? 'Could not fetch your details.'; });
         return;
       }
 
       final lead = auth.leadDetails!;
       _maskedEmail = _maskEmail(lead.email);
+      _fullPhone = lead.mobile;
+      _maskedPhone = _maskPhone(lead.mobile);
 
-      // Call sendOtp Cloud Function
+      // Send email OTP
       final callable = FirebaseFunctions.instanceFor(region: 'asia-south1')
           .httpsCallable('sendOtp');
       await callable.call({
@@ -80,27 +91,20 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
       });
 
       if (!mounted) return;
-      setState(() {
-        _sending = false;
-        _otpSent = true;
-      });
+      setState(() { _stage = _VerifyStage.emailOtp; _busy = false; });
     } on FirebaseFunctionsException catch (e) {
       if (!mounted) return;
-      setState(() {
-        _sending = false;
-        _error = e.message ?? 'Failed to send verification code.';
-      });
+      setState(() { _busy = false; _error = e.message ?? 'Failed to send email code.'; });
     } catch (e) {
       if (!mounted) return;
-      setState(() {
-        _sending = false;
-        _error = 'Failed to send verification code. Check your connection.';
-      });
+      setState(() { _busy = false; _error = 'Failed to send email code. Check your connection.'; });
     }
   }
 
-  Future<void> _verifyOtp() async {
-    final code = _otpController.text.trim();
+  // ── Step 2: Verify email OTP ──
+
+  Future<void> _verifyEmailOtp() async {
+    final code = _emailOtpController.text.trim();
     if (code.length != 6) {
       setState(() => _error = 'Please enter the 6-digit code.');
       return;
@@ -110,10 +114,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
     final student = auth.verifiedStudent;
     if (student == null) return;
 
-    setState(() {
-      _verifying = true;
-      _error = null;
-    });
+    setState(() { _busy = true; _error = null; });
 
     try {
       final callable = FirebaseFunctions.instanceFor(region: 'asia-south1')
@@ -124,21 +125,108 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
       });
 
       if (!mounted) return;
-      Navigator.pushReplacementNamed(context, AppRoutes.testCategory);
+      // Email verified — now start phone verification
+      _startPhoneOtp();
     } on FirebaseFunctionsException catch (e) {
       if (!mounted) return;
-      setState(() {
-        _verifying = false;
-        _error = e.message ?? 'Verification failed.';
-      });
+      setState(() { _busy = false; _error = e.message ?? 'Email verification failed.'; });
     } catch (e) {
       if (!mounted) return;
-      setState(() {
-        _verifying = false;
-        _error = 'Verification failed. Check your connection.';
-      });
+      setState(() { _busy = false; _error = 'Email verification failed.'; });
     }
   }
+
+  // ── Step 3: Send phone OTP via Firebase Auth ──
+
+  Future<void> _startPhoneOtp() async {
+    if (_fullPhone == null || _fullPhone!.isEmpty) {
+      // No phone on file — skip phone verification
+      _onFullyVerified();
+      return;
+    }
+
+    setState(() { _stage = _VerifyStage.sendingPhone; _busy = true; _error = null; });
+
+    // Ensure phone has country code
+    String phone = _fullPhone!.trim();
+    if (!phone.startsWith('+')) {
+      phone = '+91$phone'; // Default India
+    }
+
+    await FirebaseAuth.instance.verifyPhoneNumber(
+      phoneNumber: phone,
+      timeout: const Duration(seconds: 60),
+      verificationCompleted: (PhoneAuthCredential credential) async {
+        // Auto-verification (Android auto-read)
+        if (!mounted) return;
+        _onFullyVerified();
+      },
+      verificationFailed: (FirebaseAuthException e) {
+        if (!mounted) return;
+        setState(() {
+          _busy = false;
+          _error = e.message ?? 'Phone verification failed.';
+          _stage = _VerifyStage.phoneOtp; // Let them retry manually
+        });
+      },
+      codeSent: (String verificationId, int? resendToken) {
+        if (!mounted) return;
+        _verificationId = verificationId;
+        _resendToken = resendToken;
+        setState(() { _stage = _VerifyStage.phoneOtp; _busy = false; });
+      },
+      codeAutoRetrievalTimeout: (String verificationId) {
+        _verificationId = verificationId;
+      },
+      forceResendingToken: _resendToken,
+    );
+  }
+
+  // ── Step 4: Verify phone OTP ──
+
+  Future<void> _verifyPhoneOtp() async {
+    final code = _phoneOtpController.text.trim();
+    if (code.length != 6) {
+      setState(() => _error = 'Please enter the 6-digit SMS code.');
+      return;
+    }
+
+    if (_verificationId == null) {
+      setState(() => _error = 'Verification expired. Tap resend.');
+      return;
+    }
+
+    setState(() { _busy = true; _error = null; });
+
+    try {
+      final credential = PhoneAuthProvider.credential(
+        verificationId: _verificationId!,
+        smsCode: code,
+      );
+      // Sign in anonymously first if not signed in, then link
+      // Or just verify the credential
+      await FirebaseAuth.instance.signInWithCredential(credential);
+
+      if (!mounted) return;
+      _onFullyVerified();
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      setState(() { _busy = false; _error = e.message ?? 'Invalid SMS code.'; });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() { _busy = false; _error = 'Phone verification failed.'; });
+    }
+  }
+
+  // ── Both verified → proceed ──
+
+  void _onFullyVerified() {
+    if (!mounted) return;
+    setState(() { _stage = _VerifyStage.done; });
+    Navigator.pushReplacementNamed(context, AppRoutes.testCategory);
+  }
+
+  // ── Helpers ──
 
   String _maskEmail(String email) {
     final parts = email.split('@');
@@ -147,6 +235,11 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
     final domain = parts[1];
     final shown = local.length > 2 ? local.substring(0, 2) : local;
     return '$shown${'*' * (local.length - shown.length)}@$domain';
+  }
+
+  String _maskPhone(String phone) {
+    if (phone.length < 6) return '****';
+    return '${'*' * (phone.length - 4)}${phone.substring(phone.length - 4)}';
   }
 
   @override
@@ -172,16 +265,14 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(color: AppColors.glassBorder),
                     boxShadow: const [
-                      BoxShadow(
-                        color: Color(0x120F2A1F),
-                        offset: Offset(0, 6),
-                        blurRadius: 18,
-                      ),
+                      BoxShadow(color: Color(0x120F2A1F), offset: Offset(0, 6), blurRadius: 18),
                     ],
                   ),
                   alignment: Alignment.center,
-                  child: const Icon(
-                    Icons.mark_email_read_outlined,
+                  child: Icon(
+                    _stage.index >= _VerifyStage.sendingPhone.index
+                        ? Icons.phone_android
+                        : Icons.mark_email_read_outlined,
                     size: 28,
                     color: AppColors.forest,
                   ),
@@ -196,7 +287,9 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'A 6-digit code has been sent to your email.',
+                  _stage.index >= _VerifyStage.sendingPhone.index
+                      ? 'Almost there — verify your phone number.'
+                      : 'A 6-digit code has been sent to your email.',
                   style: AppTheme.body(size: 12.5, color: AppColors.ink4),
                 ),
                 const SizedBox(height: 24),
@@ -207,42 +300,26 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Fee-verified row
+                      // Fee verified row
                       Container(
                         width: double.infinity,
                         padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
                           color: AppColors.forestTint,
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: AppColors.forest.withValues(alpha: 0.15),
-                          ),
+                          border: Border.all(color: AppColors.forest.withValues(alpha: 0.15)),
                         ),
                         child: Row(
                           children: [
-                            const Icon(Icons.check_circle,
-                                size: 18, color: AppColors.forest),
+                            const Icon(Icons.check_circle, size: 18, color: AppColors.forest),
                             const SizedBox(width: 10),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(
-                                    'Fee verified',
-                                    style: AppTheme.body(
-                                      size: 12.5,
-                                      color: AppColors.forest,
-                                      weight: FontWeight.w600,
-                                    ),
-                                  ),
+                                  Text('Fee verified', style: AppTheme.body(size: 12.5, color: AppColors.forest, weight: FontWeight.w600)),
                                   const SizedBox(height: 1),
-                                  Text(
-                                    'NIU ID  ${student?.applicationNo ?? "-"}',
-                                    style: AppTheme.mono(
-                                      size: 11.5,
-                                      color: AppColors.ink3,
-                                    ),
-                                  ),
+                                  Text('NIU ID  ${student?.applicationNo ?? "-"}', style: AppTheme.mono(size: 11.5, color: AppColors.ink3)),
                                 ],
                               ),
                             ),
@@ -251,97 +328,102 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                       ),
                       const SizedBox(height: 16),
 
-                      // Email info
-                      if (_maskedEmail != null) ...[
-                        const Eyebrow('verification email sent to'),
-                        const SizedBox(height: 4),
-                        Text(
-                          _maskedEmail!,
-                          style: AppTheme.mono(
-                              size: 14, color: AppColors.ink),
-                        ),
-                        const SizedBox(height: 16),
-                      ],
+                      // ── Progress indicator ──
+                      Row(
+                        children: [
+                          _StepDot(
+                            label: 'Email',
+                            done: _stage.index >= _VerifyStage.sendingPhone.index,
+                            active: _stage.index < _VerifyStage.sendingPhone.index,
+                          ),
+                          Expanded(child: Container(height: 1, color: AppColors.line2)),
+                          _StepDot(
+                            label: 'Phone',
+                            done: _stage == _VerifyStage.done,
+                            active: _stage.index >= _VerifyStage.sendingPhone.index && _stage != _VerifyStage.done,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
 
-                      if (_sending) ...[
+                      // ── Stage-specific content ──
+                      if (_stage == _VerifyStage.sendingEmail) ...[
                         const SizedBox(height: 20),
-                        const Center(
-                          child: SizedBox(
-                            width: 22,
-                            height: 22,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2.5,
-                              color: AppColors.forest,
-                            ),
-                          ),
-                        ),
+                        const Center(child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: AppColors.forest))),
                         const SizedBox(height: 8),
-                        Center(
-                          child: Text(
-                            'Sending verification code…',
-                            style: AppTheme.body(
-                                size: 12.5, color: AppColors.ink4),
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                      ] else if (_otpSent) ...[
-                        // OTP input
+                        Center(child: Text('Sending verification code…', style: AppTheme.body(size: 12.5, color: AppColors.ink4))),
+                      ]
+
+                      else if (_stage == _VerifyStage.emailOtp) ...[
+                        if (_maskedEmail != null) ...[
+                          const Eyebrow('verification email sent to'),
+                          const SizedBox(height: 4),
+                          Text(_maskedEmail!, style: AppTheme.mono(size: 14, color: AppColors.ink)),
+                          const SizedBox(height: 16),
+                        ],
                         NiuField(
-                          label: 'Verification code',
+                          label: 'Email verification code',
                           hint: '6-digit code',
-                          icon: Icons.lock_outline,
-                          controller: _otpController,
+                          icon: Icons.email_outlined,
+                          controller: _emailOtpController,
                           keyboardType: TextInputType.number,
                           maxLength: 6,
                           errorText: _error,
                         ),
                         const SizedBox(height: 10),
                         GestureDetector(
-                          onTap: _sendOtp,
-                          child: Text(
-                            'Resend code',
-                            style: AppTheme.body(
-                              size: 12,
-                              color: AppColors.forest,
-                              weight: FontWeight.w600,
-                            ).copyWith(
-                              decoration: TextDecoration.underline,
-                            ),
-                          ),
+                          onTap: _startEmailOtp,
+                          child: Text('Resend code', style: AppTheme.body(size: 12, color: AppColors.forest, weight: FontWeight.w600).copyWith(decoration: TextDecoration.underline)),
                         ),
                         const SizedBox(height: 20),
+                        _busy
+                            ? const SizedBox(height: 48, child: Center(child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: AppColors.forest))))
+                            : NiuButton(label: 'Verify email', showArrow: true, onTap: _verifyEmailOtp),
+                      ]
 
-                        if (_verifying)
-                          const SizedBox(
-                            height: 48,
-                            child: Center(
-                              child: SizedBox(
-                                width: 22,
-                                height: 22,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2.5,
-                                  color: AppColors.forest,
-                                ),
-                              ),
-                            ),
-                          )
-                        else
-                          NiuButton(
-                            label: 'Verify & continue',
-                            showArrow: true,
-                            onTap: _verifyOtp,
-                          ),
-                      ] else if (_error != null) ...[
-                        NoteBox.clay(
-                          icon: Icons.error_outline,
-                          body: _error!,
-                        ),
+                      else if (_stage == _VerifyStage.sendingPhone) ...[
+                        const NoteBox.green(icon: Icons.check_circle, body: 'Email verified successfully!'),
                         const SizedBox(height: 16),
-                        NiuButton(
-                          label: 'Retry',
-                          variant: NiuButtonVariant.outline,
-                          onTap: _sendOtp,
+                        const Center(child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: AppColors.forest))),
+                        const SizedBox(height: 8),
+                        Center(child: Text('Sending SMS code…', style: AppTheme.body(size: 12.5, color: AppColors.ink4))),
+                      ]
+
+                      else if (_stage == _VerifyStage.phoneOtp) ...[
+                        const NoteBox.green(icon: Icons.check_circle, body: 'Email verified successfully!'),
+                        const SizedBox(height: 16),
+                        if (_maskedPhone != null) ...[
+                          const Eyebrow('sms sent to'),
+                          const SizedBox(height: 4),
+                          Text(_maskedPhone!, style: AppTheme.mono(size: 14, color: AppColors.ink)),
+                          const SizedBox(height: 16),
+                        ],
+                        NiuField(
+                          label: 'SMS verification code',
+                          hint: '6-digit code',
+                          icon: Icons.phone_android,
+                          controller: _phoneOtpController,
+                          keyboardType: TextInputType.number,
+                          maxLength: 6,
+                          errorText: _error,
                         ),
+                        const SizedBox(height: 10),
+                        GestureDetector(
+                          onTap: _startPhoneOtp,
+                          child: Text('Resend SMS', style: AppTheme.body(size: 12, color: AppColors.forest, weight: FontWeight.w600).copyWith(decoration: TextDecoration.underline)),
+                        ),
+                        const SizedBox(height: 20),
+                        _busy
+                            ? const SizedBox(height: 48, child: Center(child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: AppColors.forest))))
+                            : NiuButton(label: 'Verify & continue', showArrow: true, variant: NiuButtonVariant.forest, onTap: _verifyPhoneOtp),
+                      ],
+
+                      // ── Error fallback (for sendingEmail failures) ──
+                      if (_error != null && (_stage == _VerifyStage.sendingEmail)) ...[
+                        const SizedBox(height: 16),
+                        NoteBox.clay(icon: Icons.error_outline, body: _error!),
+                        const SizedBox(height: 16),
+                        NiuButton(label: 'Retry', variant: NiuButtonVariant.outline, onTap: _startEmailOtp),
                       ],
                     ],
                   ),
@@ -357,6 +439,40 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
     );
   }
 }
+
+// ── Mini step dot for email/phone progress ──
+
+class _StepDot extends StatelessWidget {
+  final String label;
+  final bool done;
+  final bool active;
+  const _StepDot({required this.label, required this.done, required this.active});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Container(
+          width: 28, height: 28,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: done ? AppColors.forest : active ? AppColors.forestTint : AppColors.bone,
+            border: Border.all(color: done || active ? AppColors.forest : AppColors.line, width: 1.5),
+          ),
+          child: done
+              ? const Icon(Icons.check, size: 14, color: Colors.white)
+              : active
+                  ? const Icon(Icons.circle, size: 8, color: AppColors.forest)
+                  : null,
+        ),
+        const SizedBox(height: 4),
+        Text(label, style: AppTheme.body(size: 10, color: done || active ? AppColors.forest : AppColors.ink4, weight: done || active ? FontWeight.w600 : FontWeight.w400)),
+      ],
+    );
+  }
+}
+
+// ── Step indicator ──
 
 class _StepIndicator extends StatelessWidget {
   final int current;
@@ -374,8 +490,7 @@ class _StepIndicator extends StatelessWidget {
             return AnimatedContainer(
               duration: const Duration(milliseconds: 250),
               margin: const EdgeInsets.symmetric(horizontal: 3),
-              width: active ? 22 : 7,
-              height: 7,
+              width: active ? 22 : 7, height: 7,
               decoration: BoxDecoration(
                 color: active ? AppColors.forest : AppColors.bone,
                 borderRadius: BorderRadius.circular(4),
@@ -388,25 +503,11 @@ class _StepIndicator extends StatelessWidget {
           TextSpan(
             style: AppTheme.body(size: 11.5, color: AppColors.ink4),
             children: [
-              TextSpan(
-                text: 'Step ${current + 1} of 4',
-                style: AppTheme.body(
-                  size: 11.5,
-                  color: AppColors.ink3,
-                  weight: FontWeight.w600,
-                ),
-              ),
+              TextSpan(text: 'Step ${current + 1} of 4', style: AppTheme.body(size: 11.5, color: AppColors.ink3, weight: FontWeight.w600)),
               const TextSpan(text: '  ·  '),
               for (int i = 0; i < _labels.length; i++) ...[
                 if (i > 0) const TextSpan(text: '  ›  '),
-                TextSpan(
-                  text: _labels[i],
-                  style: AppTheme.body(
-                    size: 11.5,
-                    color: i == current ? AppColors.forest : AppColors.ink4,
-                    weight: i == current ? FontWeight.w600 : FontWeight.w400,
-                  ),
-                ),
+                TextSpan(text: _labels[i], style: AppTheme.body(size: 11.5, color: i == current ? AppColors.forest : AppColors.ink4, weight: i == current ? FontWeight.w600 : FontWeight.w400)),
               ],
             ],
           ),
