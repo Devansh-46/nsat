@@ -7,7 +7,7 @@
 [![Flutter](https://img.shields.io/badge/Flutter-3.41-02569B?logo=flutter&logoColor=white)](https://flutter.dev)
 [![Firebase](https://img.shields.io/badge/Firebase-Blaze-FFCA28?logo=firebase&logoColor=black)](https://firebase.google.com)
 [![Platform](https://img.shields.io/badge/Platform-Android%20%7C%20Web%20%7C%20iOS-blueviolet)]()
-[![Functions](https://img.shields.io/badge/Cloud%20Functions-5%20deployed-4285F4?logo=googlecloud&logoColor=white)]()
+[![Functions](https://img.shields.io/badge/Cloud%20Functions-7%20deployed-4285F4?logo=googlecloud&logoColor=white)]()
 [![NPF Sync](https://img.shields.io/badge/NPF%20Sync-Live-brightgreen)]()
 [![Status](https://img.shields.io/badge/Status-Pre--Launch-brightgreen)]()
 
@@ -40,6 +40,17 @@ Built once in **Flutter**, runs on **Android, Web, and iOS** from a single codeb
 | 📋 **Admin Dashboard** | Real-time Firestore-backed stats, results list with course filtering, CSV export. |
 | 🎨 **Verdant Daylight UI** | Custom design system — mesh backgrounds, glass-morphism cards, Instrument Serif typography. |
 | 🌐 **Cross-Platform** | Single codebase for Android, Web, and iOS. |
+| ✍️ **Short-Answer Questions** | Descriptive questions with configurable min/max word count and live word counter. |
+| 📱 **FCM Push Notifications** | Topic-based push notifications to all students or per-school (17 school topics). |
+| 🏫 **Multi-School Support** | 17 school/course keys: SET, SBM, SOAHS, SOS, SOLLA, SJMC, SOLA, SOFAD, SOE, SOP, SON (UG/PG). |
+| ➖ **Negative Marking** | Configurable wrong-answer penalty per test configuration. |
+| 🔑 **Admin Custom Claims** | Role-based access control via Firebase Auth custom claims + email whitelist. |
+| 📤 **CSV Export** | Export results with NIU ID, name, course, correct/wrong/skipped, net/max score, timestamp. |
+| 📥 **Bulk CSV Import** | Import historical student data before auto-sync (`import_students_csv.py` with dry-run). |
+| 💾 **Offline Persistence** | SharedPreferences for test results, configs, and notification history. |
+| 👥 **Role Selection** | Separate entry points for student and admin users at app launch. |
+| 🏷️ **Question Topic Tagging** | Optional topic field on questions for finer categorization. |
+| 🕐 **Sync Metadata** | `_meta` collection tracks last successful NPF sync timestamp. |
 
 ---
 
@@ -85,7 +96,7 @@ Built once in **Flutter**, runs on **Android, Web, and iOS** from a single codeb
 
 ## ☁️ Cloud Functions
 
-All 5 functions deployed in `asia-south1`.
+All 7 functions deployed in `asia-south1`.
 
 | Function | Type | Purpose |
 |---|---|---|
@@ -94,6 +105,9 @@ All 5 functions deployed in `asia-south1`.
 | `sendOtp` | Callable | Generates 6-digit code, SHA-256 hashes to `otps`, sends email via SMTP |
 | `verifyOtp` | Callable | Validates hash, enforces 5-attempt limit and 10-min expiry |
 | `scoreSubmission` | Callable | Reads questions server-side, scores answers, writes result, flips attempt lock |
+| `sendNotification` | Callable | Sends FCM push to topic (`all_students` or `school_{key}`), writes to `notifications` collection |
+| `setAdminClaim` | Callable | Sets `admin` custom claim on a Firebase Auth user (requires existing admin + email whitelist) |
+| `removeAdminClaim` | Callable | Removes `admin` custom claim from a Firebase Auth user (requires existing admin) |
 
 ### Environment Variables (`functions/.env`)
 
@@ -120,6 +134,7 @@ OTP_FROM_NAME=NSAT NIU
 | `results` | Score breakdown per submission | Auto | Cloud Function |
 | `attempts` | One-attempt lock (`in_progress` → `completed`) | `application_no` | Client + Cloud Function |
 | `otps` | Hashed 6-digit codes (10-min TTL) | `application_no` | Cloud Function |
+| `notifications` | Notification history (title, body, target, timestamp) | Auto | Cloud Function |
 | `_meta` | Sync metadata (last successful sync timestamp) | `npfSync` | Cloud Function |
 
 ---
@@ -130,21 +145,22 @@ OTP_FROM_NAME=NSAT NIU
 nsat/
 ├── lib/
 │   ├── main.dart
-│   ├── models/           # StudentModel, LeadDetailsModel, TestModel, etc.
+│   ├── models/           # StudentModel, LeadDetailsModel, TestModel, QuestionModel (MCQ + short-answer), etc.
 │   ├── providers/        # AuthProvider, TestProvider, AdminProvider
-│   ├── services/         # Firestore + Cloud Function service layer
+│   ├── services/         # Firestore + Cloud Function service layer, FCM, notifications, CSV export
 │   ├── screens/
-│   │   ├── student/      # 6 screens: login → OTP → test → result
-│   │   └── admin/        # 4 screens: login, dashboard, results, notifications
-│   ├── widgets/          # MeshBackground, GlassCard, Eyebrow, NoteBox, NiuButton, NiuField
+│   │   ├── student/      # 7 screens: role selection → login → fee gate → OTP → test category → live test → result
+│   │   └── admin/        # 4 screens: login, dashboard, results, push notifications
+│   ├── widgets/          # MeshBackground, GlassCard, Eyebrow, NoteBox, NiuButton, NiuField, StatCard, NiuAppBar
 │   ├── theme/            # AppColors (61 tokens), AppTheme (3 font families)
 │   └── routes/
 ├── functions/            # TypeScript Cloud Functions
-│   └── src/              # syncStudents, fetchLeadDetails, otp, scoreSubmission
+│   └── src/              # syncStudents, fetchLeadDetails, otp, scoreSubmission, sendNotification, adminClaims
 ├── firebase.json
 ├── firestore.rules       # Tightened security rules
 ├── seed_firestore.py     # Question bank seeder (Excel → Firestore)
 ├── import_students_csv.py # Bulk CSV import for historical students
+├── setup_admin.py        # Bootstrap first Firebase admin user with custom claims
 └── pubspec.yaml
 ```
 
@@ -219,10 +235,14 @@ python import_students_csv.py students_export.csv             # Import
 ✅ Timed test flow<br>
 ✅ Server-side scoring<br>
 ✅ One-attempt lock (crash-safe)<br>
-✅ Verdant Daylight UI (10 screens)<br>
+✅ Verdant Daylight UI (11 screens)<br>
 ✅ Admin dashboard + CSV export<br>
 ✅ Firestore security rules<br>
 ✅ Android + Web<br>
+✅ FCM push notifications (topic-based)<br>
+✅ Short-answer questions with word count<br>
+✅ Admin custom claims + management<br>
+✅ Bulk CSV import script<br>
 🔧 End-to-end testing<br>
 🔧 APK build + distribution
 
@@ -232,7 +252,6 @@ python import_students_csv.py students_export.csv             # Import
 📋 iOS release<br>
 📋 Admin test/question CRUD<br>
 📋 NPF result write-back<br>
-📋 FCM push notifications<br>
 📋 PDF scorecard download<br>
 📋 Network-loss retry on submit
 
@@ -246,16 +265,20 @@ python import_students_csv.py students_export.csv             # Import
 
 | Component | Status |
 |---|---|
-| UI — 10 screens (Verdant Daylight) | ✅ |
-| Design system — 6 widgets + theme | ✅ |
+| UI — 11 screens (Verdant Daylight) | ✅ |
+| Design system — 8 widgets + theme | ✅ |
 | Firebase Blaze + Firestore | ✅ |
-| Cloud Functions — 5 deployed | ✅ |
+| Cloud Functions — 7 deployed | ✅ |
 | NPF sync — live, paginated | ✅ |
 | Email OTP — send + verify | ✅ |
 | Server-side scoring | ✅ |
 | Security rules — tightened | ✅ |
 | Question bank — B.Tech (30 Q) | ✅ |
+| Short-answer questions | ✅ |
+| FCM push notifications | ✅ |
+| Admin custom claims | ✅ |
 | CSV bulk import script | ✅ |
+| Admin setup script | ✅ |
 | Release APK | 🔧 |
 | Google Play listing | 📋 |
 | iOS build | 📋 |
