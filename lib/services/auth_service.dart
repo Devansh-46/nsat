@@ -1,9 +1,12 @@
+import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import '../models/user_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'data_store.dart';
 
 class AuthService {
   final DataStore _dataStore = DataStore();
+  final firebase_auth.FirebaseAuth _firebaseAuth =
+      firebase_auth.FirebaseAuth.instance;
 
   Future<UserModel> studentLogin(String accsoftId) async {
     if (accsoftId.isEmpty) {
@@ -19,17 +22,43 @@ class AuthService {
   }
 
   Future<UserModel> adminLogin(String email, String password) async {
-    await Future.delayed(const Duration(seconds: 1)); // Simulate network
+    try {
+      final credential = await _firebaseAuth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
 
-    if (email == 'admin@niu.edu.in' && password == 'admin123') {
+      if (credential.user == null) {
+        throw Exception('Authentication failed');
+      }
+
+      final tokenResult = await credential.user!.getIdTokenResult(true);
+      final isAdmin = tokenResult.claims?['admin'] == true;
+
+      if (!isAdmin) {
+        await _firebaseAuth.signOut();
+        throw Exception('Unauthorized: Admin access only');
+      }
+
       return UserModel(
-        id: 'admin_1',
+        id: credential.user!.uid,
         accsoftId: 'admin',
         name: 'NIU Administrator',
         role: 'admin',
       );
-    } else {
-      throw Exception('Invalid admin credentials');
+    } on firebase_auth.FirebaseAuthException catch (e) {
+      switch (e.code) {
+        case 'user-not-found':
+          throw Exception('No admin account found with this email');
+        case 'wrong-password':
+          throw Exception('Incorrect password');
+        case 'invalid-email':
+          throw Exception('Invalid email format');
+        case 'too-many-requests':
+          throw Exception('Too many attempts. Please try again later');
+        default:
+          throw Exception('Login failed: ${e.message}');
+      }
     }
   }
 
@@ -68,5 +97,6 @@ class AuthService {
   Future<void> clearSession() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
+    await _firebaseAuth.signOut();
   }
 }

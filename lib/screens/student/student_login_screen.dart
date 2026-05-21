@@ -217,13 +217,13 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
       );
     }
     if (outcome == FeeGateOutcome.notApproved) {
-      return const NoteBox.gold(
-        icon: Icons.schedule,
-        title: 'Payment pending',
-        body: "We found your NIU ID, but your application fee hasn't "
-            "been confirmed as paid yet. If you've already paid, "
-            'please check again later or contact your admission counsellor.',
-      );
+      return NoteBox.gold(
+  icon: Icons.schedule,
+  title: 'Payment pending',
+  body:
+  "We found your NIU ID, but your application fee hasn't been confirmed as paid yet (Pay your fees https://admissions.niu.edu.in). If you've already paid, please check again later or contact your admission counsellor.",
+
+);
     }
     if (outcome == FeeGateOutcome.notFound) {
       return const NoteBox.clay(

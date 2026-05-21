@@ -7,3 +7,4 @@ export { fetchLeadDetails } from "./fetchLeadDetails";
 export { sendOtp, verifyOtp } from "./otp";
 export { scoreSubmission } from "./scoreSubmission";
 export { sendNotification } from "./sendNotification";
+export { setAdminClaim, removeAdminClaim } from "./adminClaims";

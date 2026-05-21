@@ -1,3 +1,13 @@
+// ─── Admin allowlist ───────────────────────────────────────────────
+// Only emails in this list can be granted admin custom claims.
+// Set in functions/.env:
+//   ADMIN_EMAILS=admin1@niu.edu.in,admin2@niu.edu.in
+export const ALLOWED_ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? "")
+  .split(",")
+  .map((e) => e.trim())
+  .filter((e) => e.length > 0);
+
+
 // ─── NPF API credentials ───────────────────────────────────────────
 // NPF uses access-key + secret-key passed as query params or headers.
 // Set in functions/.env:
