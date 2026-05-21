@@ -122,6 +122,10 @@ export const scoreSubmission = onCall(
       `(net: ${netScore}/${maxScore})`
     );
 
+    // Whether students should see their score breakdown.
+    // Defaults to true for backward compat with tests that don't have the field.
+    const showResults = test.showResults !== false;
+
     return {
       resultId: resultRef.id,
       correctCount: correct,
@@ -129,6 +133,7 @@ export const scoreSubmission = onCall(
       skippedCount: skipped,
       netScore,
       maxScore,
+      showResults,
     };
   }
 );

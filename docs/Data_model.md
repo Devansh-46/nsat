@@ -69,6 +69,7 @@ One document per course's test configuration.
 | `negativeMarking`       | boolean | Whether wrong answers lose marks. |
 | `negativeMarksPerWrong` | number  | Marks deducted per wrong answer. `0` if no negative marking. |
 | `isPublished`           | boolean | If `true`, the test is live for students. |
+| `showResults`           | boolean | If `true`, students see their score breakdown after submission. If `false`, they see a "thank you" screen and results are shared separately. Defaults to `true`. |
 
 ---
 

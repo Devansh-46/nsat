@@ -19,8 +19,10 @@ class ResultScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final session = context.watch<TestProvider>().currentSession;
+    final testProvider = context.watch<TestProvider>();
+    final session = testProvider.currentSession;
     final lead = context.watch<AuthProvider>().leadDetails;
+    final showScores = testProvider.showResults;
 
     if (session == null) {
       return Scaffold(
@@ -103,135 +105,204 @@ class ResultScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 20),
 
-                // ── Score card ──
-                GlassCard(
-                  padding: const EdgeInsets.all(20),
-                  child: Row(
+                // ── Scores or withheld message ──
+                if (showScores) ...[
+                  // ── Score card ──
+                  GlassCard(
+                    padding: const EdgeInsets.all(20),
+                    child: Row(
+                      children: [
+                        _ScoreRing(
+                          fraction: session.maxScore > 0
+                              ? (session.netScore / session.maxScore)
+                                  .clamp(0.0, 1.0)
+                              : 0.0,
+                          centerTop: session.netScore.toStringAsFixed(
+                              session.netScore % 1 == 0 ? 0 : 1),
+                          centerBottom:
+                              'of ${session.maxScore.toStringAsFixed(0)}',
+                        ),
+                        const SizedBox(width: 20),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Eyebrow('score'),
+                              const SizedBox(height: 4),
+                              Text(
+                                pctText,
+                                style: AppTheme.mono(
+                                    size: 28, color: AppColors.forest),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Net score after negative marking. '
+                                'Your result has been recorded.',
+                                style: AppTheme.body(
+                                    size: 11.5, color: AppColors.ink3),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // ── Stat grid ──
+                  Row(
                     children: [
-                      _ScoreRing(
-                        fraction: session.maxScore > 0
-                            ? (session.netScore / session.maxScore)
-                                .clamp(0.0, 1.0)
-                            : 0.0,
-                        centerTop: session.netScore.toStringAsFixed(
-                            session.netScore % 1 == 0 ? 0 : 1),
-                        centerBottom:
-                            'of ${session.maxScore.toStringAsFixed(0)}',
-                      ),
-                      const SizedBox(width: 20),
                       Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Eyebrow('score'),
-                            const SizedBox(height: 4),
-                            Text(
-                              pctText,
-                              style: AppTheme.mono(
-                                  size: 28, color: AppColors.forest),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Net score after negative marking. '
-                              'Your result has been recorded.',
-                              style: AppTheme.body(
-                                  size: 11.5, color: AppColors.ink3),
-                            ),
-                          ],
+                        child: _StatTile(
+                          icon: Icons.check,
+                          tint: AppColors.forestTint,
+                          iconColor: AppColors.forest,
+                          value: '${session.correctCount}',
+                          label: 'Correct',
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _StatTile(
+                          icon: Icons.close,
+                          tint: AppColors.clayTint,
+                          iconColor: AppColors.clay,
+                          value: '${session.wrongCount}',
+                          label: 'Incorrect',
                         ),
                       ),
                     ],
                   ),
-                ),
-                const SizedBox(height: 12),
-
-                // ── Stat grid ──
-                Row(
-                  children: [
-                    Expanded(
-                      child: _StatTile(
-                        icon: Icons.check,
-                        tint: AppColors.forestTint,
-                        iconColor: AppColors.forest,
-                        value: '${session.correctCount}',
-                        label: 'Correct',
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _StatTile(
-                        icon: Icons.close,
-                        tint: AppColors.clayTint,
-                        iconColor: AppColors.clay,
-                        value: '${session.wrongCount}',
-                        label: 'Incorrect',
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _StatTile(
-                        icon: Icons.remove,
-                        tint: AppColors.bone,
-                        iconColor: AppColors.ink4,
-                        value: '${session.skippedCount}',
-                        label: 'Skipped',
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _StatTile(
-                        icon: Icons.task_alt,
-                        tint: AppColors.forestTint,
-                        iconColor: AppColors.forest,
-                        value: '${session.answeredCount}',
-                        label: 'Answered',
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-
-                // ── Detail rows ──
-                GlassCard(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 6),
-                  radius: 16,
-                  child: Column(
+                  const SizedBox(height: 10),
+                  Row(
                     children: [
-                      _DetailRow(
-                          label: 'Test', value: session.categoryName),
-                      _divider(),
-                      _DetailRow(
-                          label: 'Total questions',
-                          value: '${session.totalQuestions}'),
-                      _divider(),
-                      _DetailRow(
-                        label: 'Marking',
-                        value:
-                            '+${session.marksPerQuestion.toStringAsFixed(0)} '
-                            'correct · '
-                            '-${session.negativeMarksPerWrong.toStringAsFixed(2)} '
-                            'wrong',
+                      Expanded(
+                        child: _StatTile(
+                          icon: Icons.remove,
+                          tint: AppColors.bone,
+                          iconColor: AppColors.ink4,
+                          value: '${session.skippedCount}',
+                          label: 'Skipped',
+                        ),
                       ),
-                      _divider(),
-                      _DetailRow(
-                          label: 'Submitted', value: submittedText),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _StatTile(
+                          icon: Icons.task_alt,
+                          tint: AppColors.forestTint,
+                          iconColor: AppColors.forest,
+                          value: '${session.answeredCount}',
+                          label: 'Answered',
+                        ),
+                      ),
                     ],
                   ),
-                ),
-                const SizedBox(height: 14),
+                  const SizedBox(height: 14),
 
-                // ── Disclaimer ──
-                const NoteBox.gold(
-                  icon: Icons.info_outline,
-                  body: 'This is your test score only. Admission '
-                      'decisions are made separately by the NIU '
-                      'admissions team.',
-                ),
+                  // ── Detail rows ──
+                  GlassCard(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 6),
+                    radius: 16,
+                    child: Column(
+                      children: [
+                        _DetailRow(
+                            label: 'Test', value: session.categoryName),
+                        _divider(),
+                        _DetailRow(
+                            label: 'Total questions',
+                            value: '${session.totalQuestions}'),
+                        _divider(),
+                        _DetailRow(
+                          label: 'Marking',
+                          value:
+                              '+${session.marksPerQuestion.toStringAsFixed(0)} '
+                              'correct · '
+                              '-${session.negativeMarksPerWrong.toStringAsFixed(2)} '
+                              'wrong',
+                        ),
+                        _divider(),
+                        _DetailRow(
+                            label: 'Submitted', value: submittedText),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  // ── Disclaimer ──
+                  const NoteBox.gold(
+                    icon: Icons.info_outline,
+                    body: 'This is your test score only. Admission '
+                        'decisions are made separately by the NIU '
+                        'admissions team.',
+                  ),
+                ] else ...[
+                  // ── Results withheld ──
+                  GlassCard(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      children: [
+                        Container(
+                          width: 56,
+                          height: 56,
+                          decoration: BoxDecoration(
+                            color: AppColors.forestTint,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: const Icon(
+                            Icons.check_circle_outline,
+                            size: 30,
+                            color: AppColors.forest,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Thank you!',
+                          style: AppTheme.display(
+                              size: 22, color: AppColors.forest),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Your answers have been recorded successfully. '
+                          'Results for this test will be shared by the '
+                          'NIU admissions team separately.',
+                          textAlign: TextAlign.center,
+                          style: AppTheme.body(
+                              size: 13, color: AppColors.ink3),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  // ── Minimal detail rows (no scores) ──
+                  GlassCard(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 6),
+                    radius: 16,
+                    child: Column(
+                      children: [
+                        _DetailRow(
+                            label: 'Test', value: session.categoryName),
+                        _divider(),
+                        _DetailRow(
+                            label: 'Questions attempted',
+                            value: '${session.answeredCount} of ${session.totalQuestions}'),
+                        _divider(),
+                        _DetailRow(
+                            label: 'Submitted', value: submittedText),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  const NoteBox.gold(
+                    icon: Icons.info_outline,
+                    body: 'Results will be communicated by the '
+                        'NIU admissions office. Please check your '
+                        'registered email for updates.',
+                  ),
+                ],
                 const SizedBox(height: 20),
 
                 NiuButton(

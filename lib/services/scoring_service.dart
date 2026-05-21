@@ -11,6 +11,9 @@ class ScoreResult {
   final double netScore;
   final double maxScore;
 
+  /// Whether this test is configured to show results to students.
+  final bool showResults;
+
   ScoreResult({
     this.resultId,
     required this.correctCount,
@@ -18,6 +21,7 @@ class ScoreResult {
     required this.skippedCount,
     required this.netScore,
     required this.maxScore,
+    this.showResults = true,
   });
 }
 
@@ -61,6 +65,7 @@ class ScoringService {
       skippedCount: (data['skippedCount'] ?? 0) as int,
       netScore: (data['netScore'] ?? 0.0).toDouble(),
       maxScore: (data['maxScore'] ?? 0.0).toDouble(),
+      showResults: data['showResults'] ?? true,
     );
   }
 }

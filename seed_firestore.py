@@ -243,6 +243,8 @@ def parse_tests(workbook):
     for i, row in enumerate(ws.iter_rows(min_row=2, values_only=True)):
         (course_raw, title, qcount, duration, marks,
          neg_marking, neg_marks, published) = row[:8]
+        # Optional 9th column: show_results (defaults to Yes)
+        show_results_raw = row[8] if len(row) > 8 and row[8] is not None else "yes"
         if course_raw in (None, ""):
             continue
 
@@ -268,6 +270,7 @@ def parse_tests(workbook):
             "negativeMarking": yes_no(neg_marking, "negative_marking"),
             "negativeMarksPerWrong": float(neg_marks),
             "isPublished": yes_no(published, "published"),
+            "showResults": yes_no(show_results_raw, "show_results"),
         })
     return out
 

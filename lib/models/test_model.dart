@@ -11,6 +11,12 @@ class TestModel {
   final double negativeMarksPerWrong;
   final bool isPublished;
 
+  /// Whether students see their score breakdown after submission.
+  /// When `false`, students see a "submitted successfully" screen
+  /// without scores. Admins still see all results in the dashboard.
+  /// Defaults to `true` for backward compatibility.
+  final bool showResults;
+
   TestModel({
     required this.id,
     required this.title,
@@ -21,6 +27,7 @@ class TestModel {
     required this.negativeMarking,
     required this.negativeMarksPerWrong,
     required this.isPublished,
+    this.showResults = true,
   });
 
   double get effectiveNegativeMarks =>
@@ -38,6 +45,7 @@ class TestModel {
       negativeMarking: data['negativeMarking'] ?? false,
       negativeMarksPerWrong: (data['negativeMarksPerWrong'] ?? 0.0).toDouble(),
       isPublished: data['isPublished'] ?? false,
+      showResults: data['showResults'] ?? true,
     );
   }
 
@@ -50,5 +58,6 @@ class TestModel {
         'negativeMarking': negativeMarking,
         'negativeMarksPerWrong': negativeMarksPerWrong,
         'isPublished': isPublished,
+        'showResults': showResults,
       };
 }

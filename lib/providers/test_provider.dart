@@ -36,6 +36,9 @@ class TestProvider extends ChangeNotifier {
   /// The result document ID, available after a successful submission.
   String? _savedResultId;
 
+  /// Whether the current test is configured to show results to students.
+  bool _showResults = true;
+
   TestSessionModel? get currentSession => _currentSession;
   TestModel? get availableTest => _availableTest;
   bool get isLoading => _isLoading;
@@ -43,6 +46,9 @@ class TestProvider extends ChangeNotifier {
   bool get alreadyCompleted => _alreadyCompleted;
   bool get hasResumableAttempt => _hasResumableAttempt;
   String? get savedResultId => _savedResultId;
+
+  /// True when the test allows students to see their score breakdown.
+  bool get showResults => _showResults;
 
   /// Loads the published test for a course. [course] is the canonical
   /// course key (e.g. "btech").
@@ -188,6 +194,7 @@ class TestProvider extends ChangeNotifier {
       );
 
       _savedResultId = score.resultId;
+      _showResults = score.showResults;
 
       // Update session with server-returned scores for the result screen.
       session.setServerScores(
@@ -213,6 +220,7 @@ class TestProvider extends ChangeNotifier {
     _alreadyCompleted = false;
     _hasResumableAttempt = false;
     _savedResultId = null;
+    _showResults = true;
     notifyListeners();
   }
 
