@@ -11,7 +11,7 @@ import '../../widgets/glass_card.dart';
 import '../../widgets/eyebrow.dart';
 import '../../widgets/niu_button.dart';
 import '../../widgets/note_box.dart';
-
+import '../../services/remote_config_service.dart';
 /// Step 3 — Shows the student's published test and lets them start it.
 /// Identity from AuthProvider (verifiedStudent + leadDetails).
 class TestCategoryScreen extends StatefulWidget {
@@ -36,6 +36,29 @@ class _TestCategoryScreenState extends State<TestCategoryScreen> {
   }
 
   void _startTest() async {
+    // Check if exam window is open
+    await RemoteConfigService.instance.refresh();
+    final rc = RemoteConfigService.instance;
+
+    if (!mounted) return;
+
+    if (rc.isMaintenanceMode) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(rc.maintenanceMessage)),
+      );
+      return;
+    }
+
+    if (!rc.isExamWindowOpen) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('The exam window is currently closed. '
+              'Please wait for the scheduled time.'),
+        ),
+      );
+      return;
+    }
+
     final auth = context.read<AuthProvider>();
     final testProvider = context.read<TestProvider>();
 

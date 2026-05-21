@@ -10,6 +10,7 @@ import '../../widgets/eyebrow.dart';
 import '../../widgets/niu_field.dart';
 import '../../widgets/niu_button.dart';
 import '../../widgets/note_box.dart';
+import '../../services/remote_config_service.dart';
 
 /// Step 1 — NIU ID entry + fee gate.
 ///
@@ -33,6 +34,19 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
 
   Future<void> _continue() async {
     FocusScope.of(context).unfocus();
+
+    // Refresh Remote Config and check maintenance mode
+    await RemoteConfigService.instance.refresh();
+    final rc = RemoteConfigService.instance;
+
+    if (rc.isMaintenanceMode) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(rc.maintenanceMessage)),
+      );
+      return;
+    }
+
     final provider = context.read<AuthProvider>();
     final outcome = await provider.checkNiuIdFeeGate(_idController.text);
     if (!mounted) return;

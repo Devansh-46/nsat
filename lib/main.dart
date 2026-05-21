@@ -1,7 +1,11 @@
+import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'firebase_options.dart';
+import 'services/remote_config_service.dart';
 import 'providers/auth_provider.dart';
 import 'providers/test_provider.dart';
 import 'providers/admin_provider.dart';
@@ -24,6 +28,22 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  // --- Crashlytics setup (mobile only — not supported on web) ---
+  if (!kIsWeb) {
+    // Catch Flutter framework errors (widget build failures, etc.)
+    FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+
+    // Catch async errors not handled by Flutter framework
+    PlatformDispatcher.instance.onError = (error, stack) {
+      FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+      return true;
+    };
+  }
+
+  // --- Remote Config setup ---
+  await RemoteConfigService.instance.init();
+
   runApp(
     MultiProvider(
       providers: [

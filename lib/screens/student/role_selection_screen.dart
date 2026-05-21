@@ -6,6 +6,8 @@ import '../../widgets/mesh_background.dart';
 import '../../widgets/glass_card.dart';
 import '../../widgets/eyebrow.dart';
 import '../../widgets/niu_button.dart';
+import '../../widgets/note_box.dart';
+import '../../services/remote_config_service.dart';
 
 /// App entry point — choose Student or Admin.
 /// Verdant Daylight reskin.
@@ -91,6 +93,17 @@ class RoleSelectionScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 28),
+
+                  // ── Maintenance banner (if active) ──
+                  if (RemoteConfigService.instance.isMaintenanceMode)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 14),
+                      child: NoteBox.gold(
+                        icon: Icons.construction_rounded,
+                        title: 'Maintenance',
+                        body: RemoteConfigService.instance.maintenanceMessage,
+                      ),
+                    ),
 
                   // ── Role card ──
                   GlassCard(

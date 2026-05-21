@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Privacy Policy — NSAT | Noida International University</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-base: #F4EFE3;
+    --ivory: #F4EFE3;
+    --ink: #0F2A1F;
+    --ink2: #1F3D2E;
+    --ink3: #4A5C50;
+    --ink4: #7C8B7F;
+    --ink5: #B9C2B7;
+    --forest: #2C6B42;
+    --forest2: #3E8E5A;
+    --gold: #C9A227;
+    --glass-border: rgba(255,255,255,0.78);
+    --glass-bg: linear-gradient(135deg, rgba(255,254,250,0.66), rgba(255,254,250,0.40));
+    --bone: rgba(15,42,31,0.04);
+    --line: rgba(15,42,31,0.12);
+    --forest-tint: rgba(44,107,66,0.10);
+    --gold-tint: rgba(201,162,39,0.14);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background-color: var(--bg-base);
+    color: var(--ink);
+    min-height: 100vh;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  /* Mesh background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: -10%;
+    background:
+      radial-gradient(ellipse 60% 50% at 15% 12%, #F8E8D4 0%, transparent 60%),
+      radial-gradient(ellipse 55% 50% at 88% 18%, #DCE9DD 0%, transparent 60%),
+      radial-gradient(ellipse 70% 55% at 22% 92%, #E2EDF1 0%, transparent 60%),
+      radial-gradient(ellipse 55% 45% at 95% 72%, #F2E6D6 0%, transparent 60%);
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  .wrap {
+    position: relative;
+    z-index: 1;
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 48px 24px 80px;
+  }
+
+  /* Header */
+  .header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 40px;
+  }
+
+  .crest {
+    width: 52px;
+    height: 52px;
+    background: linear-gradient(135deg, rgba(255,254,250,0.82), rgba(255,254,250,0.50));
+    border: 1px solid var(--glass-border);
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Instrument Serif', serif;
+    font-size: 18px;
+    color: var(--forest);
+    box-shadow: 0 8px 24px rgba(15,42,31,0.08);
+    flex-shrink: 0;
+  }
+
+  .header-text small {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink4);
+    display: block;
+    margin-bottom: 2px;
+  }
+
+  .header-text h1 {
+    font-family: 'Instrument Serif', serif;
+    font-size: 26px;
+    line-height: 1.1;
+    color: var(--ink);
+  }
+
+  .header-text h1 em {
+    font-style: italic;
+  }
+
+  /* Meta strip */
+  .meta-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 36px;
+  }
+
+  .chip {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    padding: 5px 12px;
+    border-radius: 100px;
+    border: 1px solid var(--line);
+    color: var(--ink4);
+    background: var(--bone);
+  }
+
+  .chip.green {
+    background: var(--forest-tint);
+    border-color: rgba(44,107,66,0.20);
+    color: var(--forest);
+  }
+
+  /* Glass card */
+  .card {
+    background: linear-gradient(135deg, rgba(255,254,250,0.66), rgba(255,254,250,0.40));
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+    padding: 28px;
+    margin-bottom: 16px;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    box-shadow:
+      0 1px 0 -1px rgba(255,255,255,0.70) inset,
+      0 1px 2px rgba(15,42,31,0.06),
+      0 8px 24px rgba(15,42,31,0.07),
+      0 24px 60px rgba(15,42,31,0.05);
+  }
+
+  /* Section heading */
+  .section-label {
+    font-size: 10.5px;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink4);
+    margin-bottom: 10px;
+  }
+
+  .section-title {
+    font-family: 'Instrument Serif', serif;
+    font-size: 20px;
+    color: var(--ink);
+    margin-bottom: 14px;
+    line-height: 1.2;
+  }
+
+  .section-title em { font-style: italic; }
+
+  p {
+    font-size: 14px;
+    line-height: 1.7;
+    color: var(--ink3);
+    margin-bottom: 12px;
+  }
+
+  p:last-child { margin-bottom: 0; }
+
+  /* Data table */
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+  }
+
+  .data-table th {
+    font-size: 10.5px;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink4);
+    text-align: left;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .data-table td {
+    font-size: 13.5px;
+    color: var(--ink3);
+    padding: 11px 14px;
+    border-bottom: 1px solid rgba(15,42,31,0.06);
+    vertical-align: top;
+    line-height: 1.55;
+  }
+
+  .data-table tr:last-child td { border-bottom: none; }
+
+  .data-table td:first-child {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12.5px;
+    color: var(--forest);
+    white-space: nowrap;
+    width: 36%;
+  }
+
+  /* Note box */
+  .note {
+    display: flex;
+    gap: 12px;
+    padding: 14px 16px;
+    border-radius: 12px;
+    margin-top: 12px;
+  }
+
+  .note.gold {
+    background: linear-gradient(135deg, rgba(201,162,39,0.22), rgba(201,162,39,0.12));
+    border: 1px solid rgba(201,162,39,0.35);
+  }
+
+  .note.green {
+    background: linear-gradient(135deg, rgba(44,107,66,0.14), rgba(44,107,66,0.08));
+    border: 1px solid rgba(44,107,66,0.25);
+  }
+
+  .note-icon {
+    font-size: 15px;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  .note-body {
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  .note.gold .note-body { color: #8A6516; }
+  .note.green .note-body { color: var(--forest); }
+
+  /* List */
+  ul.clean {
+    list-style: none;
+    padding: 0;
+    margin: 8px 0 0;
+  }
+
+  ul.clean li {
+    font-size: 13.5px;
+    color: var(--ink3);
+    padding: 6px 0 6px 20px;
+    position: relative;
+    line-height: 1.55;
+    border-bottom: 1px solid rgba(15,42,31,0.05);
+  }
+
+  ul.clean li:last-child { border-bottom: none; }
+
+  ul.clean li::before {
+    content: '';
+    position: absolute;
+    left: 4px;
+    top: 13px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--forest);
+    opacity: 0.5;
+  }
+
+  /* Contact card */
+  .contact-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .contact-row:last-child { border-bottom: none; }
+
+  .contact-icon {
+    width: 34px;
+    height: 34px;
+    background: var(--forest-tint);
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+
+  .contact-label {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink4);
+  }
+
+  .contact-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--ink);
+    margin-top: 1px;
+  }
+
+  /* Divider */
+  hr {
+    border: none;
+    border-top: 1px solid var(--line);
+    margin: 8px 0;
+  }
+
+  /* Footer */
+  .footer {
+    text-align: center;
+    margin-top: 40px;
+    padding-top: 24px;
+    border-top: 1px solid var(--line);
+  }
+
+  .footer p {
+    font-size: 11.5px;
+    color: var(--ink5);
+    margin-bottom: 4px;
+  }
+
+  @media (max-width: 600px) {
+    .wrap { padding: 28px 16px 60px; }
+    .data-table td:first-child { width: 44%; font-size: 11.5px; }
+    .header-text h1 { font-size: 22px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="crest">NIU</div>
+    <div class="header-text">
+      <small>Noida International University</small>
+      <h1>Privacy <em>Policy</em></h1>
+    </div>
+  </div>
+
+  <!-- Meta -->
+  <div class="meta-strip">
+    <span class="chip green">NSAT Application</span>
+    <span class="chip">Effective: June 1, 2026</span>
+    <span class="chip">Version 1.0</span>
+    <span class="chip">India Only</span>
+  </div>
+
+  <!-- Intro -->
+  <div class="card">
+    <div class="section-label">Overview</div>
+    <h2 class="section-title">What this <em>document covers</em></h2>
+    <p>This Privacy Policy describes how Noida International University ("NIU", "we", "us") collects, uses, and protects the personal data of candidates ("you") who use the NSAT (NIU Student Aptitude Test) mobile and web application.</p>
+    <p>NSAT is used exclusively to conduct the NIU entrance aptitude test for admission candidates. By using the application, you agree to the practices described in this policy.</p>
+    <div class="note gold">
+      <span class="note-icon">ℹ</span>
+      <span class="note-body">This application is designed for India-based admission candidates only and is governed by applicable Indian law, including the Digital Personal Data Protection Act, 2023.</span>
+    </div>
+  </div>
+
+  <!-- Data Collected -->
+  <div class="card">
+    <div class="section-label">Section 01</div>
+    <h2 class="section-title">Data we <em>collect</em></h2>
+    <p>We collect the minimum data necessary to verify your identity, confirm your eligibility, and conduct the test.</p>
+
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Data Point</th>
+          <th>How it is obtained</th>
+          <th>Purpose</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>NIU ID (Application No.)</td>
+          <td>Entered by you</td>
+          <td>Identity verification &amp; fee gate check</td>
+        </tr>
+        <tr>
+          <td>Name</td>
+          <td>Fetched from NIU / NoPaperForms API — not entered by you</td>
+          <td>Display on screen and result record</td>
+        </tr>
+        <tr>
+          <td>Email address</td>
+          <td>Fetched from NIU / NoPaperForms API</td>
+          <td>Sending the one-time verification code</td>
+        </tr>
+        <tr>
+          <td>Mobile number</td>
+          <td>Fetched from NIU / NoPaperForms API</td>
+          <td>Identity confirmation (not stored)</td>
+        </tr>
+        <tr>
+          <td>Course of interest</td>
+          <td>Fetched from NIU / NoPaperForms API</td>
+          <td>Loading the correct question paper</td>
+        </tr>
+        <tr>
+          <td>Test answers</td>
+          <td>Submitted by you during the test</td>
+          <td>Server-side scoring (answers are never stored — only the score)</td>
+        </tr>
+        <tr>
+          <td>Test result (score)</td>
+          <td>Computed server-side</td>
+          <td>Result display and admission processing</td>
+        </tr>
+        <tr>
+          <td>Attempt timestamp</td>
+          <td>Recorded automatically</td>
+          <td>One-attempt enforcement and audit</td>
+        </tr>
+        <tr>
+          <td>FCM device token</td>
+          <td>Generated automatically by the device</td>
+          <td>Delivering push notifications about test schedule and updates</td>
+        </tr>
+        <tr>
+          <td>Payment status</td>
+          <td>Fetched from NIU / NoPaperForms API</td>
+          <td>Verifying that your application fee has been received before granting test access</td>
+        </tr>
+        <tr>
+          <td>Short-answer responses</td>
+          <td>Submitted by you during the test</td>
+          <td>Stored for manual review by the NIU Admissions team</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="note green">
+      <span class="note-icon">✓</span>
+      <span class="note-body">We do <strong>not</strong> collect passwords, payment details, device location, biometrics, or any data not listed above. Name, email, mobile, and course are fetched directly from our systems — you do not enter them.</span>
+    </div>
+  </div>
+
+  <!-- How we use it -->
+  <div class="card">
+    <div class="section-label">Section 02</div>
+    <h2 class="section-title">How we <em>use your data</em></h2>
+    <p>Your data is used exclusively for the following purposes:</p>
+    <ul class="clean">
+      <li>Verifying that your NIU ID corresponds to a registered, fee-paid applicant</li>
+      <li>Sending a one-time password (OTP) to your registered email to confirm your identity before the test</li>
+      <li>Loading the correct test paper for your chosen course</li>
+      <li>Scoring your test responses server-side and recording your result</li>
+      <li>Preventing duplicate attempts (one attempt per NIU ID)</li>
+      <li>Sending push notifications about test schedules, exam-day updates, and results (via Firebase Cloud Messaging)</li>
+      <li>Providing the NIU Admissions team with result data for admission processing</li>
+    </ul>
+    <p style="margin-top:14px;">We do not use your data for marketing, advertising, profiling, or any purpose beyond the above.</p>
+  </div>
+
+  <!-- Data Deletion -->
+  <div class="card">
+    <div class="section-label">Section 02a</div>
+    <h2 class="section-title">Data <em>deletion</em></h2>
+    <p>You may request deletion of your personal data at any time by contacting the NIU Admissions Department at <strong>admissions@niu.edu.in</strong> with the subject line "NSAT Data Deletion Request" and your NIU ID.</p>
+    <p>Upon receiving a valid request, we will delete or anonymise your data within 30 days, except where retention is required for legitimate institutional record-keeping (such as finalised admission decisions). We will confirm the deletion in writing.</p>
+    <div class="note gold">
+      <span class="note-icon">ℹ</span>
+      <span class="note-body">Deleting your data while the admission cycle is active may affect your eligibility. You will be informed of any consequences before deletion proceeds.</span>
+    </div>
+  </div>
+
+  <!-- Data Storage -->
+  <div class="card">
+    <div class="section-label">Section 03</div>
+    <h2 class="section-title">Storage &amp; <em>retention</em></h2>
+    <p>All data is stored in Google Cloud Firestore, hosted in the <strong>asia-south1</strong> (Mumbai) region, ensuring your data stays within India.</p>
+
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Data</th>
+          <th>Retention period</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>OTP records</td>
+          <td>10 minutes from generation, then automatically deleted</td>
+        </tr>
+        <tr>
+          <td>Attempt lock record</td>
+          <td>Duration of the admission cycle</td>
+        </tr>
+        <tr>
+          <td>Test results (score &amp; breakdown)</td>
+          <td>6 months in the app database, then transferred to NIU Admissions Department records</td>
+        </tr>
+        <tr>
+          <td>Student list (NPF sync)</td>
+          <td>Refreshed every 30 minutes; reflects current NoPaperForms data</td>
+        </tr>
+        <tr>
+          <td>FCM device tokens</td>
+          <td>Retained while the application is installed; revoked on uninstall</td>
+        </tr>
+        <tr>
+          <td>Short-answer responses</td>
+          <td>Retained with results for admissions review; same 6-month policy as test results</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="note gold">
+      <span class="note-icon">ℹ</span>
+      <span class="note-body">After 6 months, result data is retained by the NIU Admissions Department under institutional records policies. The NSAT application database no longer holds a copy.</span>
+    </div>
+  </div>
+
+  <!-- Third Parties -->
+  <div class="card">
+    <div class="section-label">Section 04</div>
+    <h2 class="section-title">Third-party <em>services</em></h2>
+    <p>The NSAT application uses the following third-party infrastructure. No data is sold to or shared with any third party for commercial purposes.</p>
+    <ul class="clean">
+      <li><strong>Google Firebase / Firestore</strong> — database and serverless functions. Data processed under Google's data processing terms.</li>
+      <li><strong>Firebase Cloud Messaging (FCM)</strong> — push notification delivery. FCM processes a device token (not personal data) to deliver notifications. No message content is stored by FCM after delivery.</li>
+      <li><strong>NoPaperForms (Meritto)</strong> — our admissions CRM. Applicant details are fetched from this system; NIU controls the data stored there.</li>
+      <li><strong>SMTP email provider (Gmail)</strong> — used only to deliver the one-time OTP email. No email content is retained by the provider beyond delivery.</li>
+    </ul>
+    <p style="margin-top:12px;">We do not integrate with advertising networks, analytics trackers, or social media platforms.</p>
+  </div>
+
+  <!-- Your Rights -->
+  <div class="card">
+    <div class="section-label">Section 05</div>
+    <h2 class="section-title">Your <em>rights</em></h2>
+    <p>Under the Digital Personal Data Protection Act, 2023 (India), you have the right to:</p>
+    <ul class="clean">
+      <li>Access the personal data we hold about you</li>
+      <li>Request correction of inaccurate data</li>
+      <li>Request erasure of your data, subject to legitimate institutional record-keeping requirements</li>
+      <li>Withdraw consent for data processing (note: this will prevent you from using the NSAT application)</li>
+      <li>Raise a grievance with the Data Protection Board of India if your concerns are not resolved</li>
+    </ul>
+    <p style="margin-top:12px;">To exercise any of these rights, contact the NIU Admissions Department at the address below.</p>
+  </div>
+
+  <!-- Security -->
+  <div class="card">
+    <div class="section-label">Section 06</div>
+    <h2 class="section-title">Security <em>measures</em></h2>
+    <p>We implement appropriate technical and organisational measures to protect your data:</p>
+    <ul class="clean">
+      <li>Test answers are scored server-side; the answer key is never sent to or stored on your device</li>
+      <li>OTPs are hashed before storage and expire after 10 minutes with a 5-attempt limit</li>
+      <li>Firestore security rules restrict read and write access to authorised functions and authenticated admins</li>
+      <li>All data in transit is encrypted via HTTPS / TLS</li>
+      <li>Admin access is protected by email and password authentication</li>
+    </ul>
+  </div>
+
+  <!-- Children -->
+  <div class="card">
+    <div class="section-label">Section 07</div>
+    <h2 class="section-title">Children &amp; <em>minors</em></h2>
+    <p>NSAT is intended for admission candidates who are typically 17 years of age or older. The application is not directed at children under 13 years of age, and we do not knowingly collect personal data from children under 13.</p>
+    <p>For candidates between the ages of 13 and 18, use of the application is presumed to be with the knowledge and consent of a parent or guardian, as the admission process is typically initiated by a family.</p>
+    <p>If you believe a child under 13 has submitted data through this application, please contact us immediately at <strong>admissions@niu.edu.in</strong> so we can promptly delete it.</p>
+  </div>
+
+  <!-- Changes -->
+  <div class="card">
+    <div class="section-label">Section 08</div>
+    <h2 class="section-title">Changes to this <em>policy</em></h2>
+    <p>We may update this Privacy Policy from time to time. Material changes will be communicated via the application and/or the NIU admissions portal. Continued use of the application after a policy update constitutes acceptance of the revised policy. The effective date at the top of this document indicates the version currently in force.</p>
+  </div>
+
+  <!-- Contact -->
+  <div class="card">
+    <div class="section-label">Contact</div>
+    <h2 class="section-title">Data controller &amp; <em>contact</em></h2>
+    <p>The data controller for personal data processed through NSAT is the NIU Admissions Department, Noida International University.</p>
+
+    <div style="margin-top: 14px;">
+      <div class="contact-row">
+        <div class="contact-icon">🏛</div>
+        <div>
+          <div class="contact-label">Institution</div>
+          <div class="contact-value">Noida International University, Greater Noida, Uttar Pradesh</div>
+        </div>
+      </div>
+      <div class="contact-row">
+        <div class="contact-icon">✉</div>
+        <div>
+          <div class="contact-label">Email</div>
+          <div class="contact-value">admissions@niu.edu.in</div>
+        </div>
+      </div>
+      <div class="contact-row">
+        <div class="contact-icon">🌐</div>
+        <div>
+          <div class="contact-label">Website</div>
+          <div class="contact-value">niu.edu.in</div>
+        </div>
+      </div>
+      <div class="contact-row">
+        <div class="contact-icon">☎</div>
+        <div>
+          <div class="contact-label">Phone</div>
+          <div class="contact-value">+91-120-2598100</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <p>NSAT — NIU Student Aptitude Test</p>
+    <p>© 2026 Noida International University. All rights reserved.</p>
+    <p style="margin-top:8px;">Effective date: June 1, 2026 · Version 1.0</p>
+  </div>
+
+</div>
+</body>
+</html>
