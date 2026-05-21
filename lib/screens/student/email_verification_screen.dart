@@ -5,7 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_theme.dart';
 import '../../routes/app_routes.dart';
-import '../../providers/auth_provider.dart';
+import '../../providers/auth_provider.dart' as app;
 import '../../widgets/mesh_background.dart';
 import '../../widgets/glass_card.dart';
 import '../../widgets/eyebrow.dart';
@@ -62,7 +62,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
   // ── Step 1: Fetch lead details + send email OTP ──
 
   Future<void> _startEmailOtp() async {
-    final auth = context.read<AuthProvider>();
+    final auth = context.read<app.AuthProvider>();
     final student = auth.verifiedStudent;
     if (student == null) return;
 
@@ -110,7 +110,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
       return;
     }
 
-    final auth = context.read<AuthProvider>();
+    final auth = context.read<app.AuthProvider>();
     final student = auth.verifiedStudent;
     if (student == null) return;
 
@@ -244,7 +244,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final auth = context.watch<AuthProvider>();
+    final auth = context.watch<app.AuthProvider>();
     final student = auth.verifiedStudent;
     final topPad = MediaQuery.of(context).padding.top;
 

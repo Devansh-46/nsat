@@ -190,10 +190,9 @@ class DataStore {
   Future<List<NotificationModel>> getNotifications() async {
     final prefs = await SharedPreferences.getInstance();
     List<String> notifsJson = prefs.getStringList('notifications') ?? [];
-    return notifsJson
+    final list = notifsJson
         .map((jsonStr) => NotificationModel.fromJson(jsonDecode(jsonStr)))
-        .toList()
-        .reversed
-        .toList(); // Newest first
+        .toList();
+    return list.reversed.toList();
   }
 }
