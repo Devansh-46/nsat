@@ -106,7 +106,7 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
                       // NIU ID field
                       NiuField(
                         label: 'NIU ID',
-                        hint: 'e.g. NIU2025BT0183',
+                        hint: 'e.g. NIU-26-XXXXX',
                         icon: Icons.badge_outlined,
                         helper: 'Same as your application number',
                         errorText: _errorText(outcome),

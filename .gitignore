@@ -85,3 +85,10 @@ key.properties
 # Dependencies and Build Outputs
 node_modules/
 /functions/lib/
+
+# CSV Data Exports (prevent accidental PII commits)
+*.csv
+
+# iOS/macOS Firebase Config
+**/ios/Runner/GoogleService-Info.plist
+**/macos/Runner/GoogleService-Info.plist

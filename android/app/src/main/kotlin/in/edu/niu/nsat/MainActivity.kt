@@ -1,4 +1,4 @@
-package in.edu.niu.nsat
+package `in`.edu.niu.nsat
 
 import io.flutter.embedding.android.FlutterActivity
 
