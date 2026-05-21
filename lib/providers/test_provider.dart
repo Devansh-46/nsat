@@ -3,10 +3,11 @@ import 'package:flutter/material.dart';
 import '../models/test_session_model.dart';
 import '../models/test_model.dart';
 import '../models/question_model.dart';
-import '../services/test_service.dart';
 import '../services/question_service.dart';
+import '../services/result_service.dart';
 import '../services/attempt_service.dart';
 import '../services/scoring_service.dart';
+import '../services/test_service.dart';
 
 /// Drives the test-taking flow, backed entirely by Firestore.
 ///
@@ -151,9 +152,9 @@ class TestProvider extends ChangeNotifier {
     });
   }
 
-  void selectAnswer(int questionIndex, int optionIndex) {
+  void selectAnswer(int questionIndex, dynamic answer) {
     if (_currentSession != null && !_currentSession!.isSubmitted) {
-      _currentSession!.selectAnswer(questionIndex, optionIndex);
+      _currentSession!.selectAnswer(questionIndex, answer);
       notifyListeners();
     }
   }

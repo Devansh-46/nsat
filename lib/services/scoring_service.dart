@@ -29,15 +29,12 @@ class ScoreResult {
 class ScoringService {
   /// Scores a submission server-side.
   ///
-  /// [applicationNo] — the student's NIU ID.
-  /// [studentName] — confirmed name from LeadDetailsModel.
-  /// [testId] — Firestore doc ID of the test.
-  /// [answers] — questionIndex -> selectedOptionIndex.
+  /// [answers] — questionIndex -> answer (int for MCQ, String for short answer).
   Future<ScoreResult> scoreSubmission({
     required String applicationNo,
     required String studentName,
     required String testId,
-    required Map<int, int> answers,
+    required Map<int, dynamic> answers,
     // These params kept for API compat but no longer used locally
     List<QuestionModel>? questions,
     TestModel? test,
@@ -45,8 +42,8 @@ class ScoringService {
     final callable = FirebaseFunctions.instanceFor(region: 'asia-south1')
         .httpsCallable('scoreSubmission');
 
-    // Convert int keys to string keys for JSON
-    final stringAnswers = <String, int>{};
+    // Convert int keys to string keys, preserve answer type (int or String)
+    final stringAnswers = <String, dynamic>{};
     answers.forEach((k, v) => stringAnswers[k.toString()] = v);
 
     final result = await callable.call<Map<String, dynamic>>({

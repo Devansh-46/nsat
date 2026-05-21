@@ -1,8 +1,6 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
 
-const db = admin.firestore();
-
 /**
  * scoreSubmission — server-side scoring.
  *
@@ -16,10 +14,12 @@ const db = admin.firestore();
 export const scoreSubmission = onCall(
   { region: "asia-south1" },
   async (request) => {
+    const db = admin.firestore();
     const applicationNo = request.data?.application_no as string | undefined;
     const studentName = request.data?.student_name as string | undefined;
     const testId = request.data?.test_id as string | undefined;
-    const answers = request.data?.answers as Record<string, number> | undefined;
+    const answers = request.data?.answers as
+      Record<string, number | string> | undefined;
 
     if (!applicationNo || !testId || !answers || !studentName) {
       throw new HttpsError(
@@ -51,31 +51,48 @@ export const scoreSubmission = onCall(
       throw new HttpsError("not-found", "No questions found for this test");
     }
 
-    // Build answer key: index → correctAnswerIndex
-    // Questions are in the same order as the client received them
     const questions = questionsSnap.docs;
     let correct = 0;
     let wrong = 0;
+    let gradedCount = 0;
+    const shortAnswerResponses: Record<string, string> = {};
 
     for (let i = 0; i < questions.length; i++) {
-      const selected = answers[i.toString()];
-      if (selected === undefined || selected === null) continue; // skipped
-      const correctIdx = questions[i].data().correctAnswerIndex as number;
-      if (selected === correctIdx) {
+      const submitted = answers[i.toString()];
+      const qData = questions[i].data();
+      const qType = (qData.type as string) ?? "multipleChoice";
+
+      if (qType === "shortAnswer") {
+        // Short answer: ungraded descriptive response — save it, don't score
+        if (submitted && typeof submitted === "string" &&
+          submitted.trim().length > 0) {
+          shortAnswerResponses[i.toString()] = submitted.trim();
+        }
+        // Not counted in gradedCount, correct, or wrong
+        continue;
+      }
+
+      // MCQ: graded
+      gradedCount++;
+      if (submitted === undefined || submitted === null) continue; // skipped
+
+      const correctIdx = qData.correctAnswerIndex as number;
+      if (typeof submitted === "number" && submitted === correctIdx) {
         correct++;
-      } else {
+      } else if (typeof submitted === "number") {
         wrong++;
       }
     }
 
-    const skipped = questions.length - correct - wrong;
+    const skipped = gradedCount - correct - wrong;
+
     const correctMarks = correct * marksPerQuestion;
     const negMarks = wrong * negativeMarksPerWrong;
     const netScore = correctMarks - negMarks;
-    const maxScore = questions.length * marksPerQuestion;
+    const maxScore = gradedCount * marksPerQuestion;
 
     // 3. Write result
-    const resultData = {
+    const resultData: Record<string, unknown> = {
       application_no: applicationNo,
       studentName,
       course,
@@ -87,6 +104,11 @@ export const scoreSubmission = onCall(
       maxScore,
       submittedAt: admin.firestore.FieldValue.serverTimestamp(),
     };
+
+    // Save short answer responses for admissions review (if any)
+    if (Object.keys(shortAnswerResponses).length > 0) {
+      resultData.shortAnswerResponses = shortAnswerResponses;
+    }
 
     const resultRef = await db.collection("results").add(resultData);
 

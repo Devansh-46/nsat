@@ -9,13 +9,16 @@ class TestSessionModel {
   final double marksPerQuestion;
   final double negativeMarksPerWrong;
   int timeRemainingSeconds;
-  Map<int, int> answers; // questionIndex -> selectedOptionIndex
+
+  /// Answers map: questionIndex -> answer value.
+  /// For MCQ: int (option index). For short answer: String.
+  Map<int, dynamic> answers;
+
   bool isSubmitted;
   DateTime? submittedAt;
   List<QuestionModel> questions;
 
-  /// Override local score getters with server-authoritative values.
-  /// Called after the scoreSubmission Cloud Function returns.
+  /// Server-authoritative score overrides.
   int? _serverCorrect;
   int? _serverWrong;
   int? _serverSkipped;
@@ -50,16 +53,31 @@ class TestSessionModel {
     _serverMaxScore = maxScore;
   }
 
-  int get answeredCount => answers.length;
+  int get answeredCount {
+    int count = 0;
+    for (final entry in answers.entries) {
+      final val = entry.value;
+      if (val is int) {
+        count++;
+      } else if (val is String && val.trim().isNotEmpty) {
+        count++;
+      }
+    }
+    return count;
+  }
+
   int get unansweredCount => totalQuestions - answeredCount;
 
   int get correctCount {
     if (_serverCorrect != null) return _serverCorrect!;
     int count = 0;
-    answers.forEach((questionIndex, selectedOption) {
-      if (questionIndex < questions.length &&
-          questions[questionIndex].correctAnswerIndex == selectedOption) {
-        count++;
+    answers.forEach((questionIndex, answer) {
+      if (questionIndex >= questions.length) return;
+      final q = questions[questionIndex];
+      // Short answer questions are ungraded — skip them
+      if (q.isShortAnswer) return;
+      if (q.isMultipleChoice && answer is int) {
+        if (q.correctAnswerIndex == answer) count++;
       }
     });
     return count;
@@ -68,37 +86,48 @@ class TestSessionModel {
   int get wrongCount {
     if (_serverWrong != null) return _serverWrong!;
     int count = 0;
-    answers.forEach((questionIndex, selectedOption) {
-      if (questionIndex < questions.length &&
-          questions[questionIndex].correctAnswerIndex != selectedOption) {
-        count++;
+    answers.forEach((questionIndex, answer) {
+      if (questionIndex >= questions.length) return;
+      final q = questions[questionIndex];
+      // Short answer questions are ungraded — skip them
+      if (q.isShortAnswer) return;
+      if (q.isMultipleChoice && answer is int) {
+        if (q.correctAnswerIndex != answer) count++;
       }
     });
     return count;
   }
 
-  int get skippedCount => _serverSkipped ?? (totalQuestions - answeredCount);
+  /// Number of graded questions (MCQs only).
+  int get gradedQuestionCount =>
+      questions.where((q) => q.isMultipleChoice).length;
+
+  int get skippedCount => _serverSkipped ?? (gradedQuestionCount - correctCount - wrongCount);
 
   double get correctMarks => correctCount * marksPerQuestion;
   double get negativeMarks => wrongCount * negativeMarksPerWrong;
   double get netScore => _serverNetScore ?? (correctMarks - negativeMarks);
-  double get maxScore => _serverMaxScore ?? (totalQuestions * marksPerQuestion);
+  double get maxScore => _serverMaxScore ?? (gradedQuestionCount * marksPerQuestion);
 
   String get formattedNetScore => netScore.toStringAsFixed(2);
   String get formattedMaxScore => maxScore.toStringAsFixed(2);
 
-  void selectAnswer(int questionIndex, int optionIndex) {
-    answers[questionIndex] = optionIndex;
+  /// Select an answer — int for MCQ, String for short answer.
+  void selectAnswer(int questionIndex, dynamic answer) {
+    answers[questionIndex] = answer;
   }
 
   void clearAnswer(int questionIndex) {
     answers.remove(questionIndex);
   }
 
-  // 0=unanswered, 1=answered, 2=visited, 3=current
   int getQuestionState(int questionIndex, int currentQuestionIndex) {
     if (questionIndex == currentQuestionIndex) return 3;
-    if (answers.containsKey(questionIndex)) return 1;
+    if (answers.containsKey(questionIndex)) {
+      final val = answers[questionIndex];
+      if (val is int) return 1;
+      if (val is String && val.trim().isNotEmpty) return 1;
+    }
     return 0;
   }
 

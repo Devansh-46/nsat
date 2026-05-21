@@ -5,8 +5,6 @@ import * as nodemailer from "nodemailer";
 import { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, OTP_FROM_NAME }
   from "./config";
 
-const db = admin.firestore();
-
 // OTP validity: 10 minutes
 const OTP_EXPIRY_MS = 10 * 60 * 1000;
 
@@ -25,6 +23,7 @@ function hashOtp(code: string): string {
 export const sendOtp = onCall(
   { region: "asia-south1" },
   async (request) => {
+    const db = admin.firestore();
     const applicationNo = request.data?.application_no as string | undefined;
     const email = request.data?.email as string | undefined;
     const studentName = request.data?.name as string | undefined;
@@ -95,6 +94,7 @@ export const sendOtp = onCall(
 export const verifyOtp = onCall(
   { region: "asia-south1" },
   async (request) => {
+    const db = admin.firestore();
     const applicationNo = request.data?.application_no as string | undefined;
     const code = request.data?.code as string | undefined;
 

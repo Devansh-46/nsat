@@ -4,13 +4,11 @@ import { NPF_ACCESS_KEY, NPF_SECRET_KEY, NPF_BASE_URL, mapCourseKey }
   from "./config";
 
 /**
- * Callable: fetches a student's details from NPF API 2 by lead_id.
+ * Callable: fetches a student's details from NPF API by lead_id.
  *
- * Called by the Flutter app after the fee gate passes.
+ * Endpoint: POST /lead/v1/getDetailsById
+ * Body: { lead_id, fields: [...] }
  * Returns: { name, courseKey, email, mobile, leadId }
- *
- * The NPF `course` display string is mapped to canonical key before
- * returning — the app never sees the raw NPF string.
  */
 export const fetchLeadDetails = onCall(
   { region: "asia-south1" },
@@ -28,8 +26,7 @@ export const fetchLeadDetails = onCall(
     }
 
     try {
-      // NPF API 2: get lead details by lead_id
-      const url = `${NPF_BASE_URL}/lead/${leadId}`;
+      const url = `${NPF_BASE_URL}/lead/v1/getDetailsById`;
       const response = await fetch(url, {
         method: "POST",
         headers: {
@@ -37,9 +34,15 @@ export const fetchLeadDetails = onCall(
           "access-key": NPF_ACCESS_KEY,
           "secret-key": NPF_SECRET_KEY,
         },
+        body: JSON.stringify({
+          lead_id: leadId,
+          fields: ["name", "mobile", "lead_stage", "email", "course"],
+        }),
       });
 
       if (!response.ok) {
+        console.error(`NPF lead API returned ${response.status}:`,
+          await response.text());
         throw new HttpsError(
           "unavailable",
           `NPF API returned ${response.status}`
@@ -47,6 +50,8 @@ export const fetchLeadDetails = onCall(
       }
 
       const body = await response.json() as {
+        code?: number;
+        status?: boolean;
         data?: {
           details?: {
             name?: string;

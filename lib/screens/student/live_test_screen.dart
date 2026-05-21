@@ -314,7 +314,7 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
               ),
             ),
 
-            // ── Question + options ──
+            // ── Question + options / short answer ──
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(18, 18, 18, 12),
@@ -329,122 +329,132 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
                       ),
                     ),
                     const SizedBox(height: 18),
-                    ...List.generate(question.options.length, (i) {
-                      final isSelected = i == selected;
-                      final letter = String.fromCharCode(65 + i);
-                      return GestureDetector(
-                        onTap: () =>
-                            provider.selectAnswer(_currentIndex, i),
-                        child: Container(
-                          margin: const EdgeInsets.only(bottom: 10),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 13),
-                          decoration: BoxDecoration(
-                            gradient: isSelected
-                                ? AppColors.glassBgStrong
-                                : AppColors.glassBg,
-                            border: Border.all(
-                              color: isSelected
-                                  ? AppColors.forest
-                                  : AppColors.glassBorder,
-                              width: isSelected ? 1.5 : 1,
+                    if (question.isShortAnswer)
+                      _ShortAnswerField(
+                        currentAnswer: selected is String ? selected : '',
+                        minWords: question.minWords > 0 ? question.minWords : 100,
+                        maxWords: question.maxWords > 0 ? question.maxWords : 150,
+                        onChanged: (value) =>
+                            provider.selectAnswer(_currentIndex, value),
+                        onClear: () => provider.clearAnswer(_currentIndex),
+                      )
+                    else ...[
+                      ...List.generate(question.options.length, (i) {
+                        final isSelected = selected is int && i == selected;
+                        final letter = String.fromCharCode(65 + i);
+                        return GestureDetector(
+                          onTap: () =>
+                              provider.selectAnswer(_currentIndex, i),
+                          child: Container(
+                            margin: const EdgeInsets.only(bottom: 10),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 13),
+                            decoration: BoxDecoration(
+                              gradient: isSelected
+                                  ? AppColors.glassBgStrong
+                                  : AppColors.glassBg,
+                              border: Border.all(
+                                color: isSelected
+                                    ? AppColors.forest
+                                    : AppColors.glassBorder,
+                                width: isSelected ? 1.5 : 1,
+                              ),
+                              borderRadius: BorderRadius.circular(14),
+                              boxShadow: isSelected
+                                  ? const [
+                                      BoxShadow(
+                                        color: Color(0x1A2C6B42),
+                                        offset: Offset(0, 0),
+                                        blurRadius: 8,
+                                      ),
+                                    ]
+                                  : null,
                             ),
-                            borderRadius: BorderRadius.circular(14),
-                            boxShadow: isSelected
-                                ? const [
-                                    BoxShadow(
-                                      color: Color(0x1A2C6B42),
-                                      offset: Offset(0, 0),
-                                      blurRadius: 8,
-                                    ),
-                                  ]
-                                : null,
-                          ),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 28,
-                                height: 28,
-                                decoration: BoxDecoration(
-                                  color: isSelected
-                                      ? AppColors.forest
-                                      : AppColors.bone,
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                alignment: Alignment.center,
-                                child: Text(
-                                  letter,
-                                  style: AppTheme.mono(
-                                    size: 12,
-                                    color: isSelected
-                                        ? Colors.white
-                                        : AppColors.ink4,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  question.options[i],
-                                  style: AppTheme.body(
-                                    size: 13.5,
-                                    color: AppColors.ink,
-                                    weight: isSelected
-                                        ? FontWeight.w600
-                                        : FontWeight.w400,
-                                  ),
-                                ),
-                              ),
-                              // Radio dot
-                              Container(
-                                width: 18,
-                                height: 18,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: isSelected
-                                      ? AppColors.forest
-                                      : Colors.transparent,
-                                  border: Border.all(
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 28,
+                                  height: 28,
+                                  decoration: BoxDecoration(
                                     color: isSelected
                                         ? AppColors.forest
-                                        : AppColors.ink5,
-                                    width: 2,
+                                        : AppColors.bone,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: Text(
+                                    letter,
+                                    style: AppTheme.mono(
+                                      size: 12,
+                                      color: isSelected
+                                          ? Colors.white
+                                          : AppColors.ink4,
+                                    ),
                                   ),
                                 ),
-                                child: isSelected
-                                    ? const Center(
-                                        child: Icon(Icons.circle,
-                                            size: 7,
-                                            color: Colors.white),
-                                      )
-                                    : null,
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    question.options[i],
+                                    style: AppTheme.body(
+                                      size: 13.5,
+                                      color: AppColors.ink,
+                                      weight: isSelected
+                                          ? FontWeight.w600
+                                          : FontWeight.w400,
+                                    ),
+                                  ),
+                                ),
+                                Container(
+                                  width: 18,
+                                  height: 18,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: isSelected
+                                        ? AppColors.forest
+                                        : Colors.transparent,
+                                    border: Border.all(
+                                      color: isSelected
+                                          ? AppColors.forest
+                                          : AppColors.ink5,
+                                      width: 2,
+                                    ),
+                                  ),
+                                  child: isSelected
+                                      ? const Center(
+                                          child: Icon(Icons.circle,
+                                              size: 7,
+                                              color: Colors.white),
+                                        )
+                                      : null,
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }),
+                      if (selected != null && selected is int)
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: TextButton(
+                            onPressed: () =>
+                                provider.clearAnswer(_currentIndex),
+                            style: TextButton.styleFrom(
+                              padding: EdgeInsets.zero,
+                              minimumSize: const Size(0, 32),
+                            ),
+                            child: Text(
+                              'Clear selection',
+                              style: AppTheme.body(
+                                size: 11.5,
+                                color: AppColors.ink4,
+                              ).copyWith(
+                                decoration: TextDecoration.underline,
                               ),
-                            ],
-                          ),
-                        ),
-                      );
-                    }),
-                    if (selected != null)
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: TextButton(
-                          onPressed: () =>
-                              provider.clearAnswer(_currentIndex),
-                          style: TextButton.styleFrom(
-                            padding: EdgeInsets.zero,
-                            minimumSize: const Size(0, 32),
-                          ),
-                          child: Text(
-                            'Clear selection',
-                            style: AppTheme.body(
-                              size: 11.5,
-                              color: AppColors.ink4,
-                            ).copyWith(
-                              decoration: TextDecoration.underline,
                             ),
                           ),
                         ),
-                      ),
+                    ],
                   ],
                 ),
               ),
@@ -503,6 +513,190 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
           ],
         ),
       ),
+    );
+  }
+}
+
+// ─── Short answer text field ────────────────────────────────────────
+
+class _ShortAnswerField extends StatefulWidget {
+  final String currentAnswer;
+  final int minWords;
+  final int maxWords;
+  final ValueChanged<String> onChanged;
+  final VoidCallback onClear;
+
+  const _ShortAnswerField({
+    required this.currentAnswer,
+    required this.onChanged,
+    required this.onClear,
+    this.minWords = 100,
+    this.maxWords = 150,
+  });
+
+  @override
+  State<_ShortAnswerField> createState() => _ShortAnswerFieldState();
+}
+
+class _ShortAnswerFieldState extends State<_ShortAnswerField> {
+  late final TextEditingController _controller;
+  int _wordCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.currentAnswer);
+    _wordCount = _countWords(widget.currentAnswer);
+  }
+
+  @override
+  void didUpdateWidget(_ShortAnswerField old) {
+    super.didUpdateWidget(old);
+    if (old.currentAnswer != widget.currentAnswer) {
+      _controller.text = widget.currentAnswer;
+      _controller.selection = TextSelection.fromPosition(
+        TextPosition(offset: _controller.text.length),
+      );
+      setState(() => _wordCount = _countWords(widget.currentAnswer));
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  int _countWords(String text) {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return 0;
+    return trimmed.split(RegExp(r'\s+')).length;
+  }
+
+  Color get _wordCountColor {
+    if (_wordCount == 0) return AppColors.ink4;
+    if (_wordCount < widget.minWords) return const Color(0xFF8A6516); // gold
+    if (_wordCount > widget.maxWords) return AppColors.clay;
+    return AppColors.forest; // in range
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Hint label
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: AppColors.forestTint,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.edit_note, size: 16, color: AppColors.forest),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Write your answer in ${widget.minWords}–${widget.maxWords} words',
+                  style: AppTheme.body(
+                    size: 12,
+                    color: AppColors.forest,
+                    weight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        // Text field
+        Container(
+          decoration: BoxDecoration(
+            gradient: AppColors.glassBg,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.glassBorder),
+          ),
+          child: TextField(
+            controller: _controller,
+            onChanged: (value) {
+              setState(() => _wordCount = _countWords(value));
+              widget.onChanged(value);
+            },
+            maxLines: 8,
+            minLines: 5,
+            style: AppTheme.body(size: 14.5, color: AppColors.ink),
+            cursorColor: AppColors.forest,
+            decoration: InputDecoration(
+              hintText: 'Type your answer here…',
+              hintStyle: AppTheme.body(size: 14.5, color: AppColors.ink4),
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.all(16),
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+
+        // Word count + clear row
+        Row(
+          children: [
+            Text(
+              '$_wordCount word${_wordCount == 1 ? '' : 's'}',
+              style: AppTheme.mono(size: 12, color: _wordCountColor),
+            ),
+            const SizedBox(width: 6),
+            if (_wordCount > 0 && _wordCount < widget.minWords)
+              Text(
+                '(${widget.minWords - _wordCount} more needed)',
+                style: AppTheme.body(size: 11, color: _wordCountColor),
+              )
+            else if (_wordCount > widget.maxWords)
+              Text(
+                '(${_wordCount - widget.maxWords} over limit)',
+                style: AppTheme.body(size: 11, color: AppColors.clay),
+              ),
+            const Spacer(),
+            if (_controller.text.trim().isNotEmpty)
+              GestureDetector(
+                onTap: () {
+                  _controller.clear();
+                  setState(() => _wordCount = 0);
+                  widget.onClear();
+                },
+                child: Text(
+                  'Clear',
+                  style: AppTheme.body(
+                    size: 11.5,
+                    color: AppColors.ink4,
+                  ).copyWith(decoration: TextDecoration.underline),
+                ),
+              ),
+          ],
+        ),
+
+        // Note about this question being ungraded
+        const SizedBox(height: 10),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+          decoration: BoxDecoration(
+            color: AppColors.bone,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.info_outline, size: 13, color: AppColors.ink4),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  'This question is not scored. Your response will be reviewed by the admissions team.',
+                  style: AppTheme.body(size: 11, color: AppColors.ink4),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

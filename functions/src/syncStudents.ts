@@ -3,8 +3,6 @@ import * as admin from "firebase-admin";
 import fetch from "node-fetch";
 import { NPF_ACCESS_KEY, NPF_SECRET_KEY, NPF_BASE_URL } from "./config";
 
-const db = admin.firestore();
-
 /**
  * Scheduled function: syncs students from NPF every 30 minutes.
  *
@@ -19,6 +17,7 @@ export const syncStudents = onSchedule(
     memory: "512MiB",
   },
   async () => {
+    const db = admin.firestore();
     if (!NPF_ACCESS_KEY || !NPF_SECRET_KEY) {
       console.error("NPF credentials not set — skipping sync");
       return;

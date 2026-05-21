@@ -183,9 +183,12 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
         ],
       ),
       alignment: Alignment.center,
-      child: Text(
-        'NIU',
-        style: AppTheme.display(size: 22, color: AppColors.forest),
+      child: Padding(
+        padding: const EdgeInsets.all(10.0),
+        child: Image.asset(
+          'assets/niu_crest.png',
+          fit: BoxFit.contain,
+        ),
       ),
     );
   }
@@ -195,7 +198,7 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
   String? _errorText(FeeGateOutcome? outcome) {
     switch (outcome) {
       case FeeGateOutcome.notFound:
-        return 'NIU ID not found — check it matches your application number';
+        return 'NIU ID not found — check it matches your application number. Contact your counsellor or mail admissions@niu.edu.in';
       case FeeGateOutcome.error:
         return 'Connection error — try again';
       default:

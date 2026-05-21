@@ -42,10 +42,12 @@ class RoleSelectionScreen extends StatelessWidget {
                       ],
                     ),
                     alignment: Alignment.center,
-                    child: Text(
-                      'NIU',
-                      style: AppTheme.display(
-                          size: 24, color: AppColors.forest),
+                    child: Padding(
+                      padding: const EdgeInsets.all(12.0),
+                      child: Image.asset(
+                        'assets/niu_crest.png',
+                        fit: BoxFit.contain,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 16),
