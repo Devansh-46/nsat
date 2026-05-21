@@ -32,20 +32,13 @@ class RemoteConfigService {
 
     await _rc.setConfigSettings(RemoteConfigSettings(
       fetchTimeout: const Duration(seconds: 10),
-      minimumFetchInterval: Duration.zero,
+      minimumFetchInterval: const Duration(minutes: 5),
     ));
 
     try {
-      await _rc.fetch();
-      print('[RemoteConfig] lastFetchStatus: ${_rc.lastFetchStatus}');
-      final activated = await _rc.activate();
-      print('[RemoteConfig] activated: $activated');
-      final all = _rc.getAll();
-      for (final key in all.keys) {
-        print('[RemoteConfig] $key = ${all[key]!.asString()} (${all[key]!.source})');
-      }
-    } catch (e) {
-      print('[RemoteConfig] ERROR: $e');
+      await _rc.fetchAndActivate();
+    } catch (_) {
+      // Silently use defaults if network is unavailable
     }
   }
 
