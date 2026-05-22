@@ -48,11 +48,21 @@
     }
 
     .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
       font-family: var(--serif);
       font-size: 24px;
       color: var(--accent);
       text-decoration: none;
       letter-spacing: -0.02em;
+    }
+
+    .logo-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      object-fit: cover;
     }
 
     .header-badge {
@@ -191,7 +201,10 @@
 
   <div class="header">
     <div class="header-inner">
-      <a href="/" class="logo">NSAT</a>
+      <a href="/" class="logo">
+        <img src="/assets/icon/app_icon.png" alt="NSAT App Icon" class="logo-icon">
+        NSAT
+      </a>
       <span class="header-badge">Privacy Policy</span>
     </div>
   </div>
