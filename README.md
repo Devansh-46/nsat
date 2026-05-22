@@ -51,6 +51,12 @@ Built once in **Flutter**, runs on **Android, Web, and iOS** from a single codeb
 | 👥 **Role Selection** | Separate entry points for student and admin users at app launch. |
 | 🏷️ **Question Topic Tagging** | Optional topic field on questions for finer categorization. |
 | 🕐 **Sync Metadata** | `_meta` collection tracks last successful NPF sync timestamp. |
+| 🔀 **Show/Hide Results** | Per-test toggle (`showResults`) — hide scores for certain exams, show "Thank you" instead. |
+| 🛡️ **Crashlytics** | Real-time crash reporting via Firebase Crashlytics (mobile only). |
+| 🔧 **Remote Config** | Exam window toggle, maintenance mode, and custom messages — all live from Firebase Console, no deploy needed. |
+| 📈 **Firebase Analytics** | Full student journey funnel: login → fee → OTP → test → submit → result. Plus error events. |
+| 🚀 **CI/CD** | GitHub Actions auto-deploys web app to Firebase Hosting on every push to `main`. |
+| 📜 **Privacy Policy** | GDPR/Play Store compliant privacy policy hosted at `/privacy`. |
 
 ---
 
@@ -147,7 +153,7 @@ nsat/
 │   ├── main.dart
 │   ├── models/           # StudentModel, LeadDetailsModel, TestModel, QuestionModel (MCQ + short-answer), etc.
 │   ├── providers/        # AuthProvider, TestProvider, AdminProvider
-│   ├── services/         # Firestore + Cloud Function service layer, FCM, notifications, CSV export
+│   ├── services/         # Firestore, Cloud Functions, FCM, CSV export, Analytics, Remote Config
 │   ├── screens/
 │   │   ├── student/      # 7 screens: role selection → login → fee gate → OTP → test category → live test → result
 │   │   └── admin/        # 4 screens: login, dashboard, results, push notifications
@@ -156,6 +162,9 @@ nsat/
 │   └── routes/
 ├── functions/            # TypeScript Cloud Functions
 │   └── src/              # syncStudents, fetchLeadDetails, otp, scoreSubmission, sendNotification, adminClaims
+├── web/
+│   └── privacy/          # Privacy policy page (hosted at /privacy)
+├── .github/workflows/    # CI/CD: auto-deploy web to Firebase Hosting on push
 ├── firebase.json
 ├── firestore.rules       # Tightened security rules
 ├── seed_firestore.py     # Question bank seeder (Excel → Firestore)
@@ -243,8 +252,15 @@ python import_students_csv.py students_export.csv             # Import
 ✅ Short-answer questions with word count<br>
 ✅ Admin custom claims + management<br>
 ✅ Bulk CSV import script<br>
-🔧 End-to-end testing<br>
-🔧 APK build + distribution
+✅ Show/hide results per test<br>
+✅ Firebase Crashlytics<br>
+✅ Firebase Remote Config (maintenance mode + exam window)<br>
+✅ Firebase Analytics (student journey funnel)<br>
+✅ CI/CD — GitHub Actions → Firebase Hosting<br>
+✅ Privacy policy page<br>
+🔧 Google Play Store listing + AAB<br>
+🔧 Custom domain (nsat.niu.edu.in)<br>
+🔧 End-to-end dry run
 
 </td>
 <td valign="top">
@@ -253,7 +269,9 @@ python import_students_csv.py students_export.csv             # Import
 📋 Admin test/question CRUD<br>
 📋 NPF result write-back<br>
 📋 PDF scorecard download<br>
-📋 Network-loss retry on submit
+📋 Network-loss retry on submit<br>
+📋 Admin grading UI for short-answer questions<br>
+📋 App Check (protect Cloud Functions from abuse)
 
 </td>
 </tr>
@@ -268,7 +286,7 @@ python import_students_csv.py students_export.csv             # Import
 | UI — 11 screens (Verdant Daylight) | ✅ |
 | Design system — 8 widgets + theme | ✅ |
 | Firebase Blaze + Firestore | ✅ |
-| Cloud Functions — 7 deployed | ✅ |
+| Cloud Functions — 8 deployed | ✅ |
 | NPF sync — live, paginated | ✅ |
 | Email OTP — send + verify | ✅ |
 | Server-side scoring | ✅ |
@@ -279,7 +297,15 @@ python import_students_csv.py students_export.csv             # Import
 | Admin custom claims | ✅ |
 | CSV bulk import script | ✅ |
 | Admin setup script | ✅ |
-| Release APK | 🔧 |
+| Show/hide results toggle | ✅ |
+| Firebase Crashlytics | ✅ |
+| Firebase Remote Config | ✅ |
+| Firebase Analytics | ✅ |
+| CI/CD (GitHub Actions) | ✅ |
+| Privacy policy | ✅ |
+| Web app (Firebase Hosting) | ✅ |
+| Custom domain (nsat.niu.edu.in) | 🔧 |
+| Release AAB | 🔧 |
 | Google Play listing | 📋 |
 | iOS build | 📋 |
 
