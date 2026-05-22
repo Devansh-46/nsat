@@ -5,6 +5,8 @@ import '../../theme/app_theme.dart';
 import '../../routes/app_routes.dart';
 import '../../widgets/niu_button.dart';
 import '../../providers/test_provider.dart';
+import '../../providers/auth_provider.dart';
+import '../../services/analytics_service.dart';
 
 /// Live test — one question per screen, progress bar, timer, palette.
 /// Verdant Daylight reskin. All logic identical to the previous build.
@@ -27,8 +29,19 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
 
   void _submitTest() async {
     final provider = context.read<TestProvider>();
+    final auth = context.read<AuthProvider>();
     await provider.submitTest();
     if (mounted) {
+      final session = provider.currentSession;
+      final student = auth.verifiedStudent;
+      if (session != null && student != null) {
+        AnalyticsService.instance.logTestSubmitted(
+          applicationNo: student.applicationNo,
+          course: session.categoryName,
+          answeredCount: session.answeredCount,
+          totalQuestions: session.totalQuestions,
+        );
+      }
       Navigator.pushReplacementNamed(context, AppRoutes.result);
     }
   }

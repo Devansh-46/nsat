@@ -11,14 +11,37 @@ import '../../widgets/niu_button.dart';
 import '../../widgets/note_box.dart';
 import '../../providers/test_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../services/analytics_service.dart';
 
 /// Result screen — calm, factual. Verdant Daylight reskin.
 /// Score ring, stat grid, detail rows, disclaimer. No loud pass/fail.
-class ResultScreen extends StatelessWidget {
+class ResultScreen extends StatefulWidget {
   const ResultScreen({super.key});
 
   @override
+  State<ResultScreen> createState() => _ResultScreenState();
+}
+
+class _ResultScreenState extends State<ResultScreen> {
+  bool _logged = false;
+
+  void _logView(BuildContext context) {
+    if (_logged) return;
+    _logged = true;
+    final auth = context.read<AuthProvider>();
+    final testProvider = context.read<TestProvider>();
+    final student = auth.verifiedStudent;
+    if (student != null) {
+      AnalyticsService.instance.logResultViewed(
+        applicationNo: student.applicationNo,
+        showResults: testProvider.showResults,
+      );
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    _logView(context);
     final testProvider = context.watch<TestProvider>();
     final session = testProvider.currentSession;
     final lead = context.watch<AuthProvider>().leadDetails;

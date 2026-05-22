@@ -11,6 +11,7 @@ import '../../widgets/niu_field.dart';
 import '../../widgets/niu_button.dart';
 import '../../widgets/note_box.dart';
 import '../../services/remote_config_service.dart';
+import '../../services/analytics_service.dart';
 
 /// Step 1 — NIU ID entry + fee gate.
 ///
@@ -41,6 +42,7 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
 
     if (rc.isMaintenanceMode) {
       if (!mounted) return;
+      AnalyticsService.instance.logMaintenanceBlocked();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(rc.maintenanceMessage)),
       );
@@ -48,10 +50,14 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
     }
 
     final provider = context.read<AuthProvider>();
+    AnalyticsService.instance.logLoginAttempted(applicationNo: _idController.text);
     final outcome = await provider.checkNiuIdFeeGate(_idController.text);
     if (!mounted) return;
     if (outcome == FeeGateOutcome.approved) {
+      AnalyticsService.instance.logFeeVerified(applicationNo: _idController.text);
       Navigator.pushNamed(context, AppRoutes.emailVerification);
+    } else if (outcome == FeeGateOutcome.notApproved) {
+      AnalyticsService.instance.logFeeBlocked(applicationNo: _idController.text);
     }
   }
 

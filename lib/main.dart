@@ -6,6 +6,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'firebase_options.dart';
 import 'services/remote_config_service.dart';
+import 'services/analytics_service.dart';
 import 'providers/auth_provider.dart';
 import 'providers/test_provider.dart';
 import 'providers/admin_provider.dart';
@@ -64,6 +65,7 @@ class NiuSatApp extends StatelessWidget {
     return MaterialApp(
       title: 'NSAT',
       debugShowCheckedModeBanner: false,
+      navigatorObservers: [AnalyticsService.instance.observer],
       theme: AppTheme.lightTheme,
       initialRoute: AppRoutes.roleSelection,
       routes: {

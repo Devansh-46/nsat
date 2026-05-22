@@ -12,6 +12,7 @@ import '../../widgets/eyebrow.dart';
 import '../../widgets/niu_button.dart';
 import '../../widgets/note_box.dart';
 import '../../services/remote_config_service.dart';
+import '../../services/analytics_service.dart';
 /// Step 3 — Shows the student's published test and lets them start it.
 /// Identity from AuthProvider (verifiedStudent + leadDetails).
 class TestCategoryScreen extends StatefulWidget {
@@ -43,6 +44,7 @@ class _TestCategoryScreenState extends State<TestCategoryScreen> {
     if (!mounted) return;
 
     if (rc.isMaintenanceMode) {
+      AnalyticsService.instance.logMaintenanceBlocked();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(rc.maintenanceMessage)),
       );
@@ -50,6 +52,11 @@ class _TestCategoryScreenState extends State<TestCategoryScreen> {
     }
 
     if (!rc.isExamWindowOpen) {
+      final auth = context.read<AuthProvider>();
+      final student = auth.verifiedStudent;
+      if (student != null) {
+        AnalyticsService.instance.logExamWindowBlocked(applicationNo: student.applicationNo);
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('The exam window is currently closed. '
@@ -75,11 +82,17 @@ class _TestCategoryScreenState extends State<TestCategoryScreen> {
     if (!mounted) return;
 
     if (started) {
+      AnalyticsService.instance.logTestStarted(
+        applicationNo: student.applicationNo,
+        course: lead.courseKey,
+        testId: testProvider.availableTest?.id ?? '',
+      );
       Navigator.pushReplacementNamed(context, AppRoutes.liveTest);
       return;
     }
 
     if (testProvider.alreadyCompleted) {
+      AnalyticsService.instance.logAlreadyCompleted(applicationNo: student.applicationNo);
       _showBlocked(
         'Test already completed',
         'Our records show this NIU ID has already taken the test. '

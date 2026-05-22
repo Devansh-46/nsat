@@ -12,6 +12,7 @@ import '../../widgets/eyebrow.dart';
 import '../../widgets/niu_field.dart';
 import '../../widgets/niu_button.dart';
 import '../../widgets/note_box.dart';
+import '../../services/analytics_service.dart';
 
 /// Step 2 — Two-factor verification: Email OTP + Phone OTP.
 ///
@@ -91,6 +92,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
       });
 
       if (!mounted) return;
+      AnalyticsService.instance.logOtpSent(applicationNo: student.applicationNo);
       setState(() { _stage = _VerifyStage.emailOtp; _busy = false; });
     } on FirebaseFunctionsException catch (e) {
       if (!mounted) return;
@@ -222,6 +224,11 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
 
   void _onFullyVerified() {
     if (!mounted) return;
+    final auth = context.read<app.AuthProvider>();
+    final student = auth.verifiedStudent;
+    if (student != null) {
+      AnalyticsService.instance.logOtpVerified(applicationNo: student.applicationNo);
+    }
     setState(() { _stage = _VerifyStage.done; });
     Navigator.pushReplacementNamed(context, AppRoutes.testCategory);
   }
