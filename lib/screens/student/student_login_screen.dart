@@ -12,6 +12,7 @@ import '../../widgets/niu_button.dart';
 import '../../widgets/note_box.dart';
 import '../../services/remote_config_service.dart';
 import '../../services/analytics_service.dart';
+import '../../widgets/web_split_layout.dart';
 
 /// Step 1 — NIU ID entry + fee gate.
 ///
@@ -38,10 +39,11 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
 
     // Refresh Remote Config and check maintenance mode
     await RemoteConfigService.instance.refresh();
+    if (!mounted) return;
+    
     final rc = RemoteConfigService.instance;
 
     if (rc.isMaintenanceMode) {
-      if (!mounted) return;
       AnalyticsService.instance.logMaintenanceBlocked();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(rc.maintenanceMessage)),
@@ -67,7 +69,7 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
     final outcome = provider.lastFeeGateOutcome;
     final topPad = MediaQuery.of(context).padding.top;
 
-    return Scaffold(
+    final mobileView = Scaffold(
       backgroundColor: AppColors.bgBase,
       body: MeshBackground(
         child: SafeArea(
@@ -175,12 +177,155 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
                 const SizedBox(height: 28),
 
                 // ── Step indicator ──
-                _StepIndicator(current: 0),
+                const _StepIndicator(current: 0),
               ],
             ),
           ),
         ),
       ),
+    );
+
+    final leftPanel = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Row(
+          children: [
+            Text('NSAT', style: AppTheme.mono(color: AppColors.ivory.withValues(alpha: 0.5))),
+            const SizedBox(width: 8),
+            Text('/', style: AppTheme.mono(color: AppColors.ivory.withValues(alpha: 0.2))),
+            const SizedBox(width: 8),
+            Text('NOIDA INTERNATIONAL UNIVERSITY', style: AppTheme.eyebrow(color: AppColors.ivory.withValues(alpha: 0.5))),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Text('Student / Sign in', style: AppTheme.body(size: 14, color: AppColors.ivory)),
+        const SizedBox(height: 64),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Text('STEP 01 OF 04 — IDENTIFY YOURSELF', style: AppTheme.eyebrow(color: AppColors.ivory)),
+        ),
+        const SizedBox(height: 24),
+        Text.rich(
+          TextSpan(
+            style: AppTheme.display(size: 52, color: AppColors.ivory),
+            children: [
+              const TextSpan(text: 'Welcome back,\n'),
+              AppTheme.italicSpan('applicant.', color: AppColors.ivory),
+            ],
+          ),
+        ),
+        const Spacer(),
+        // ── Step indicator ──
+        Row(
+          children: List.generate(4, (i) {
+            final active = i == 0;
+            return Container(
+              margin: const EdgeInsets.only(right: 6),
+              width: active ? 22 : 7,
+              height: 7,
+              decoration: BoxDecoration(
+                color: active ? AppColors.ivory : AppColors.ivory.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(4),
+              ),
+            );
+          }),
+        ),
+        const SizedBox(height: 24),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Test Format', style: AppTheme.eyebrow(color: AppColors.ivory.withValues(alpha: 0.5))),
+                const SizedBox(height: 4),
+                Text('60 Questions / 60 Min', style: AppTheme.mono(size: 12, color: AppColors.ivory)),
+              ],
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Support', style: AppTheme.eyebrow(color: AppColors.ivory.withValues(alpha: 0.5))),
+                const SizedBox(height: 4),
+                Text('nsat@niu.edu.in', style: AppTheme.mono(size: 12, color: AppColors.ivory)),
+              ],
+            ),
+          ],
+        ),
+      ],
+    );
+
+    final rightPanel = Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Eyebrow('SIGN IN'),
+        const SizedBox(height: 16),
+        GlassCard(
+          padding: const EdgeInsets.fromLTRB(22, 24, 22, 22),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // NIU ID field
+              NiuField(
+                label: 'NIU ID',
+                hint: 'e.g. NIU-26-XXXXX',
+                icon: Icons.badge_outlined,
+                helper: 'Same as your application number',
+                errorText: _errorText(outcome),
+                controller: _idController,
+                textCapitalization: TextCapitalization.characters,
+                keyboardType: TextInputType.text,
+                onChanged: (_) {
+                  if (provider.lastFeeGateOutcome != null) {
+                    provider.resetFeeGate();
+                  }
+                },
+                onSubmitted: (_) => _continue(),
+              ),
+              const SizedBox(height: 22),
+
+              // Continue button
+              if (provider.isLoading)
+                const SizedBox(
+                  height: 48,
+                  child: Center(
+                    child: SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        color: AppColors.forest,
+                      ),
+                    ),
+                  ),
+                )
+              else
+                NiuButton(
+                  label: 'Continue',
+                  showArrow: true,
+                  onTap: _continue,
+                ),
+
+              const SizedBox(height: 18),
+
+              // ── State note boxes ──
+              _buildNote(outcome, provider.error),
+            ],
+          ),
+        ),
+      ],
+    );
+
+    return WebSplitLayout(
+      leftChild: leftPanel,
+      rightChild: rightPanel,
+      mobileChild: mobileView,
     );
   }
 

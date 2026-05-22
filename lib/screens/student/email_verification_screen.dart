@@ -13,6 +13,7 @@ import '../../widgets/niu_field.dart';
 import '../../widgets/niu_button.dart';
 import '../../widgets/note_box.dart';
 import '../../services/analytics_service.dart';
+import '../../widgets/web_split_layout.dart';
 
 /// Step 2 — Two-factor verification: Email OTP + Phone OTP.
 ///
@@ -67,13 +68,20 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
     final student = auth.verifiedStudent;
     if (student == null) return;
 
-    setState(() { _stage = _VerifyStage.sendingEmail; _busy = true; _error = null; });
+    setState(() {
+      _stage = _VerifyStage.sendingEmail;
+      _busy = true;
+      _error = null;
+    });
 
     try {
       final leadOk = await auth.fetchLeadDetails();
       if (!mounted) return;
       if (!leadOk) {
-        setState(() { _busy = false; _error = auth.error ?? 'Could not fetch your details.'; });
+        setState(() {
+          _busy = false;
+          _error = auth.error ?? 'Could not fetch your details.';
+        });
         return;
       }
 
@@ -92,14 +100,24 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
       });
 
       if (!mounted) return;
-      AnalyticsService.instance.logOtpSent(applicationNo: student.applicationNo);
-      setState(() { _stage = _VerifyStage.emailOtp; _busy = false; });
+      AnalyticsService.instance
+          .logOtpSent(applicationNo: student.applicationNo);
+      setState(() {
+        _stage = _VerifyStage.emailOtp;
+        _busy = false;
+      });
     } on FirebaseFunctionsException catch (e) {
       if (!mounted) return;
-      setState(() { _busy = false; _error = e.message ?? 'Failed to send email code.'; });
+      setState(() {
+        _busy = false;
+        _error = e.message ?? 'Failed to send email code.';
+      });
     } catch (e) {
       if (!mounted) return;
-      setState(() { _busy = false; _error = 'Failed to send email code. Check your connection.'; });
+      setState(() {
+        _busy = false;
+        _error = 'Failed to send email code. Check your connection.';
+      });
     }
   }
 
@@ -116,7 +134,10 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
     final student = auth.verifiedStudent;
     if (student == null) return;
 
-    setState(() { _busy = true; _error = null; });
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
 
     try {
       final callable = FirebaseFunctions.instanceFor(region: 'asia-south1')
@@ -131,10 +152,16 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
       _startPhoneOtp();
     } on FirebaseFunctionsException catch (e) {
       if (!mounted) return;
-      setState(() { _busy = false; _error = e.message ?? 'Email verification failed.'; });
+      setState(() {
+        _busy = false;
+        _error = e.message ?? 'Email verification failed.';
+      });
     } catch (e) {
       if (!mounted) return;
-      setState(() { _busy = false; _error = 'Email verification failed.'; });
+      setState(() {
+        _busy = false;
+        _error = 'Email verification failed.';
+      });
     }
   }
 
@@ -147,7 +174,11 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
       return;
     }
 
-    setState(() { _stage = _VerifyStage.sendingPhone; _busy = true; _error = null; });
+    setState(() {
+      _stage = _VerifyStage.sendingPhone;
+      _busy = true;
+      _error = null;
+    });
 
     // Ensure phone has country code
     String phone = _fullPhone!.trim();
@@ -175,7 +206,10 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
         if (!mounted) return;
         _verificationId = verificationId;
         _resendToken = resendToken;
-        setState(() { _stage = _VerifyStage.phoneOtp; _busy = false; });
+        setState(() {
+          _stage = _VerifyStage.phoneOtp;
+          _busy = false;
+        });
       },
       codeAutoRetrievalTimeout: (String verificationId) {
         _verificationId = verificationId;
@@ -198,7 +232,10 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
       return;
     }
 
-    setState(() { _busy = true; _error = null; });
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
 
     try {
       final credential = PhoneAuthProvider.credential(
@@ -213,10 +250,16 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
       _onFullyVerified();
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
-      setState(() { _busy = false; _error = e.message ?? 'Invalid SMS code.'; });
+      setState(() {
+        _busy = false;
+        _error = e.message ?? 'Invalid SMS code.';
+      });
     } catch (e) {
       if (!mounted) return;
-      setState(() { _busy = false; _error = 'Phone verification failed.'; });
+      setState(() {
+        _busy = false;
+        _error = 'Phone verification failed.';
+      });
     }
   }
 
@@ -227,9 +270,12 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
     final auth = context.read<app.AuthProvider>();
     final student = auth.verifiedStudent;
     if (student != null) {
-      AnalyticsService.instance.logOtpVerified(applicationNo: student.applicationNo);
+      AnalyticsService.instance
+          .logOtpVerified(applicationNo: student.applicationNo);
     }
-    setState(() { _stage = _VerifyStage.done; });
+    setState(() {
+      _stage = _VerifyStage.done;
+    });
     Navigator.pushReplacementNamed(context, AppRoutes.testCategory);
   }
 
@@ -255,7 +301,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
     final student = auth.verifiedStudent;
     final topPad = MediaQuery.of(context).padding.top;
 
-    return Scaffold(
+    final mobileView = Scaffold(
       backgroundColor: AppColors.bgBase,
       body: MeshBackground(
         child: SafeArea(
@@ -272,7 +318,10 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(color: AppColors.glassBorder),
                     boxShadow: const [
-                      BoxShadow(color: Color(0x120F2A1F), offset: Offset(0, 6), blurRadius: 18),
+                      BoxShadow(
+                          color: Color(0x120F2A1F),
+                          offset: Offset(0, 6),
+                          blurRadius: 18),
                     ],
                   ),
                   alignment: Alignment.center,
@@ -314,19 +363,28 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                         decoration: BoxDecoration(
                           color: AppColors.forestTint,
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: AppColors.forest.withValues(alpha: 0.15)),
+                          border: Border.all(
+                              color: AppColors.forest.withValues(alpha: 0.15)),
                         ),
                         child: Row(
                           children: [
-                            const Icon(Icons.check_circle, size: 18, color: AppColors.forest),
+                            const Icon(Icons.check_circle,
+                                size: 18, color: AppColors.forest),
                             const SizedBox(width: 10),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text('Fee verified', style: AppTheme.body(size: 12.5, color: AppColors.forest, weight: FontWeight.w600)),
+                                  Text('Fee verified',
+                                      style: AppTheme.body(
+                                          size: 12.5,
+                                          color: AppColors.forest,
+                                          weight: FontWeight.w600)),
                                   const SizedBox(height: 1),
-                                  Text('NIU ID  ${student?.applicationNo ?? "-"}', style: AppTheme.mono(size: 11.5, color: AppColors.ink3)),
+                                  Text(
+                                      'NIU ID  ${student?.applicationNo ?? "-"}',
+                                      style: AppTheme.mono(
+                                          size: 11.5, color: AppColors.ink3)),
                                 ],
                               ),
                             ),
@@ -340,14 +398,20 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                         children: [
                           _StepDot(
                             label: 'Email',
-                            done: _stage.index >= _VerifyStage.sendingPhone.index,
-                            active: _stage.index < _VerifyStage.sendingPhone.index,
+                            done:
+                                _stage.index >= _VerifyStage.sendingPhone.index,
+                            active:
+                                _stage.index < _VerifyStage.sendingPhone.index,
                           ),
-                          Expanded(child: Container(height: 1, color: AppColors.line2)),
+                          Expanded(
+                              child:
+                                  Container(height: 1, color: AppColors.line2)),
                           _StepDot(
                             label: 'Phone',
                             done: _stage == _VerifyStage.done,
-                            active: _stage.index >= _VerifyStage.sendingPhone.index && _stage != _VerifyStage.done,
+                            active: _stage.index >=
+                                    _VerifyStage.sendingPhone.index &&
+                                _stage != _VerifyStage.done,
                           ),
                         ],
                       ),
@@ -356,16 +420,25 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                       // ── Stage-specific content ──
                       if (_stage == _VerifyStage.sendingEmail) ...[
                         const SizedBox(height: 20),
-                        const Center(child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: AppColors.forest))),
+                        const Center(
+                            child: SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2.5,
+                                    color: AppColors.forest))),
                         const SizedBox(height: 8),
-                        Center(child: Text('Sending verification code…', style: AppTheme.body(size: 12.5, color: AppColors.ink4))),
-                      ]
-
-                      else if (_stage == _VerifyStage.emailOtp) ...[
+                        Center(
+                            child: Text('Sending verification code…',
+                                style: AppTheme.body(
+                                    size: 12.5, color: AppColors.ink4))),
+                      ] else if (_stage == _VerifyStage.emailOtp) ...[
                         if (_maskedEmail != null) ...[
                           const Eyebrow('verification email sent to'),
                           const SizedBox(height: 4),
-                          Text(_maskedEmail!, style: AppTheme.mono(size: 14, color: AppColors.ink)),
+                          Text(_maskedEmail!,
+                              style: AppTheme.mono(
+                                  size: 14, color: AppColors.ink)),
                           const SizedBox(height: 16),
                         ],
                         NiuField(
@@ -380,29 +453,57 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                         const SizedBox(height: 10),
                         GestureDetector(
                           onTap: _startEmailOtp,
-                          child: Text('Resend code', style: AppTheme.body(size: 12, color: AppColors.forest, weight: FontWeight.w600).copyWith(decoration: TextDecoration.underline)),
+                          child: Text('Resend code',
+                              style: AppTheme.body(
+                                      size: 12,
+                                      color: AppColors.forest,
+                                      weight: FontWeight.w600)
+                                  .copyWith(
+                                      decoration: TextDecoration.underline)),
                         ),
                         const SizedBox(height: 20),
                         _busy
-                            ? const SizedBox(height: 48, child: Center(child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: AppColors.forest))))
-                            : NiuButton(label: 'Verify email', showArrow: true, onTap: _verifyEmailOtp),
-                      ]
-
-                      else if (_stage == _VerifyStage.sendingPhone) ...[
-                        const NoteBox.green(icon: Icons.check_circle, body: 'Email verified successfully!'),
+                            ? const SizedBox(
+                                height: 48,
+                                child: Center(
+                                    child: SizedBox(
+                                        width: 22,
+                                        height: 22,
+                                        child: CircularProgressIndicator(
+                                            strokeWidth: 2.5,
+                                            color: AppColors.forest))))
+                            : NiuButton(
+                                label: 'Verify email',
+                                showArrow: true,
+                                onTap: _verifyEmailOtp),
+                      ] else if (_stage == _VerifyStage.sendingPhone) ...[
+                        const NoteBox.green(
+                            icon: Icons.check_circle,
+                            body: 'Email verified successfully!'),
                         const SizedBox(height: 16),
-                        const Center(child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: AppColors.forest))),
+                        const Center(
+                            child: SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2.5,
+                                    color: AppColors.forest))),
                         const SizedBox(height: 8),
-                        Center(child: Text('Sending SMS code…', style: AppTheme.body(size: 12.5, color: AppColors.ink4))),
-                      ]
-
-                      else if (_stage == _VerifyStage.phoneOtp) ...[
-                        const NoteBox.green(icon: Icons.check_circle, body: 'Email verified successfully!'),
+                        Center(
+                            child: Text('Sending SMS code…',
+                                style: AppTheme.body(
+                                    size: 12.5, color: AppColors.ink4))),
+                      ] else if (_stage == _VerifyStage.phoneOtp) ...[
+                        const NoteBox.green(
+                            icon: Icons.check_circle,
+                            body: 'Email verified successfully!'),
                         const SizedBox(height: 16),
                         if (_maskedPhone != null) ...[
                           const Eyebrow('sms sent to'),
                           const SizedBox(height: 4),
-                          Text(_maskedPhone!, style: AppTheme.mono(size: 14, color: AppColors.ink)),
+                          Text(_maskedPhone!,
+                              style: AppTheme.mono(
+                                  size: 14, color: AppColors.ink)),
                           const SizedBox(height: 16),
                         ],
                         NiuField(
@@ -417,20 +518,42 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                         const SizedBox(height: 10),
                         GestureDetector(
                           onTap: _startPhoneOtp,
-                          child: Text('Resend SMS', style: AppTheme.body(size: 12, color: AppColors.forest, weight: FontWeight.w600).copyWith(decoration: TextDecoration.underline)),
+                          child: Text('Resend SMS',
+                              style: AppTheme.body(
+                                      size: 12,
+                                      color: AppColors.forest,
+                                      weight: FontWeight.w600)
+                                  .copyWith(
+                                      decoration: TextDecoration.underline)),
                         ),
                         const SizedBox(height: 20),
                         _busy
-                            ? const SizedBox(height: 48, child: Center(child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: AppColors.forest))))
-                            : NiuButton(label: 'Verify & continue', showArrow: true, variant: NiuButtonVariant.forest, onTap: _verifyPhoneOtp),
+                            ? const SizedBox(
+                                height: 48,
+                                child: Center(
+                                    child: SizedBox(
+                                        width: 22,
+                                        height: 22,
+                                        child: CircularProgressIndicator(
+                                            strokeWidth: 2.5,
+                                            color: AppColors.forest))))
+                            : NiuButton(
+                                label: 'Verify & continue',
+                                showArrow: true,
+                                variant: NiuButtonVariant.forest,
+                                onTap: _verifyPhoneOtp),
                       ],
 
                       // ── Error fallback (for sendingEmail failures) ──
-                      if (_error != null && (_stage == _VerifyStage.sendingEmail)) ...[
+                      if (_error != null &&
+                          (_stage == _VerifyStage.sendingEmail)) ...[
                         const SizedBox(height: 16),
                         NoteBox.clay(icon: Icons.error_outline, body: _error!),
                         const SizedBox(height: 16),
-                        NiuButton(label: 'Retry', variant: NiuButtonVariant.outline, onTap: _startEmailOtp),
+                        NiuButton(
+                            label: 'Retry',
+                            variant: NiuButtonVariant.outline,
+                            onTap: _startEmailOtp),
                       ],
                     ],
                   ),
@@ -444,6 +567,295 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
         ),
       ),
     );
+
+    final leftPanel = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Row(
+          children: [
+            Text('NSAT',
+                style: AppTheme.mono(
+                    color: AppColors.ivory.withValues(alpha: 0.5))),
+            const SizedBox(width: 8),
+            Text('/',
+                style: AppTheme.mono(
+                    color: AppColors.ivory.withValues(alpha: 0.2))),
+            const SizedBox(width: 8),
+            Text('NOIDA INTERNATIONAL UNIVERSITY',
+                style: AppTheme.eyebrow(
+                    color: AppColors.ivory.withValues(alpha: 0.5))),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Text('Student / Identity verification',
+            style: AppTheme.body(size: 14, color: AppColors.ivory)),
+        const SizedBox(height: 64),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Text('STEP 02 OF 04 — SECURITY',
+              style: AppTheme.eyebrow(color: AppColors.ivory)),
+        ),
+        const SizedBox(height: 24),
+        Text.rich(
+          TextSpan(
+            style: AppTheme.display(size: 52, color: AppColors.ivory),
+            children: [
+              const TextSpan(text: 'Verify your\n'),
+              AppTheme.italicSpan('identity.', color: AppColors.ivory),
+            ],
+          ),
+        ),
+        const Spacer(),
+        // ── Step indicator ──
+        Row(
+          children: List.generate(4, (i) {
+            final active = i == 1;
+            return Container(
+              margin: const EdgeInsets.only(right: 6),
+              width: active ? 22 : 7,
+              height: 7,
+              decoration: BoxDecoration(
+                color: active
+                    ? AppColors.ivory
+                    : AppColors.ivory.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(4),
+              ),
+            );
+          }),
+        ),
+        const SizedBox(height: 24),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Support',
+                    style: AppTheme.eyebrow(
+                        color: AppColors.ivory.withValues(alpha: 0.5))),
+                const SizedBox(height: 4),
+                Text('nsat@niu.edu.in',
+                    style: AppTheme.mono(size: 12, color: AppColors.ivory)),
+              ],
+            ),
+          ],
+        ),
+      ],
+    );
+
+    final rightPanel = Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Eyebrow('VERIFICATION'),
+        const SizedBox(height: 16),
+        GlassCard(
+          padding: const EdgeInsets.fromLTRB(22, 22, 22, 22),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Fee verified row
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: AppColors.forestTint,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                      color: AppColors.forest.withValues(alpha: 0.15)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.check_circle,
+                        size: 18, color: AppColors.forest),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Fee verified',
+                              style: AppTheme.body(
+                                  size: 12.5,
+                                  color: AppColors.forest,
+                                  weight: FontWeight.w600)),
+                          const SizedBox(height: 1),
+                          Text('NIU ID  ${student?.applicationNo ?? "-"}',
+                              style: AppTheme.mono(
+                                  size: 11.5, color: AppColors.ink3)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // ── Progress indicator ──
+              Row(
+                children: [
+                  _StepDot(
+                    label: 'Email',
+                    done: _stage.index >= _VerifyStage.sendingPhone.index,
+                    active: _stage.index < _VerifyStage.sendingPhone.index,
+                  ),
+                  Expanded(child: Container(height: 1, color: AppColors.line2)),
+                  _StepDot(
+                    label: 'Phone',
+                    done: _stage == _VerifyStage.done,
+                    active: _stage.index >= _VerifyStage.sendingPhone.index &&
+                        _stage != _VerifyStage.done,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // ── Stage-specific content ──
+              if (_stage == _VerifyStage.sendingEmail) ...[
+                const SizedBox(height: 20),
+                const Center(
+                    child: SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2.5, color: AppColors.forest))),
+                const SizedBox(height: 8),
+                Center(
+                    child: Text('Sending verification code…',
+                        style:
+                            AppTheme.body(size: 12.5, color: AppColors.ink4))),
+              ] else if (_stage == _VerifyStage.emailOtp) ...[
+                if (_maskedEmail != null) ...[
+                  const Eyebrow('verification email sent to'),
+                  const SizedBox(height: 4),
+                  Text(_maskedEmail!,
+                      style: AppTheme.mono(size: 14, color: AppColors.ink)),
+                  const SizedBox(height: 16),
+                ],
+                NiuField(
+                  label: 'Email verification code',
+                  hint: '6-digit code',
+                  icon: Icons.email_outlined,
+                  controller: _emailOtpController,
+                  keyboardType: TextInputType.number,
+                  maxLength: 6,
+                  errorText: _error,
+                ),
+                const SizedBox(height: 10),
+                GestureDetector(
+                  onTap: _startEmailOtp,
+                  child: Text('Resend code',
+                      style: AppTheme.body(
+                              size: 12,
+                              color: AppColors.forest,
+                              weight: FontWeight.w600)
+                          .copyWith(decoration: TextDecoration.underline)),
+                ),
+                const SizedBox(height: 20),
+                _busy
+                    ? const SizedBox(
+                        height: 48,
+                        child: Center(
+                            child: SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2.5,
+                                    color: AppColors.forest))))
+                    : NiuButton(
+                        label: 'Verify email',
+                        showArrow: true,
+                        onTap: _verifyEmailOtp),
+              ] else if (_stage == _VerifyStage.sendingPhone) ...[
+                const NoteBox.green(
+                    icon: Icons.check_circle,
+                    body: 'Email verified successfully!'),
+                const SizedBox(height: 16),
+                const Center(
+                    child: SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2.5, color: AppColors.forest))),
+                const SizedBox(height: 8),
+                Center(
+                    child: Text('Sending SMS code…',
+                        style:
+                            AppTheme.body(size: 12.5, color: AppColors.ink4))),
+              ] else if (_stage == _VerifyStage.phoneOtp) ...[
+                const NoteBox.green(
+                    icon: Icons.check_circle,
+                    body: 'Email verified successfully!'),
+                const SizedBox(height: 16),
+                if (_maskedPhone != null) ...[
+                  const Eyebrow('sms sent to'),
+                  const SizedBox(height: 4),
+                  Text(_maskedPhone!,
+                      style: AppTheme.mono(size: 14, color: AppColors.ink)),
+                  const SizedBox(height: 16),
+                ],
+                NiuField(
+                  label: 'SMS verification code',
+                  hint: '6-digit code',
+                  icon: Icons.phone_android,
+                  controller: _phoneOtpController,
+                  keyboardType: TextInputType.number,
+                  maxLength: 6,
+                  errorText: _error,
+                ),
+                const SizedBox(height: 10),
+                GestureDetector(
+                  onTap: _startPhoneOtp,
+                  child: Text('Resend SMS',
+                      style: AppTheme.body(
+                              size: 12,
+                              color: AppColors.forest,
+                              weight: FontWeight.w600)
+                          .copyWith(decoration: TextDecoration.underline)),
+                ),
+                const SizedBox(height: 20),
+                _busy
+                    ? const SizedBox(
+                        height: 48,
+                        child: Center(
+                            child: SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2.5,
+                                    color: AppColors.forest))))
+                    : NiuButton(
+                        label: 'Verify & continue',
+                        showArrow: true,
+                        variant: NiuButtonVariant.forest,
+                        onTap: _verifyPhoneOtp),
+              ],
+
+              // ── Error fallback (for sendingEmail failures) ──
+              if (_error != null && (_stage == _VerifyStage.sendingEmail)) ...[
+                const SizedBox(height: 16),
+                NoteBox.clay(icon: Icons.error_outline, body: _error!),
+                const SizedBox(height: 16),
+                NiuButton(
+                    label: 'Retry',
+                    variant: NiuButtonVariant.outline,
+                    onTap: _startEmailOtp),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+
+    return WebSplitLayout(
+      leftChild: leftPanel,
+      rightChild: rightPanel,
+      mobileChild: mobileView,
+    );
   }
 }
 
@@ -453,18 +865,26 @@ class _StepDot extends StatelessWidget {
   final String label;
   final bool done;
   final bool active;
-  const _StepDot({required this.label, required this.done, required this.active});
+  const _StepDot(
+      {required this.label, required this.done, required this.active});
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
         Container(
-          width: 28, height: 28,
+          width: 28,
+          height: 28,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: done ? AppColors.forest : active ? AppColors.forestTint : AppColors.bone,
-            border: Border.all(color: done || active ? AppColors.forest : AppColors.line, width: 1.5),
+            color: done
+                ? AppColors.forest
+                : active
+                    ? AppColors.forestTint
+                    : AppColors.bone,
+            border: Border.all(
+                color: done || active ? AppColors.forest : AppColors.line,
+                width: 1.5),
           ),
           child: done
               ? const Icon(Icons.check, size: 14, color: Colors.white)
@@ -473,7 +893,11 @@ class _StepDot extends StatelessWidget {
                   : null,
         ),
         const SizedBox(height: 4),
-        Text(label, style: AppTheme.body(size: 10, color: done || active ? AppColors.forest : AppColors.ink4, weight: done || active ? FontWeight.w600 : FontWeight.w400)),
+        Text(label,
+            style: AppTheme.body(
+                size: 10,
+                color: done || active ? AppColors.forest : AppColors.ink4,
+                weight: done || active ? FontWeight.w600 : FontWeight.w400)),
       ],
     );
   }
@@ -497,7 +921,8 @@ class _StepIndicator extends StatelessWidget {
             return AnimatedContainer(
               duration: const Duration(milliseconds: 250),
               margin: const EdgeInsets.symmetric(horizontal: 3),
-              width: active ? 22 : 7, height: 7,
+              width: active ? 22 : 7,
+              height: 7,
               decoration: BoxDecoration(
                 color: active ? AppColors.forest : AppColors.bone,
                 borderRadius: BorderRadius.circular(4),
@@ -510,11 +935,22 @@ class _StepIndicator extends StatelessWidget {
           TextSpan(
             style: AppTheme.body(size: 11.5, color: AppColors.ink4),
             children: [
-              TextSpan(text: 'Step ${current + 1} of 4', style: AppTheme.body(size: 11.5, color: AppColors.ink3, weight: FontWeight.w600)),
+              TextSpan(
+                  text: 'Step ${current + 1} of 4',
+                  style: AppTheme.body(
+                      size: 11.5,
+                      color: AppColors.ink3,
+                      weight: FontWeight.w600)),
               const TextSpan(text: '  ·  '),
               for (int i = 0; i < _labels.length; i++) ...[
                 if (i > 0) const TextSpan(text: '  ›  '),
-                TextSpan(text: _labels[i], style: AppTheme.body(size: 11.5, color: i == current ? AppColors.forest : AppColors.ink4, weight: i == current ? FontWeight.w600 : FontWeight.w400)),
+                TextSpan(
+                    text: _labels[i],
+                    style: AppTheme.body(
+                        size: 11.5,
+                        color: i == current ? AppColors.forest : AppColors.ink4,
+                        weight:
+                            i == current ? FontWeight.w600 : FontWeight.w400)),
               ],
             ],
           ),

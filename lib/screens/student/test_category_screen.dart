@@ -13,6 +13,7 @@ import '../../widgets/niu_button.dart';
 import '../../widgets/note_box.dart';
 import '../../services/remote_config_service.dart';
 import '../../services/analytics_service.dart';
+import '../../widgets/web_split_layout.dart';
 /// Step 3 — Shows the student's published test and lets them start it.
 /// Identity from AuthProvider (verifiedStudent + leadDetails).
 class TestCategoryScreen extends StatefulWidget {
@@ -147,7 +148,7 @@ class _TestCategoryScreenState extends State<TestCategoryScreen> {
     final test = testProvider.availableTest;
     final topPad = MediaQuery.of(context).padding.top;
 
-    return Scaffold(
+    final mobileView = Scaffold(
       backgroundColor: AppColors.bgBase,
       body: MeshBackground(
         child: SafeArea(
@@ -313,6 +314,227 @@ class _TestCategoryScreenState extends State<TestCategoryScreen> {
           ),
         ),
       ),
+    );
+
+    final leftPanel = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Row(
+          children: [
+            Text('NSAT', style: AppTheme.mono(color: AppColors.ivory.withValues(alpha: 0.5))),
+            const SizedBox(width: 8),
+            Text('/', style: AppTheme.mono(color: AppColors.ivory.withValues(alpha: 0.2))),
+            const SizedBox(width: 8),
+            Text('NOIDA INTERNATIONAL UNIVERSITY', style: AppTheme.eyebrow(color: AppColors.ivory.withValues(alpha: 0.5))),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Text('Student / Your test', style: AppTheme.body(size: 14, color: AppColors.ivory)),
+        const SizedBox(height: 64),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Text('STEP 03 OF 04 — START EXAM', style: AppTheme.eyebrow(color: AppColors.ivory)),
+        ),
+        const SizedBox(height: 24),
+        Text.rich(
+          TextSpan(
+            style: AppTheme.display(size: 52, color: AppColors.ivory),
+            children: [
+              const TextSpan(text: 'Hello,\n'),
+              AppTheme.italicSpan('${lead?.name ?? "Student"}.', color: AppColors.ivory),
+            ],
+          ),
+        ),
+        const Spacer(),
+        // ── Step indicator ──
+        Row(
+          children: List.generate(4, (i) {
+            final active = i == 2;
+            return Container(
+              margin: const EdgeInsets.only(right: 6),
+              width: active ? 22 : 7,
+              height: 7,
+              decoration: BoxDecoration(
+                color: active ? AppColors.ivory : AppColors.ivory.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(4),
+              ),
+            );
+          }),
+        ),
+        const SizedBox(height: 24),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Test Format', style: AppTheme.eyebrow(color: AppColors.ivory.withValues(alpha: 0.5))),
+                const SizedBox(height: 4),
+                Text('60 Questions / 60 Min', style: AppTheme.mono(size: 12, color: AppColors.ivory)),
+              ],
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Support', style: AppTheme.eyebrow(color: AppColors.ivory.withValues(alpha: 0.5))),
+                const SizedBox(height: 4),
+                Text('nsat@niu.edu.in', style: AppTheme.mono(size: 12, color: AppColors.ivory)),
+              ],
+            ),
+          ],
+        ),
+      ],
+    );
+
+    final rightPanel = Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (testProvider.isLoading)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 60),
+            child: Center(
+              child: SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  color: AppColors.forest,
+                ),
+              ),
+            ),
+          )
+        else if (test != null) ...[
+          // ── Test card ──
+          GlassCard(
+            padding: const EdgeInsets.fromLTRB(22, 22, 22, 22),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Title row
+                Row(
+                  children: [
+                    Container(
+                      width: 42,
+                      height: 42,
+                      decoration: BoxDecoration(
+                        color: AppColors.forestTint,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.assignment_outlined,
+                          size: 20, color: AppColors.forest),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Text(
+                        test.title,
+                        style: AppTheme.displaySm(size: 16),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+
+                // 2×2 stat grid
+                Row(
+                  children: [
+                    Expanded(
+                      child: _StatTile(
+                        value: '${test.questionCount}',
+                        label: 'Questions',
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _StatTile(
+                        value: '${test.durationMinutes}',
+                        label: 'Minutes',
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _StatTile(
+                        value: test.marksPerQuestion
+                            .toStringAsFixed(0),
+                        label: 'Mark / question',
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _StatTile(
+                        value: test.negativeMarking
+                            ? '-${test.negativeMarksPerWrong}'
+                            : '0',
+                        label: 'Wrong answer',
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // One-attempt warning
+          const NoteBox.gold(
+            icon: Icons.warning_amber_rounded,
+            title: 'One attempt only',
+            body: 'Once you start, the test cannot be retaken '
+                '— make sure you are ready.',
+          ),
+          const SizedBox(height: 20),
+
+          NiuButton(
+            label: 'Start test',
+            variant: NiuButtonVariant.forest,
+            showArrow: true,
+            onTap: _startTest,
+          ),
+        ] else ...[
+          // ── Empty state ──
+          GlassCard(
+            padding: const EdgeInsets.symmetric(
+                horizontal: 22, vertical: 36),
+            child: Column(
+              children: [
+                const Icon(Icons.info_outline,
+                    size: 36, color: AppColors.ink4),
+                const SizedBox(height: 14),
+                Text(
+                  'No test available',
+                  style: AppTheme.displaySm(size: 17),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  testProvider.error ??
+                      'There is no published test for your '
+                          'course yet.',
+                  textAlign: TextAlign.center,
+                  style: AppTheme.body(
+                    size: 13,
+                    color: AppColors.ink3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+
+    return WebSplitLayout(
+      leftChild: leftPanel,
+      rightChild: rightPanel,
+      mobileChild: mobileView,
     );
   }
 }

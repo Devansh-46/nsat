@@ -8,6 +8,8 @@ import '../../widgets/mesh_background.dart';
 import '../../widgets/glass_card.dart';
 import '../../widgets/niu_field.dart';
 import '../../widgets/niu_button.dart';
+import '../../widgets/web_split_layout.dart';
+import '../../widgets/eyebrow.dart';
 
 /// Admin login — Verdant Daylight reskin. Logic unchanged.
 class AdminLoginScreen extends StatefulWidget {
@@ -42,7 +44,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
     final provider = context.watch<AuthProvider>();
     final topPad = MediaQuery.of(context).padding.top;
 
-    return Scaffold(
+    final mobileView = Scaffold(
       backgroundColor: AppColors.bgBase,
       body: MeshBackground(
         child: SafeArea(
@@ -133,6 +135,118 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
           ),
         ),
       ),
+    );
+
+    final leftPanel = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Row(
+          children: [
+            Text('NSAT', style: AppTheme.mono(color: AppColors.ivory.withValues(alpha: 0.5))),
+            const SizedBox(width: 8),
+            Text('/', style: AppTheme.mono(color: AppColors.ivory.withValues(alpha: 0.2))),
+            const SizedBox(width: 8),
+            Text('NOIDA INTERNATIONAL UNIVERSITY', style: AppTheme.eyebrow(color: AppColors.ivory.withValues(alpha: 0.5))),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Text('Admin / Control panel', style: AppTheme.body(size: 14, color: AppColors.ivory)),
+        const SizedBox(height: 64),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Text('ADMINISTRATION', style: AppTheme.eyebrow(color: AppColors.ivory)),
+        ),
+        const SizedBox(height: 24),
+        Text.rich(
+          TextSpan(
+            style: AppTheme.display(size: 52, color: AppColors.ivory),
+            children: [
+              const TextSpan(text: 'Admin,\n'),
+              AppTheme.italicSpan('sign in.', color: AppColors.ivory),
+            ],
+          ),
+        ),
+        const Spacer(),
+        // ── Footer ──
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Support', style: AppTheme.eyebrow(color: AppColors.ivory.withValues(alpha: 0.5))),
+                const SizedBox(height: 4),
+                Text('it@niu.edu.in', style: AppTheme.mono(size: 12, color: AppColors.ivory)),
+              ],
+            ),
+          ],
+        ),
+      ],
+    );
+
+    final rightPanel = Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Eyebrow('SECURE ACCESS'),
+        const SizedBox(height: 16),
+        GlassCard(
+          padding: const EdgeInsets.fromLTRB(22, 22, 22, 22),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              NiuField(
+                label: 'Admin email',
+                icon: Icons.email_outlined,
+                controller: _emailController,
+                keyboardType: TextInputType.emailAddress,
+              ),
+              const SizedBox(height: 16),
+              NiuField(
+                label: 'Password',
+                icon: Icons.lock_outline,
+                controller: _passwordController,
+                obscureText: true,
+              ),
+              const SizedBox(height: 20),
+              if (provider.error != null) ...[
+                Text(
+                  provider.error!,
+                  style: AppTheme.body(size: 12.5, color: AppColors.clay),
+                ),
+                const SizedBox(height: 12),
+              ],
+              if (provider.isLoading)
+                const SizedBox(
+                  height: 48,
+                  child: Center(
+                    child: SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        color: AppColors.forest,
+                      ),
+                    ),
+                  ),
+                )
+              else
+                NiuButton(label: 'Sign in', onTap: _login),
+            ],
+          ),
+        ),
+      ],
+    );
+
+    return WebSplitLayout(
+      leftChild: leftPanel,
+      rightChild: rightPanel,
+      mobileChild: mobileView,
     );
   }
 }

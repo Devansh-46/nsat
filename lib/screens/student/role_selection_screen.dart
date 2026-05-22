@@ -8,6 +8,7 @@ import '../../widgets/eyebrow.dart';
 import '../../widgets/niu_button.dart';
 import '../../widgets/note_box.dart';
 import '../../services/remote_config_service.dart';
+import '../../widgets/web_split_layout.dart';
 
 /// App entry point — choose Student or Admin.
 /// Verdant Daylight reskin.
@@ -18,7 +19,7 @@ class RoleSelectionScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final topPad = MediaQuery.of(context).padding.top;
 
-    return Scaffold(
+    final mobileView = Scaffold(
       backgroundColor: AppColors.bgBase,
       body: MeshBackground(
         child: SafeArea(
@@ -138,14 +139,195 @@ class RoleSelectionScreen extends StatelessWidget {
                   const SizedBox(height: 32),
 
                   Text(
-                    'v1.0 — NIU IT Team',
+                    '© 2026 Noida International University. All rights reserved.',
                     style: AppTheme.body(size: 10.5, color: AppColors.ink5),
+                    textAlign: TextAlign.center,
                   ),
                 ],
               ),
             ),
           ),
         ),
+      ),
+    );
+
+    final leftPanel = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Row(
+          children: [
+            Image.asset('assets/niu_crest.png', height: 48),
+            const SizedBox(width: 16),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('NOIDA INTERNATIONAL UNIVERSITY',
+                    style: AppTheme.eyebrow(
+                        color: AppColors.ivory.withValues(alpha: 0.7))),
+                Text('NSAT',
+                    style:
+                        AppTheme.displaySm(size: 18, color: AppColors.ivory)),
+              ],
+            ),
+          ],
+        ),
+        const SizedBox(height: 64),
+        Text.rich(
+          TextSpan(
+            style: AppTheme.display(size: 56, color: AppColors.ivory),
+            children: [
+              const TextSpan(text: 'Student Aptitude\n'),
+              AppTheme.italicSpan('Test.', color: AppColors.ivory),
+            ],
+          ),
+        ),
+        const SizedBox(height: 24),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.school_outlined,
+                  size: 16, color: AppColors.ivory),
+              const SizedBox(width: 10),
+              Text(
+                '2026 — 27 Admissions',
+                style: AppTheme.body(
+                    size: 13, color: AppColors.ivory, weight: FontWeight.w600),
+              ),
+            ],
+          ),
+        ),
+        const Spacer(),
+      ],
+    );
+
+    final rightPanel = Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Eyebrow('welcome — please choose your role'),
+        const SizedBox(height: 8),
+        Text('Sign in to begin or\nadminister the test.',
+            style: AppTheme.displaySm()),
+        const SizedBox(height: 32),
+        // Maintenance banner (if active)
+        if (RemoteConfigService.instance.isMaintenanceMode)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 14),
+            child: NoteBox.gold(
+              icon: Icons.construction_rounded,
+              title: 'Maintenance',
+              body: RemoteConfigService.instance.maintenanceMessage,
+            ),
+          ),
+        GlassCard(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            children: [
+              _ActionRow(
+                icon: Icons.person_outline,
+                title: 'Student Login',
+                subtitle: 'Take your aptitude test',
+                onTap: () =>
+                    Navigator.pushNamed(context, AppRoutes.studentLogin),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                child: Container(height: 1, color: AppColors.line2),
+              ),
+              _ActionRow(
+                icon: Icons.admin_panel_settings_outlined,
+                title: 'Admin Login',
+                subtitle: 'Manage tests & results',
+                onTap: () => Navigator.pushNamed(context, AppRoutes.adminLogin),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+
+    return WebSplitLayout(
+      leftChild: leftPanel,
+      rightChild: rightPanel,
+      mobileChild: mobileView,
+    );
+  }
+}
+
+class _Stat extends StatelessWidget {
+  final String value;
+  final String label;
+  const _Stat(this.value, this.label);
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(value, style: AppTheme.mono(size: 20, color: AppColors.ivory)),
+        const SizedBox(height: 2),
+        Text(label,
+            style: AppTheme.body(
+                size: 11.5, color: AppColors.ivory.withValues(alpha: 0.7))),
+      ],
+    );
+  }
+}
+
+class _ActionRow extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  const _ActionRow({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: AppColors.forestTint,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: AppColors.forest),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title,
+                    style: AppTheme.body(
+                        size: 14.5,
+                        color: AppColors.ink,
+                        weight: FontWeight.w600)),
+                Text(subtitle,
+                    style: AppTheme.body(size: 12, color: AppColors.ink4)),
+              ],
+            ),
+          ),
+          const Icon(Icons.arrow_forward, size: 20, color: AppColors.ink4),
+        ],
       ),
     );
   }

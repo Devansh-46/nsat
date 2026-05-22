@@ -7,6 +7,7 @@ import '../../widgets/niu_button.dart';
 import '../../providers/test_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/analytics_service.dart';
+import '../../widgets/web_split_layout.dart';
 
 /// Live test — one question per screen, progress bar, timer, palette.
 /// Verdant Daylight reskin. All logic identical to the previous build.
@@ -198,7 +199,7 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
     final progress = (_currentIndex + 1) / session.totalQuestions;
     final timeLow = session.timeRemainingSeconds <= 300;
 
-    return Scaffold(
+    final mobileView = Scaffold(
       backgroundColor: AppColors.ivory,
       body: SafeArea(
         child: Column(
@@ -526,6 +527,308 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
           ],
         ),
       ),
+    );
+
+    final leftPanel = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text('NSAT', style: AppTheme.mono(color: AppColors.ivory.withValues(alpha: 0.5))),
+            const SizedBox(width: 8),
+            Text('/', style: AppTheme.mono(color: AppColors.ivory.withValues(alpha: 0.2))),
+            const SizedBox(width: 8),
+            Text('NOIDA INTERNATIONAL UNIVERSITY', style: AppTheme.eyebrow(color: AppColors.ivory.withValues(alpha: 0.5))),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Text('Student / Live test', style: AppTheme.body(size: 14, color: AppColors.ivory)),
+        const SizedBox(height: 32),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Text('STEP 04 OF 04 — EXAM IN PROGRESS', style: AppTheme.eyebrow(color: AppColors.ivory)),
+        ),
+        const SizedBox(height: 32),
+        
+        // Timer
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: timeLow ? AppColors.goldTint : AppColors.forestTint,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: timeLow ? AppColors.gold.withValues(alpha: 0.3) : AppColors.forest.withValues(alpha: 0.2),
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.timer_outlined, size: 20, color: timeLow ? const Color(0xFF8A6516) : AppColors.forest),
+              const SizedBox(width: 8),
+              Text(
+                _formatTime(session.timeRemainingSeconds),
+                style: AppTheme.mono(size: 24, color: timeLow ? const Color(0xFF8A6516) : AppColors.forest),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 32),
+        
+        // Progress text
+        Text(
+          '${session.answeredCount} of ${session.totalQuestions} answered',
+          style: AppTheme.body(size: 14, color: AppColors.ivory.withValues(alpha: 0.7)),
+        ),
+        const SizedBox(height: 16),
+        // Progress bar
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(
+            value: progress,
+            minHeight: 5,
+            backgroundColor: AppColors.ivory.withValues(alpha: 0.1),
+            valueColor: const AlwaysStoppedAnimation(AppColors.ivory),
+          ),
+        ),
+        const SizedBox(height: 32),
+
+        // Palette
+        Expanded(
+          child: SingleChildScrollView(
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: List.generate(session.totalQuestions, (i) {
+                final answered = session.answers.containsKey(i);
+                final current = i == _currentIndex;
+                return GestureDetector(
+                  onTap: () => setState(() => _currentIndex = i),
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: current
+                          ? AppColors.ivory
+                          : answered
+                              ? AppColors.ivory.withValues(alpha: 0.2)
+                              : Colors.transparent,
+                      border: Border.all(
+                        color: current
+                            ? AppColors.ivory
+                            : answered
+                                ? AppColors.ivory.withValues(alpha: 0.5)
+                                : AppColors.ivory.withValues(alpha: 0.2),
+                      ),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      '${i + 1}',
+                      style: AppTheme.mono(
+                        size: 12,
+                        color: current ? AppColors.bgBase : AppColors.ivory,
+                      ),
+                    ),
+                  ),
+                );
+              }),
+            ),
+          ),
+        ),
+      ],
+    );
+
+    final rightPanel = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          session.categoryName,
+          style: AppTheme.eyebrow(color: AppColors.ink4),
+          overflow: TextOverflow.ellipsis,
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Question ${_currentIndex + 1} of ${session.totalQuestions}',
+          style: AppTheme.display(size: 28),
+        ),
+        const SizedBox(height: 24),
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.only(bottom: 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  question.text,
+                  style: AppTheme.body(
+                    size: 16,
+                    color: AppColors.ink,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                if (question.isShortAnswer)
+                  _ShortAnswerField(
+                    currentAnswer: selected is String ? selected : '',
+                    minWords: question.minWords > 0 ? question.minWords : 100,
+                    maxWords: question.maxWords > 0 ? question.maxWords : 150,
+                    onChanged: (value) => provider.selectAnswer(_currentIndex, value),
+                    onClear: () => provider.clearAnswer(_currentIndex),
+                  )
+                else ...[
+                  ...List.generate(question.options.length, (i) {
+                    final isSelected = selected is int && i == selected;
+                    final letter = String.fromCharCode(65 + i);
+                    return GestureDetector(
+                      onTap: () => provider.selectAnswer(_currentIndex, i),
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                        decoration: BoxDecoration(
+                          gradient: isSelected ? AppColors.glassBgStrong : AppColors.glassBg,
+                          border: Border.all(
+                            color: isSelected ? AppColors.forest : AppColors.glassBorder,
+                            width: isSelected ? 1.5 : 1,
+                          ),
+                          borderRadius: BorderRadius.circular(14),
+                          boxShadow: isSelected
+                              ? const [
+                                  BoxShadow(
+                                    color: Color(0x1A2C6B42),
+                                    offset: Offset(0, 0),
+                                    blurRadius: 8,
+                                  ),
+                                ]
+                              : null,
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 32,
+                              height: 32,
+                              decoration: BoxDecoration(
+                                color: isSelected ? AppColors.forest : AppColors.bone,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                letter,
+                                style: AppTheme.mono(
+                                  size: 14,
+                                  color: isSelected ? Colors.white : AppColors.ink4,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Text(
+                                question.options[i],
+                                style: AppTheme.body(
+                                  size: 15,
+                                  color: AppColors.ink,
+                                  weight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                                ),
+                              ),
+                            ),
+                            Container(
+                              width: 20,
+                              height: 20,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: isSelected ? AppColors.forest : Colors.transparent,
+                                border: Border.all(
+                                  color: isSelected ? AppColors.forest : AppColors.ink5,
+                                  width: 2,
+                                ),
+                              ),
+                              child: isSelected
+                                  ? const Center(
+                                      child: Icon(Icons.circle, size: 8, color: Colors.white),
+                                    )
+                                  : null,
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
+                  if (selected != null && selected is int)
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton(
+                        onPressed: () => provider.clearAnswer(_currentIndex),
+                        style: TextButton.styleFrom(
+                          padding: EdgeInsets.zero,
+                          minimumSize: const Size(0, 32),
+                        ),
+                        child: Text(
+                          'Clear selection',
+                          style: AppTheme.body(
+                            size: 13,
+                            color: AppColors.ink4,
+                          ).copyWith(decoration: TextDecoration.underline),
+                        ),
+                      ),
+                    ),
+                ],
+              ],
+            ),
+          ),
+        ),
+        
+        // Bottom nav
+        Container(
+          padding: const EdgeInsets.only(top: 16),
+          decoration: BoxDecoration(
+            border: Border(top: BorderSide(color: AppColors.line2)),
+          ),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: NiuButton(
+                      label: 'Previous',
+                      variant: NiuButtonVariant.outline,
+                      onTap: _currentIndex > 0 ? () => setState(() => _currentIndex--) : null,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _currentIndex < session.totalQuestions - 1
+                        ? NiuButton(
+                            label: 'Next',
+                            onTap: () => setState(() => _currentIndex++),
+                          )
+                        : NiuButton(
+                            label: 'Submit test',
+                            variant: NiuButtonVariant.gold,
+                            onTap: () => _confirmSubmit(provider),
+                          ),
+                  ),
+                ],
+              ),
+              if (provider.isLoading) ...[
+                const SizedBox(height: 12),
+                LinearProgressIndicator(
+                  minHeight: 2,
+                  backgroundColor: AppColors.bone,
+                  valueColor: const AlwaysStoppedAnimation(AppColors.forest),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+
+    return WebSplitLayout(
+      leftChild: leftPanel,
+      rightChild: rightPanel,
+      mobileChild: mobileView,
     );
   }
 }
