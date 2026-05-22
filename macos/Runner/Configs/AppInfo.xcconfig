@@ -5,10 +5,10 @@
 // 'flutter create' template.
 
 // The application's name. By default this is also the title of the Flutter window.
-PRODUCT_NAME = niu_sat_app
+PRODUCT_NAME = NSAT
 
 // The application's bundle identifier
-PRODUCT_BUNDLE_IDENTIFIER = com.example.niuSatApp
+PRODUCT_BUNDLE_IDENTIFIER = in.edu.niu.nsat
 
 // The copyright displayed in application information
-PRODUCT_COPYRIGHT = Copyright © 2026 com.example. All rights reserved.
+PRODUCT_COPYRIGHT = Copyright © 2026 Noida International University. All rights reserved.

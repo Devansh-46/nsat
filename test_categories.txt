@@ -11,6 +11,5 @@ sjmc
 sos_ug
 sos_pg
 sola
-sofad
 soe
 sop

@@ -223,13 +223,13 @@ export const COURSE_KEY_MAP: Record<string, string> = {
   "MA (International Relation)": "sola",
 
   // ── SOFAD: School of Fine Arts & Design (+ Architecture) ──
-  "BFA": "sofad",
-  "BFA (Animation & VFX)": "sofad",
-  "BID": "sofad",
-  "B.Des": "sofad",
-  "B.Des.": "sofad",
-  "B.Interior": "sofad",
-  "MFA": "sofad",
+  //"BFA": "sofad",
+  //"BFA (Animation & VFX)": "sofad",
+  //"BID": "sofad",
+  //"B.Des": "sofad",
+  //"B.Des.": "sofad",
+  //"B.Interior": "sofad",
+  //"MFA": "sofad",
 
   // ── SOE: School of Education ──
   "B.Ed": "soe",
