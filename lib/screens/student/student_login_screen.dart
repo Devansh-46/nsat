@@ -192,6 +192,8 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
       children: [
         Row(
           children: [
+            Image.asset('assets/niu_crest.png', width: 24, height: 24),
+            const SizedBox(width: 12),
             Text(
               'NSAT',
               style: AppTheme.mono(

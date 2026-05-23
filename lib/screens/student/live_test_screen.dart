@@ -534,6 +534,8 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
       children: [
         Row(
           children: [
+            Image.asset('assets/niu_crest.png', width: 24, height: 24),
+            const SizedBox(width: 12),
             Text('NSAT', style: AppTheme.mono(color: AppColors.ivory.withValues(alpha: 0.5))),
             const SizedBox(width: 8),
             Text('/', style: AppTheme.mono(color: AppColors.ivory.withValues(alpha: 0.2))),

@@ -68,8 +68,8 @@ class QuestionModel {
   factory QuestionModel.fromMap(Map<String, dynamic> data, {String id = ''}) {
     final rawType = data['type']?.toString().toLowerCase().replaceAll(RegExp(r'[\s_]'), '');
     final rawOptions = data['options'] as List?;
-    final isExplicitlyShortAnswer = rawType == 'shortanswer';
-    final isImplicitlyShortAnswer = rawType == null && (rawOptions == null || rawOptions.isEmpty);
+    final isExplicitlyShortAnswer = rawType == 'shortanswer' || rawType == 'text';
+    final isImplicitlyShortAnswer = (rawOptions == null || rawOptions.isEmpty);
     
     final type = (isExplicitlyShortAnswer || isImplicitlyShortAnswer)
         ? QuestionType.shortAnswer

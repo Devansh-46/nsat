@@ -574,6 +574,8 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
       children: [
         Row(
           children: [
+            Image.asset('assets/niu_crest.png', width: 24, height: 24),
+            const SizedBox(width: 12),
             Text('NSAT',
                 style: AppTheme.mono(
                     color: AppColors.ivory.withValues(alpha: 0.5))),

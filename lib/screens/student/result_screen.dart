@@ -89,9 +89,10 @@ class _ResultScreenState extends State<ResultScreen> {
                         border: Border.all(color: AppColors.glassBorder),
                       ),
                       alignment: Alignment.center,
-                      child: Text('NIU',
-                          style: AppTheme.display(
-                              size: 13, color: AppColors.forest)),
+                      child: Padding(
+                        padding: const EdgeInsets.all(4.0),
+                        child: Image.asset('assets/niu_crest.png', fit: BoxFit.contain),
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Column(
