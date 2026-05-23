@@ -2,7 +2,7 @@ import { onCall, HttpsError } from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
 import * as crypto from "crypto";
 import * as nodemailer from "nodemailer";
-import { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, OTP_FROM_NAME }
+import { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, OTP_FROM_NAME, TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_WHATSAPP_FROM }
   from "./config";
 
 // OTP validity: 10 minutes
@@ -150,5 +150,95 @@ export const verifyOtp = onCall(
     await docRef.delete();
     console.log(`OTP verified for ${applicationNo}`);
     return { verified: true };
+  }
+);
+
+// ── sendWhatsAppOtp — Twilio Sandbox ──────────────────────────────
+/**
+ * Generates a 6-digit code, stores it hashed in `otps/{applicationNo}`,
+ * and delivers it via Twilio WhatsApp (Sandbox or Production).
+ *
+ * Callable payload:
+ *   { application_no: string, phone: string, name?: string }
+ *
+ * SANDBOX NOTE: the recipient must have already joined your sandbox by
+ * sending "join <code>" to +14155238886 before this will deliver.
+ */
+export const sendWhatsAppOtp = onCall(
+  { region: "asia-south1" },
+  async (request) => {
+    const db            = admin.firestore();
+    const applicationNo = request.data?.application_no as string | undefined;
+    const rawPhone      = request.data?.phone           as string | undefined;
+    const studentName   = request.data?.name            as string | undefined;
+
+    if (!applicationNo || !rawPhone) {
+      throw new HttpsError("invalid-argument", "application_no and phone are required");
+    }
+
+    if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN || !TWILIO_WHATSAPP_FROM) {
+      console.error("[sendWhatsAppOtp] Twilio env vars not set");
+      throw new HttpsError("failed-precondition", "WhatsApp service is not configured");
+    }
+
+    // Ensure E.164 format (roughly)
+    let phone = rawPhone.trim();
+    if (!phone.startsWith('+')) {
+      phone = '+91' + phone; // default to India
+    }
+
+    const code      = generateOtp();
+    const hashed    = hashOtp(code);
+    const expiresAt = Date.now() + OTP_EXPIRY_MS;
+
+    // We can reuse the same 'otps' collection, or a separate one.
+    // The verifyOtp function checks the 'otps' collection, so we should use it!
+    await db.collection("otps").doc(applicationNo).set({
+      hashedCode: hashed,
+      expiresAt,
+      attempts:  0,
+      channel:   "whatsapp",
+      phone,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`;
+
+    const body = new URLSearchParams({
+      From: `whatsapp:${TWILIO_WHATSAPP_FROM}`,
+      To:   `whatsapp:${phone}`,
+      Body:
+        `Dear ${studentName ?? "Student"},\n\n` +
+        `Your NSAT verification code is: *${code}*\n\n` +
+        `This code is valid for 10 minutes.\n\n` +
+        `— Noida International University`,
+    });
+
+    try {
+      const response = await fetch(twilioUrl, {
+        method:  "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          "Authorization": `Basic ${Buffer.from(
+            `${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`
+          ).toString("base64")}`,
+        },
+        body: body.toString(),
+      });
+
+      const json = await response.json() as Record<string, unknown>;
+      console.log("[sendWhatsAppOtp] Twilio response:", JSON.stringify(json));
+
+      if (!response.ok) {
+        throw new Error(`Twilio error ${json["code"]}: ${json["message"]}`);
+      }
+
+      console.log(`[sendWhatsAppOtp] WhatsApp OTP sent to ${phone} for ${applicationNo}, Twilio SID: ${json["sid"]}`);
+      return { success: true };
+    } catch (error) {
+      console.error("[sendWhatsAppOtp] Failed:", error);
+      await db.collection("otps").doc(applicationNo).delete();
+      throw new HttpsError("internal", "Failed to send WhatsApp verification code");
+    }
   }
 );
