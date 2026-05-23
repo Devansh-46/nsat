@@ -89,7 +89,7 @@ class AppColors {
   static const Color green = forest2;
 
   @Deprecated('Use AppColors.bgBase')
-  static const Color bgLight = bgBase;
+  static const Color bgLight = Color.fromARGB(227, 244, 239, 227);
   @Deprecated('Use AppColors.paper or glassBg')
   static const Color bgCard = Color(0xFFF6F7F0);
   @Deprecated('Use AppColors.forestTint')

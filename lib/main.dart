@@ -11,6 +11,7 @@ import 'services/fcm_service.dart';
 import 'providers/auth_provider.dart';
 import 'providers/test_provider.dart';
 import 'providers/admin_provider.dart';
+import 'theme/app_colors.dart';
 import 'theme/app_theme.dart';
 import 'routes/app_routes.dart';
 import 'screens/student/role_selection_screen.dart';
@@ -25,22 +26,26 @@ import 'screens/admin/admin_dashboard_screen.dart';
 import 'screens/admin/push_notification_screen.dart';
 import 'screens/admin/results_dashboard_screen.dart';
 import 'screens/admin/admin_logs_screen.dart';
+import 'widgets/splash_screen.dart';
+
+final _log = AppLogger.instance;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
 
-  // --- Structured logger setup ---
-  final log = AppLogger.instance;
-  log.init();
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  } catch (e) {
+    _log.error('Main', 'Firebase init failed', error: e);
+  }
 
-  // --- Crashlytics setup (mobile only — not supported on web) ---
+  _log.init();
+
   if (!kIsWeb) {
-    // Catch Flutter framework errors (widget build failures, etc.)
     FlutterError.onError = (details) {
-      log.error(
+      _log.error(
         'FlutterError',
         details.exceptionAsString(),
         error: details.exception,
@@ -49,9 +54,8 @@ void main() async {
       FirebaseCrashlytics.instance.recordFlutterFatalError(details);
     };
 
-    // Catch async errors not handled by Flutter framework
     PlatformDispatcher.instance.onError = (error, stack) {
-      log.error(
+      _log.error(
         'PlatformDispatcher',
         'Uncaught async error',
         error: error,
@@ -62,25 +66,8 @@ void main() async {
     };
   }
 
-  // --- Remote Config setup ---
-  await RemoteConfigService.instance.init();
-
-  // --- FCM setup — request permission and subscribe to broadcast topic
-  // for every device on app open, regardless of course or login state.
-  await FcmService().initializeForStudent('');
-
-  log.info('Main', 'App startup complete', persist: true);
-
-  runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => AuthProvider()..initAuth()),
-        ChangeNotifierProvider(create: (_) => TestProvider()),
-        ChangeNotifierProvider(create: (_) => AdminProvider()),
-      ],
-      child: const NiuSatApp(),
-    ),
-  );
+  // Defer services that touch Firestore until after splash
+  runApp(const AppRoot());
 }
 
 class NiuSatApp extends StatelessWidget {
@@ -108,6 +95,86 @@ class NiuSatApp extends StatelessWidget {
         AppRoutes.resultsDashboard: (_) => const ResultsDashboardScreen(),
         AppRoutes.adminLogs: (_) => const AdminLogsScreen(),
       },
+    );
+  }
+}
+
+class AppRoot extends StatefulWidget {
+  const AppRoot({super.key});
+
+  @override
+  State<AppRoot> createState() => _AppRootState();
+}
+
+class _AppRootState extends State<AppRoot> {
+  bool _splashDone = false;
+  bool _servicesReady = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initServices();
+  }
+
+  Future<void> _initServices() async {
+    try {
+      await RemoteConfigService.instance.init();
+    } catch (e) {
+      _log.error('Main', 'RemoteConfig init failed', error: e);
+    }
+
+    try {
+      await FcmService().initializeForStudent('');
+    } catch (e) {
+      _log.error('Main', 'FCM init failed', error: e);
+    }
+
+    _servicesReady = true;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_splashDone) {
+      return MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData(
+          scaffoldBackgroundColor: AppColors.bgBase,
+          splashColor: Colors.transparent,
+          highlightColor: Colors.transparent,
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: AppColors.forest,
+            brightness: Brightness.light,
+          ).copyWith(surface: AppColors.bgBase),
+        ),
+        home: SplashScreen(
+          onComplete: () => setState(() => _splashDone = true),
+        ),
+      );
+    }
+
+    if (!_servicesReady) {
+      return MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData(
+          scaffoldBackgroundColor: AppColors.bgBase,
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: AppColors.forest,
+            brightness: Brightness.light,
+          ).copyWith(surface: AppColors.bgBase),
+        ),
+        home: const Scaffold(
+          body: Center(child: CircularProgressIndicator()),
+        ),
+      );
+    }
+
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AuthProvider()..initAuth()),
+        ChangeNotifierProvider(create: (_) => TestProvider()),
+        ChangeNotifierProvider(create: (_) => AdminProvider()),
+      ],
+      child: const NiuSatApp(),
     );
   }
 }
