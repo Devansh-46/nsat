@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/student_model.dart';
+import 'app_logger.dart';
 
 /// Result of a student lookup, so the caller can tell the three
 /// outcomes apart without relying on exceptions for normal flow.
@@ -27,6 +28,9 @@ class StudentLookupResult {
 /// This service ONLY reads. The `students` collection is written
 /// exclusively by the NPF sync Cloud Function.
 class StudentService {
+  static const _tag = 'StudentService';
+  final _log = AppLogger.instance;
+
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
   static const String _collection = 'students';
@@ -37,27 +41,35 @@ class StudentService {
   /// direct document read — not a query.
   Future<StudentLookupResult> getStudentByNiuId(String niuId) async {
     final trimmedId = niuId.trim();
+    final reqId = AppLogger.generateRequestId();
 
     if (trimmedId.isEmpty) {
+      _log.error(_tag, 'Empty NIU ID submitted', requestId: reqId);
       return StudentLookupResult(
         StudentLookupStatus.error,
         errorMessage: 'Please enter your NIU ID.',
       );
     }
 
+    _log.debug(_tag, 'Looking up student: $trimmedId', requestId: reqId);
+
     try {
       final doc =
           await _db.collection(_collection).doc(trimmedId).get();
 
       if (!doc.exists) {
+        _log.info(_tag, 'Student not found: $trimmedId', requestId: reqId, persist: true);
         return StudentLookupResult(StudentLookupStatus.notFound);
       }
 
+      _log.info(_tag, 'Student found: $trimmedId', requestId: reqId);
       return StudentLookupResult(
         StudentLookupStatus.found,
         student: StudentModel.fromFirestore(doc),
       );
-    } catch (e) {
+    } catch (e, st) {
+      _log.error(_tag, 'Firestore read failed for student: $trimmedId',
+          error: e, stackTrace: st, requestId: reqId);
       return StudentLookupResult(
         StudentLookupStatus.error,
         errorMessage:

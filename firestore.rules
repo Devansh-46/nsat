@@ -53,6 +53,22 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // ── app_logs ──
+    // Written by the client-side AppLogger for structured error/info logs.
+    // Read access is restricted to authenticated admins via Firebase Console or UI.
+    match /app_logs/{logId} {
+      allow create: if true;   // Client writes log entries
+      allow read: if request.auth != null && request.auth.token.admin == true;
+      allow update, delete: if false;
+    }
+
+    // ── notifications ──
+    // Written by Cloud Function. Admin reads history.
+    match /notifications/{notifId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
     // ── Catch-all: deny everything else ──
     match /{document=**} {
       allow read, write: if false;

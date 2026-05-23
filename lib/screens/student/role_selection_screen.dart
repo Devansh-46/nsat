@@ -262,26 +262,6 @@ class RoleSelectionScreen extends StatelessWidget {
   }
 }
 
-class _Stat extends StatelessWidget {
-  final String value;
-  final String label;
-  const _Stat(this.value, this.label);
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(value, style: AppTheme.mono(size: 20, color: AppColors.ivory)),
-        const SizedBox(height: 2),
-        Text(label,
-            style: AppTheme.body(
-                size: 11.5, color: AppColors.ivory.withValues(alpha: 0.7))),
-      ],
-    );
-  }
-}
-
 class _ActionRow extends StatelessWidget {
   final IconData icon;
   final String title;

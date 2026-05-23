@@ -6,6 +6,7 @@ import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'firebase_options.dart';
 import 'services/remote_config_service.dart';
 import 'services/analytics_service.dart';
+import 'services/app_logger.dart';
 import 'providers/auth_provider.dart';
 import 'providers/test_provider.dart';
 import 'providers/admin_provider.dart';
@@ -22,6 +23,7 @@ import 'screens/admin/admin_login_screen.dart';
 import 'screens/admin/admin_dashboard_screen.dart';
 import 'screens/admin/push_notification_screen.dart';
 import 'screens/admin/results_dashboard_screen.dart';
+import 'screens/admin/admin_logs_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -29,13 +31,31 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
+  // --- Structured logger setup ---
+  final log = AppLogger.instance;
+  log.init();
+
   // --- Crashlytics setup (mobile only — not supported on web) ---
   if (!kIsWeb) {
     // Catch Flutter framework errors (widget build failures, etc.)
-    FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+    FlutterError.onError = (details) {
+      log.error(
+        'FlutterError',
+        details.exceptionAsString(),
+        error: details.exception,
+        stackTrace: details.stack,
+      );
+      FirebaseCrashlytics.instance.recordFlutterFatalError(details);
+    };
 
     // Catch async errors not handled by Flutter framework
     PlatformDispatcher.instance.onError = (error, stack) {
+      log.error(
+        'PlatformDispatcher',
+        'Uncaught async error',
+        error: error,
+        stackTrace: stack,
+      );
       FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
       return true;
     };
@@ -43,6 +63,8 @@ void main() async {
 
   // --- Remote Config setup ---
   await RemoteConfigService.instance.init();
+
+  log.info('Main', 'App startup complete', persist: true);
 
   runApp(
     MultiProvider(
@@ -79,6 +101,7 @@ class NiuSatApp extends StatelessWidget {
         AppRoutes.adminDashboard: (_) => const AdminDashboardScreen(),
         AppRoutes.pushNotification: (_) => const PushNotificationScreen(),
         AppRoutes.resultsDashboard: (_) => const ResultsDashboardScreen(),
+        AppRoutes.adminLogs: (_) => const AdminLogsScreen(),
       },
     );
   }

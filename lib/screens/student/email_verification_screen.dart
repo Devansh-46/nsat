@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_functions/cloud_functions.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+
 import '../../theme/app_colors.dart';
 import '../../theme/app_theme.dart';
 import '../../routes/app_routes.dart';
@@ -44,9 +44,6 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
   String? _maskedPhone;
   String? _fullPhone;
 
-  // Firebase Auth phone verification
-  String? _verificationId;
-  int? _resendToken;
 
   @override
   void initState() {

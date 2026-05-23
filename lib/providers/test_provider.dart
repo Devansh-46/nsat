@@ -7,6 +7,7 @@ import '../services/question_service.dart';
 import '../services/attempt_service.dart';
 import '../services/scoring_service.dart';
 import '../services/test_service.dart';
+import '../services/app_logger.dart';
 
 /// Drives the test-taking flow, backed entirely by Firestore.
 ///
@@ -15,6 +16,9 @@ import '../services/test_service.dart';
 /// applicationNo, studentName, course — which AuthProvider already holds
 /// after the fee gate. The old ACCSOFT-era path is gone.
 class TestProvider extends ChangeNotifier {
+  static const _tag = 'TestProvider';
+  final _log = AppLogger.instance;
+
   final TestService _testService = TestService();
   final QuestionService _questionService = QuestionService();
   final AttemptService _attemptService = AttemptService();
@@ -38,6 +42,9 @@ class TestProvider extends ChangeNotifier {
   /// Whether the current test is configured to show results to students.
   bool _showResults = true;
 
+  /// Request ID for the current test session lifecycle.
+  String? _sessionRequestId;
+
   TestSessionModel? get currentSession => _currentSession;
   TestModel? get availableTest => _availableTest;
   bool get isLoading => _isLoading;
@@ -53,12 +60,18 @@ class TestProvider extends ChangeNotifier {
   /// course key (e.g. "btech").
   Future<void> fetchAvailableTest(String course) async {
     _setLoading(true);
+    _log.debug(_tag, 'Fetching available test for course=$course');
     try {
       _availableTest = await _testService.getPublishedTestForCourse(course);
       if (_availableTest == null) {
+        _log.info(_tag, 'No published test found for course=$course', persist: true);
         _error = 'No published test is available for this course.';
+      } else {
+        _log.debug(_tag, 'Found test: ${_availableTest!.id} (${_availableTest!.title})');
       }
-    } catch (e) {
+    } catch (e, st) {
+      _log.error(_tag, 'Failed to fetch test for course=$course',
+          error: e, stackTrace: st);
       _error = 'Failed to load the test. Please check your connection.';
     }
     _setLoading(false);
@@ -76,6 +89,11 @@ class TestProvider extends ChangeNotifier {
   }) async {
     if (_availableTest == null) return false;
 
+    _sessionRequestId = AppLogger.generateRequestId();
+    _log.info(_tag,
+        'Starting test for $applicationNo (course: $course, test: ${_availableTest!.id})',
+        requestId: _sessionRequestId, persist: true);
+
     _setLoading(true);
     _alreadyCompleted = false;
     _hasResumableAttempt = false;
@@ -90,19 +108,27 @@ class TestProvider extends ChangeNotifier {
       switch (attempt.outcome) {
         case StartAttemptOutcome.alreadyCompleted:
           _alreadyCompleted = true;
+          _log.info(_tag, 'Test blocked: $applicationNo already completed',
+              requestId: _sessionRequestId, persist: true);
           _setLoading(false);
           return false;
         case StartAttemptOutcome.resumable:
           // An earlier attempt never finished. Phase 1 surfaces this to
           // the UI rather than silently letting them re-sit.
           _hasResumableAttempt = true;
+          _log.info(_tag, 'Resumable attempt found for $applicationNo',
+              requestId: _sessionRequestId, persist: true);
           _setLoading(false);
           return false;
         case StartAttemptOutcome.error:
           _error = attempt.errorMessage;
+          _log.error(_tag, 'Attempt lock failed for $applicationNo: ${attempt.errorMessage}',
+              requestId: _sessionRequestId);
           _setLoading(false);
           return false;
         case StartAttemptOutcome.started:
+          _log.info(_tag, 'Attempt lock claimed for $applicationNo',
+              requestId: _sessionRequestId);
           break; // lock claimed — continue
       }
 
@@ -114,6 +140,8 @@ class TestProvider extends ChangeNotifier {
       );
 
       if (questions.isEmpty) {
+        _log.error(_tag, 'No questions returned for course=$course',
+            requestId: _sessionRequestId);
         _error = 'No questions are available for this test.';
         _setLoading(false);
         return false;
@@ -131,10 +159,17 @@ class TestProvider extends ChangeNotifier {
         questions: questions,
       );
 
+      _log.info(_tag,
+          'Test session created: ${questions.length} questions, '
+          '${_availableTest!.durationMinutes} min',
+          requestId: _sessionRequestId, persist: true);
+
       _startTimer();
       _setLoading(false);
       return true;
-    } catch (e) {
+    } catch (e, st) {
+      _log.error(_tag, 'Failed to start test for $applicationNo',
+          error: e, stackTrace: st, requestId: _sessionRequestId);
       _error = 'Failed to start test: ${e.toString()}';
       _setLoading(false);
       return false;
@@ -149,6 +184,8 @@ class TestProvider extends ChangeNotifier {
           _currentSession!.timeRemainingSeconds--;
           notifyListeners();
         } else {
+          _log.info(_tag, 'Timer expired — auto-submitting test',
+              requestId: _sessionRequestId, persist: true);
           submitTest(); // auto-submit on timeout
         }
       } else {
@@ -179,6 +216,11 @@ class TestProvider extends ChangeNotifier {
     _timer?.cancel();
     _setLoading(true);
 
+    _log.info(_tag,
+        'Submitting test for ${_currentSession!.studentId} '
+        '(answered: ${_currentSession!.answeredCount}/${_currentSession!.totalQuestions})',
+        requestId: _sessionRequestId, persist: true);
+
     try {
       final session = _currentSession!;
       session.submit();
@@ -204,8 +246,16 @@ class TestProvider extends ChangeNotifier {
         maxScore: score.maxScore,
       );
 
+      _log.info(_tag,
+          'Test submitted successfully for ${session.studentId}: '
+          '${score.netScore}/${score.maxScore}',
+          requestId: _sessionRequestId, persist: true);
+
       _setLoading(false);
-    } catch (e) {
+    } catch (e, st) {
+      _log.error(_tag,
+          'Test submission failed for ${_currentSession!.studentId}',
+          error: e, stackTrace: st, requestId: _sessionRequestId);
       _error = 'Your test was scored, but saving the result failed. '
           'Please tell an invigilator.';
       _setLoading(false);
@@ -213,6 +263,7 @@ class TestProvider extends ChangeNotifier {
   }
 
   void clearSession() {
+    _log.debug(_tag, 'Test session cleared');
     _timer?.cancel();
     _currentSession = null;
     _availableTest = null;
@@ -220,6 +271,7 @@ class TestProvider extends ChangeNotifier {
     _hasResumableAttempt = false;
     _savedResultId = null;
     _showResults = true;
+    _sessionRequestId = null;
     notifyListeners();
   }
 

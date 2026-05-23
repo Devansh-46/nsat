@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
+import '../../services/remote_config_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_theme.dart';
 import '../../routes/app_routes.dart';
@@ -124,6 +126,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         context, AppRoutes.pushNotification);
                   },
                 ),
+                if (RemoteConfigService.instance.isSuperAdmin(
+                    FirebaseAuth.instance.currentUser?.email ?? '')) ...[
+                  const SizedBox(height: 10),
+                  _ActionCard(
+                    icon: Icons.bug_report_outlined,
+                    tint: Colors.red.withValues(alpha: 0.1),
+                    iconColor: Colors.red,
+                    title: 'System Logs',
+                    subtitle: 'View errors & events',
+                    onTap: () => Navigator.pushNamed(context, AppRoutes.adminLogs),
+                  ),
+                ],
                 const SizedBox(height: 28),
 
                 NiuButton(

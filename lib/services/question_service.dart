@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/question_model.dart';
+import 'app_logger.dart';
 
 /// Reads from the `questions` Firestore collection.
 ///
@@ -17,6 +18,9 @@ import '../models/question_model.dart';
 /// `correctAnswerIndex` before it ever reaches the app, and ScoringService
 /// switches to its Cloud Function path. Nothing else changes.
 class QuestionService {
+  static const _tag = 'QuestionService';
+  final _log = AppLogger.instance;
+
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
   static const String _collection = 'questions';
@@ -37,38 +41,50 @@ class QuestionService {
     String course,
     int limit,
   ) async {
-    final snapshot = await _db
-        .collection(_collection)
-        .where('course', isEqualTo: course)
-        .limit(limit)
-        .get();
+    final reqId = AppLogger.generateRequestId();
+    _log.debug(_tag, 'Fetching questions for course=$course, limit=$limit',
+        requestId: reqId);
 
-    final questions = snapshot.docs.map((doc) {
-      Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-      if (_stripAnswers) {
-        data = Map<String, dynamic>.from(data);
-        data['correctAnswerIndex'] = -1;
-      }
-      return QuestionModel.fromMap(data, id: doc.id);
-    }).toList();
+    try {
+      final snapshot = await _db
+          .collection(_collection)
+          .where('course', isEqualTo: course)
+          .limit(limit)
+          .get();
 
-    // Sort so short answers are at the end, otherwise preserve order by ID
-    questions.sort((a, b) {
-      if (a.isShortAnswer && !b.isShortAnswer) return 1;
-      if (!a.isShortAnswer && b.isShortAnswer) return -1;
-      
-      // If both are same type, sort by ID to match sequence (e.g. q1, q2)
-      // Custom comparator needed since "q10" string-sorts before "q2"
-      final aNumMatch = RegExp(r'\d+$').firstMatch(a.id);
-      final bNumMatch = RegExp(r'\d+$').firstMatch(b.id);
-      if (aNumMatch != null && bNumMatch != null) {
-        final aNum = int.parse(aNumMatch.group(0)!);
-        final bNum = int.parse(bNumMatch.group(0)!);
-        return aNum.compareTo(bNum);
-      }
-      return a.id.compareTo(b.id);
-    });
+      final questions = snapshot.docs.map((doc) {
+        Map<String, dynamic> data = doc.data();
+        if (_stripAnswers) {
+          data = Map<String, dynamic>.from(data);
+          data['correctAnswerIndex'] = -1;
+        }
+        return QuestionModel.fromMap(data, id: doc.id);
+      }).toList();
 
-    return questions;
+      // Sort so short answers are at the end, otherwise preserve order by ID
+      questions.sort((a, b) {
+        if (a.isShortAnswer && !b.isShortAnswer) return 1;
+        if (!a.isShortAnswer && b.isShortAnswer) return -1;
+        
+        // If both are same type, sort by ID to match sequence (e.g. q1, q2)
+        // Custom comparator needed since "q10" string-sorts before "q2"
+        final aNumMatch = RegExp(r'\d+$').firstMatch(a.id);
+        final bNumMatch = RegExp(r'\d+$').firstMatch(b.id);
+        if (aNumMatch != null && bNumMatch != null) {
+          final aNum = int.parse(aNumMatch.group(0)!);
+          final bNum = int.parse(bNumMatch.group(0)!);
+          return aNum.compareTo(bNum);
+        }
+        return a.id.compareTo(b.id);
+      });
+
+      _log.debug(_tag, 'Fetched ${questions.length} questions for $course',
+          requestId: reqId);
+      return questions;
+    } catch (e, st) {
+      _log.error(_tag, 'Failed to fetch questions for course=$course',
+          error: e, stackTrace: st, requestId: reqId);
+      rethrow;
+    }
   }
 }

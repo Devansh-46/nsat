@@ -2,26 +2,39 @@ import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import '../models/user_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'data_store.dart';
+import 'app_logger.dart';
 
 class AuthService {
+  static const _tag = 'AuthService';
+  final _log = AppLogger.instance;
+
   final DataStore _dataStore = DataStore();
   final firebase_auth.FirebaseAuth _firebaseAuth =
       firebase_auth.FirebaseAuth.instance;
 
   Future<UserModel> studentLogin(String accsoftId) async {
+    final reqId = AppLogger.generateRequestId();
+    _log.debug(_tag, 'Student login attempt: $accsoftId', requestId: reqId);
+
     if (accsoftId.isEmpty) {
+      _log.error(_tag, 'Empty ACCSOFT ID submitted', requestId: reqId);
       throw Exception('ACCSOFT ID cannot be empty');
     }
 
     final user = await _dataStore.getStudentByAccsoftId(accsoftId);
     if (user != null) {
+      _log.info(_tag, 'Student login success: $accsoftId', requestId: reqId, persist: true);
       return user;
     } else {
+      _log.error(_tag, 'Student not found: $accsoftId', requestId: reqId);
       throw Exception('Student not found in ACCSOFT records');
     }
   }
 
   Future<UserModel> adminLogin(String email, String password) async {
+    final reqId = AppLogger.generateRequestId();
+    _log.debug(_tag, 'Admin login attempt: $email', requestId: reqId);
+
     try {
       final credential = await _firebaseAuth.signInWithEmailAndPassword(
         email: email,
@@ -29,6 +42,7 @@ class AuthService {
       );
 
       if (credential.user == null) {
+        _log.error(_tag, 'Admin auth returned null user', requestId: reqId);
         throw Exception('Authentication failed');
       }
 
@@ -36,10 +50,12 @@ class AuthService {
       final isAdmin = tokenResult.claims?['admin'] == true;
 
       if (!isAdmin) {
+        _log.error(_tag, 'Non-admin user attempted admin login: $email', requestId: reqId);
         await _firebaseAuth.signOut();
         throw Exception('Unauthorized: Admin access only');
       }
 
+      _log.info(_tag, 'Admin login success: $email', requestId: reqId, persist: true);
       return UserModel(
         id: credential.user!.uid,
         accsoftId: 'admin',
@@ -47,6 +63,7 @@ class AuthService {
         role: 'admin',
       );
     } on firebase_auth.FirebaseAuthException catch (e) {
+      _log.error(_tag, 'Admin login failed: ${e.code}', error: e, requestId: reqId);
       switch (e.code) {
         case 'user-not-found':
           throw Exception('No admin account found with this email');
@@ -63,6 +80,7 @@ class AuthService {
   }
 
   Future<void> saveUserSession(UserModel user) async {
+    _log.debug(_tag, 'Saving session for ${user.accsoftId}');
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('accsoftId', user.accsoftId);
     await prefs.setString('role', user.role);
@@ -74,12 +92,14 @@ class AuthService {
   }
 
   Future<UserModel?> getSavedSession() async {
+    _log.debug(_tag, 'Restoring saved session');
     final prefs = await SharedPreferences.getInstance();
     final accsoftId = prefs.getString('accsoftId');
     final role = prefs.getString('role');
     final name = prefs.getString('name');
 
     if (accsoftId != null && role != null && name != null) {
+      _log.info(_tag, 'Session restored for $accsoftId (role: $role)');
       return UserModel(
         id: role == 'admin' ? 'admin_1' : 'student_session',
         accsoftId: accsoftId,
@@ -91,10 +111,12 @@ class AuthService {
         hasAttempted: prefs.getBool('hasAttempted') ?? false,
       );
     }
+    _log.debug(_tag, 'No saved session found');
     return null;
   }
 
   Future<void> clearSession() async {
+    _log.info(_tag, 'Session cleared');
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
     await _firebaseAuth.signOut();

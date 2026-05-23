@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/attempt_model.dart';
+import 'app_logger.dart';
 
 /// The three outcomes of trying to start a test, so the caller can tell
 /// them apart without relying on exceptions for normal flow.
@@ -40,6 +41,9 @@ class StartAttemptResult {
 /// This collection is never touched by the NPF sync, so the 30-minute
 /// `students` overwrite can never erase a lock.
 class AttemptService {
+  static const _tag = 'AttemptService';
+  final _log = AppLogger.instance;
+
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
   static const String _collection = 'attempts';
@@ -55,6 +59,10 @@ class AttemptService {
     required String applicationNo,
     required String testId,
   }) async {
+    final reqId = AppLogger.generateRequestId();
+    _log.info(_tag, 'Claiming attempt lock for $applicationNo (test: $testId)',
+        requestId: reqId, persist: true);
+
     final docRef = _db.collection(_collection).doc(applicationNo);
 
     try {
@@ -64,6 +72,8 @@ class AttemptService {
         if (snapshot.exists) {
           final existing = AttemptModel.fromFirestore(snapshot);
           if (existing.isCompleted) {
+            _log.info(_tag, 'Student $applicationNo already completed test',
+                requestId: reqId, persist: true);
             return StartAttemptResult(
               StartAttemptOutcome.alreadyCompleted,
               attempt: existing,
@@ -71,6 +81,8 @@ class AttemptService {
           }
           // An in_progress doc already exists — do not overwrite it,
           // so the original attemptedAt / testId are preserved.
+          _log.info(_tag, 'Resumable attempt found for $applicationNo',
+              requestId: reqId, persist: true);
           return StartAttemptResult(
             StartAttemptOutcome.resumable,
             attempt: existing,
@@ -84,6 +96,8 @@ class AttemptService {
           'testId': testId,
         });
 
+        _log.info(_tag, 'Attempt lock claimed for $applicationNo',
+            requestId: reqId, persist: true);
         return StartAttemptResult(
           StartAttemptOutcome.started,
           attempt: AttemptModel(
@@ -96,7 +110,9 @@ class AttemptService {
       });
 
       return result;
-    } catch (e) {
+    } catch (e, st) {
+      _log.error(_tag, 'Failed to claim attempt lock for $applicationNo',
+          error: e, stackTrace: st, requestId: reqId);
       return StartAttemptResult(
         StartAttemptOutcome.error,
         errorMessage:
@@ -110,6 +126,7 @@ class AttemptService {
   ///
   /// Uses merge so `attemptedAt` and `testId` from the start are kept.
   Future<void> markCompleted(String applicationNo) async {
+    _log.info(_tag, 'Marking attempt completed for $applicationNo', persist: true);
     await _db.collection(_collection).doc(applicationNo).set(
       {
         'status': AttemptModel.statusToString(AttemptStatus.completed),
@@ -122,6 +139,7 @@ class AttemptService {
   /// Fast read used before login completes — does this student already
   /// have a finished attempt?
   Future<AttemptModel?> getAttempt(String applicationNo) async {
+    _log.debug(_tag, 'Checking existing attempt for $applicationNo');
     final doc =
         await _db.collection(_collection).doc(applicationNo).get();
     if (!doc.exists) return null;

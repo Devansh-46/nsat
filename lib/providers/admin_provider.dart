@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import '../models/result_model.dart';
 import '../models/notification_model.dart';
+import '../models/app_log_model.dart';
 import '../services/admin_service.dart';
 import '../services/notification_service.dart';
+import '../services/app_logger.dart';
 
 /// Admin-side state.
 ///
@@ -10,12 +12,16 @@ import '../services/notification_service.dart';
 /// Notifications remain on the mock NotificationService until the
 /// Blaze/FCM Cloud Function is built — that screen is unchanged.
 class AdminProvider extends ChangeNotifier {
+  static const _tag = 'AdminProvider';
+  final _log = AppLogger.instance;
+
   final AdminService _adminService = AdminService();
   final NotificationService _notificationService = NotificationService();
 
   Map<String, int>? _dashboardStats;
   List<ResultModel> _allResults = [];
   List<NotificationModel> _notifications = [];
+  List<AppLogModel> _logs = [];
 
   bool _isLoading = false;
   String? _error;
@@ -24,6 +30,7 @@ class AdminProvider extends ChangeNotifier {
   Map<String, int>? get dashboardStats => _dashboardStats;
   List<ResultModel> get allResults => _allResults;
   List<NotificationModel> get notifications => _notifications;
+  List<AppLogModel> get logs => _logs;
   bool get isLoading => _isLoading;
   String? get error => _error;
   String? get successMessage => _successMessage;
@@ -32,7 +39,8 @@ class AdminProvider extends ChangeNotifier {
     _setLoading(true);
     try {
       _dashboardStats = await _adminService.getDashboardStats();
-    } catch (e) {
+    } catch (e, st) {
+      _log.error(_tag, 'Failed to load dashboard stats', error: e, stackTrace: st);
       _error = 'Failed to load stats';
     }
     _setLoading(false);
@@ -42,8 +50,21 @@ class AdminProvider extends ChangeNotifier {
     _setLoading(true);
     try {
       _allResults = await _adminService.getAllResults();
-    } catch (e) {
+      _log.debug(_tag, 'Loaded ${_allResults.length} results for dashboard');
+    } catch (e, st) {
+      _log.error(_tag, 'Failed to load results', error: e, stackTrace: st);
       _error = 'Failed to load results';
+    }
+    _setLoading(false);
+  }
+
+  Future<void> fetchLogs() async {
+    _setLoading(true);
+    try {
+      _logs = await _adminService.fetchRecentLogs();
+    } catch (e, st) {
+      _log.error(_tag, 'Failed to load system logs', error: e, stackTrace: st);
+      _error = 'Failed to load system logs';
     }
     _setLoading(false);
   }
@@ -57,10 +78,13 @@ class AdminProvider extends ChangeNotifier {
       final ok = await _notificationService.send(title, body, target);
       if (!ok) throw Exception('Send failed');
       _successMessage = 'Notification sent to ${target == "all" ? "all students" : target}';
+      _log.info(_tag, 'Notification sent: target=$target, title="$title"', persist: true);
       await fetchNotifications();
       _setLoading(false);
       return true;
-    } catch (e) {
+    } catch (e, st) {
+      _log.error(_tag, 'Failed to send notification: target=$target',
+          error: e, stackTrace: st);
       _error = 'Failed to send notification';
       _setLoading(false);
       return false;
@@ -71,7 +95,8 @@ class AdminProvider extends ChangeNotifier {
     try {
       _notifications = await _notificationService.getHistory();
       notifyListeners();
-    } catch (e) {
+    } catch (e, st) {
+      _log.error(_tag, 'Failed to load notification history', error: e, stackTrace: st);
       // Silently fail history load.
     }
   }

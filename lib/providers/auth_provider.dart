@@ -5,6 +5,7 @@ import '../models/student_model.dart';
 import '../models/lead_details_model.dart';
 import '../services/auth_service.dart';
 import '../services/student_service.dart';
+import '../services/app_logger.dart';
 
 /// Outcome of the NIU ID fee-gate check, so the login screen
 /// can show the right message for each case.
@@ -23,6 +24,9 @@ enum FeeGateOutcome {
 }
 
 class AuthProvider extends ChangeNotifier {
+  static const _tag = 'AuthProvider';
+  final _log = AppLogger.instance;
+
   final AuthService _authService = AuthService();
   final StudentService _studentService = StudentService();
 
@@ -54,6 +58,11 @@ class AuthProvider extends ChangeNotifier {
 
     _currentUser = await _authService.getSavedSession();
 
+    if (_currentUser != null) {
+      _log.setUserId(_currentUser!.accsoftId);
+      _log.info(_tag, 'Auth restored for ${_currentUser!.accsoftId} (role: ${_currentUser!.role})');
+    }
+
     _isLoading = false;
     notifyListeners();
   }
@@ -64,6 +73,10 @@ class AuthProvider extends ChangeNotifier {
   /// the fee gate. Returns a [FeeGateOutcome] the screen uses to decide
   /// what to show next.
   Future<FeeGateOutcome> checkNiuIdFeeGate(String niuId) async {
+    final reqId = AppLogger.generateRequestId();
+    _log.info(_tag, 'Fee gate check for NIU ID: $niuId',
+        requestId: reqId, persist: true);
+
     _setLoading(true);
     _leadDetails = null; // clear any stale detail from a previous attempt
 
@@ -76,19 +89,27 @@ class AuthProvider extends ChangeNotifier {
         if (student.isFeeApproved) {
           _verifiedStudent = student;
           outcome = FeeGateOutcome.approved;
+          _log.info(_tag, 'Fee gate APPROVED for $niuId',
+              requestId: reqId, persist: true);
         } else {
           _verifiedStudent = null;
           outcome = FeeGateOutcome.notApproved;
+          _log.info(_tag, 'Fee gate NOT APPROVED for $niuId',
+              requestId: reqId, persist: true);
         }
         break;
       case StudentLookupStatus.notFound:
         _verifiedStudent = null;
         outcome = FeeGateOutcome.notFound;
+        _log.info(_tag, 'Fee gate: student NOT FOUND: $niuId',
+            requestId: reqId, persist: true);
         break;
       case StudentLookupStatus.error:
         _verifiedStudent = null;
         _error = result.errorMessage;
         outcome = FeeGateOutcome.error;
+        _log.error(_tag, 'Fee gate check failed for $niuId: ${result.errorMessage}',
+            requestId: reqId);
         break;
     }
 
@@ -104,6 +125,10 @@ class AuthProvider extends ChangeNotifier {
   /// course display string to the canonical key.
   Future<bool> fetchLeadDetails() async {
     if (_verifiedStudent == null) return false;
+
+    final reqId = AppLogger.generateRequestId();
+    _log.info(_tag, 'Fetching lead details for lead_id=${_verifiedStudent!.leadId}',
+        requestId: reqId, persist: true);
 
     _setLoading(true);
 
@@ -124,9 +149,15 @@ class AuthProvider extends ChangeNotifier {
         mobile: data['mobile'] ?? '',
       );
 
+      _log.info(_tag,
+          'Lead details fetched: name=${_leadDetails!.name}, course=${_leadDetails!.courseKey}',
+          requestId: reqId);
+
       _setLoading(false);
       return true;
-    } catch (e) {
+    } catch (e, st) {
+      _log.error(_tag, 'fetchLeadDetails Cloud Function failed',
+          error: e, stackTrace: st, requestId: reqId);
       _error = 'Could not fetch your details. Please try again.';
       _setLoading(false);
       return false;
@@ -149,6 +180,7 @@ class AuthProvider extends ChangeNotifier {
     try {
       final user = await _authService.studentLogin(accsoftId);
       _currentUser = user;
+      _log.setUserId(accsoftId);
       await _authService.saveUserSession(user);
       _setLoading(false);
       return true;
@@ -164,6 +196,7 @@ class AuthProvider extends ChangeNotifier {
     try {
       final user = await _authService.adminLogin(email, password);
       _currentUser = user;
+      _log.setUserId('admin');
       await _authService.saveUserSession(user);
       _setLoading(false);
       return true;
@@ -175,6 +208,8 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> logout() async {
+    _log.info(_tag, 'User logout: ${_currentUser?.accsoftId}', persist: true);
+    _log.clearUserId();
     await _authService.clearSession();
     _currentUser = null;
     _verifiedStudent = null;

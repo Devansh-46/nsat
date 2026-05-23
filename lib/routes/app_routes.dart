@@ -11,5 +11,6 @@ class AppRoutes {
   static const String adminLogin = '/admin-login';
   static const String pushNotification = '/push-notification';
   static const String resultsDashboard = '/results-dashboard';
+  static const String adminLogs = '/admin-logs';
   static const String emailVerification = '/email-verification';
 }
