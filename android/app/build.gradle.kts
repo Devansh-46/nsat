@@ -20,7 +20,6 @@ if (keystorePropertiesFile.exists()) {
 
 android {
     namespace = "in.edu.niu.nsat"
-    def appName = 'NSAT'
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 

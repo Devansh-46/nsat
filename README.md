@@ -7,7 +7,7 @@
 [![Flutter](https://img.shields.io/badge/Flutter-3.41-02569B?logo=flutter&logoColor=white)](https://flutter.dev)
 [![Firebase](https://img.shields.io/badge/Firebase-Blaze-FFCA28?logo=firebase&logoColor=black)](https://firebase.google.com)
 [![Platform](https://img.shields.io/badge/Platform-Android%20%7C%20Web%20%7C%20iOS-blueviolet)]()
-[![Functions](https://img.shields.io/badge/Cloud%20Functions-7%20deployed-4285F4?logo=googlecloud&logoColor=white)]()
+[![Functions](https://img.shields.io/badge/Cloud%20Functions-8%20deployed-4285F4?logo=googlecloud&logoColor=white)]()
 [![NPF Sync](https://img.shields.io/badge/NPF%20Sync-Live-brightgreen)]()
 [![Status](https://img.shields.io/badge/Status-Pre--Launch-brightgreen)]()
 
@@ -17,7 +17,7 @@
 
 ## 📖 Overview
 
-**NSAT** lets admission candidates take their aptitude test online — from a phone or a web browser. The app verifies that a candidate has paid their application fee via NoPaperForms/Meritto, confirms their identity by email OTP, runs a timed multiple-choice test with server-side scoring, and records the result.
+**NSAT** lets admission candidates take their aptitude test online — from a phone or a web browser. The app verifies that a candidate has paid their application fee via NoPaperForms/Meritto, confirms their identity by two-factor verification (email OTP + SMS OTP), runs a timed test with multiple-choice and short-answer questions, scores server-side, and records the result.
 
 Built once in **Flutter**, runs on **Android, Web, and iOS** from a single codebase, with **Firebase Cloud Functions** handling all server-side logic including NPF integration, email OTP, and scoring.
 
@@ -32,17 +32,17 @@ Built once in **Flutter**, runs on **Android, Web, and iOS** from a single codeb
 | 🔐 **NIU ID Login** | Students log in with their NIU ID (application number). |
 | 💳 **Automatic Fee Check** | Real-time fee verification via NoPaperForms — synced every 30 minutes. |
 | 🔄 **Live NPF Integration** | Student data auto-synced from Meritto/NPF; lead details fetched live at login. |
-| 📧 **Email OTP** | 6-digit code sent to registered email; SHA-256 hashed server-side, 10-min expiry, 5-attempt limit. |
+| 📧 **Two-Factor Verification** | Email OTP (6-digit, SHA-256 hashed, 10-min expiry, 5-attempt limit) + SMS OTP via Firebase Auth phone verification. |
 | 📝 **Timed Test** | Multiple-choice test with countdown timer, question palette, and auto-submit. |
 | 🔒 **Server-Side Scoring** | Answers scored by Cloud Function — the client never sees the answer key. |
 | 📊 **Instant Results** | Score breakdown shown immediately after submission. |
 | 🔒 **One Attempt Lock** | Transactional attempt lock with crash-safe status tracking (`in_progress` → `completed`). |
 | 📋 **Admin Dashboard** | Real-time Firestore-backed stats, results list with course filtering, CSV export. |
 | 🎨 **Verdant Daylight UI** | Custom design system — mesh backgrounds, glass-morphism cards, Instrument Serif typography. |
-| 🌐 **Cross-Platform** | Single codebase for Android, Web, and iOS. |
-| ✍️ **Short-Answer Questions** | Descriptive questions with configurable min/max word count and live word counter. |
-| 📱 **FCM Push Notifications** | Topic-based push notifications to all students or per-school (17 school topics). |
-| 🏫 **Multi-School Support** | 17 school/course keys: SET, SBM, SOAHS, SOS, SOLLA, SJMC, SOLA, SOFAD, SOE, SOP, SON (UG/PG). |
+| 🌐 **Cross-Platform** | Single codebase for Android, Web, and iOS. Web uses responsive split-layout (dark left panel + light right panel on desktop). |
+| ✍️ **Short-Answer Questions** | Descriptive questions with configurable min/max word count, live word counter, and ungraded responses stored for admissions review. |
+| 📱 **FCM Push Notifications** | Topic-based push notifications to all students or per-school (15 school topics + `all_students`). |
+| 🏫 **Multi-School Support** | 15 school/course keys: SET, SBM, SOAHS, SOS, SOLLA, SJMC, SOLA, SOE, SOP, SON (each UG/PG where applicable). |
 | ➖ **Negative Marking** | Configurable wrong-answer penalty per test configuration. |
 | 🔑 **Admin Custom Claims** | Role-based access control via Firebase Auth custom claims + email whitelist. |
 | 📤 **CSV Export** | Export results with NIU ID, name, course, correct/wrong/skipped, net/max score, timestamp. |
@@ -67,20 +67,27 @@ Built once in **Flutter**, runs on **Android, Web, and iOS** from a single codeb
   │  Enter NIU   │ ──▶ │  Fee Check   │ ──▶ │ Fetch Lead   │
   │     ID       │     │  (Firestore) │     │ Details (NPF)│
   └──────────────┘     └──────┬───────┘     └──────┬───────┘
-                              │                    │
-                       not paid │                    │ approved
-                              ▼                    ▼
-                       ┌──────────────┐     ┌──────────────┐
-                       │  "Fee not    │     │  Email OTP   │
-                       │   paid"      │     │  (6-digit)   │
-                       └──────────────┘     └──────┬───────┘
-                                                   │ verified
-                                                   ▼
-                       ┌──────────────┐     ┌──────────────┐
-                       │   Result     │ ◀── │  Timed Test  │
-                       │ (server-     │     │  (MCQ)       │
-                       │  scored)     │     │              │
-                       └──────────────┘     └──────────────┘
+                               │                    │
+                        not paid │                    │ approved
+                               ▼                    ▼
+                        ┌──────────────┐     ┌──────────────┐
+                        │  "Fee not    │     │  Email OTP   │
+                        │   paid"      │     │  (6-digit)   │
+                        └──────────────┘     └──────┬───────┘
+                                                    │ verified
+                                                    ▼
+                                             ┌──────────────┐
+                                             │  Phone OTP   │
+                                             │  (Firebase   │
+                                             │   Auth SMS)  │
+                                             └──────┬───────┘
+                                                    │ verified
+                                                    ▼
+                        ┌──────────────┐     ┌──────────────┐
+                        │   Result     │ ◀── │  Timed Test  │
+                        │ (server-     │     │  (MCQ + SAQ) │
+                        │  scored)     │     │              │
+                        └──────────────┘     └──────────────┘
 ```
 
 ---
@@ -102,7 +109,7 @@ Built once in **Flutter**, runs on **Android, Web, and iOS** from a single codeb
 
 ## ☁️ Cloud Functions
 
-All 7 functions deployed in `asia-south1`.
+All 8 functions deployed in `asia-south1`.
 
 | Function | Type | Purpose |
 |---|---|---|
@@ -110,10 +117,12 @@ All 7 functions deployed in `asia-south1`.
 | `fetchLeadDetails` | Callable | NPF lead lookup by `lead_id`, returns name/course/email with course-key mapping |
 | `sendOtp` | Callable | Generates 6-digit code, SHA-256 hashes to `otps`, sends email via SMTP |
 | `verifyOtp` | Callable | Validates hash, enforces 5-attempt limit and 10-min expiry |
-| `scoreSubmission` | Callable | Reads questions server-side, scores answers, writes result, flips attempt lock |
+| `scoreSubmission` | Callable | Reads questions server-side, scores answers (MCQ + short-answer), writes result, flips attempt lock |
 | `sendNotification` | Callable | Sends FCM push to topic (`all_students` or `school_{key}`), writes to `notifications` collection |
 | `setAdminClaim` | Callable | Sets `admin` custom claim on a Firebase Auth user (requires existing admin + email whitelist) |
 | `removeAdminClaim` | Callable | Removes `admin` custom claim from a Firebase Auth user (requires existing admin) |
+
+> **Phone/SMS OTP** is handled directly by Firebase Auth (`verifyPhoneNumber` + `signInWithCredential`) on the client — no Cloud Function needed. The email OTP path uses Cloud Functions to keep the OTP secret server-side.
 
 ### Environment Variables (`functions/.env`)
 
@@ -136,8 +145,8 @@ OTP_FROM_NAME=NSAT NIU
 |---|---|---|---|
 | `students` | Synced from NPF every 30 min | `application_no` | Cloud Function |
 | `tests` | Test config per course | Auto | Seed script |
-| `questions` | Question bank (text, options, answer, course) | Auto | Seed script |
-| `results` | Score breakdown per submission | Auto | Cloud Function |
+| `questions` | Question bank (text, options, answer, course, type) | Auto | Seed script |
+| `results` | Score breakdown per submission (incl. short-answer responses) | Auto | Cloud Function |
 | `attempts` | One-attempt lock (`in_progress` → `completed`) | `application_no` | Client + Cloud Function |
 | `otps` | Hashed 6-digit codes (10-min TTL) | `application_no` | Cloud Function |
 | `notifications` | Notification history (title, body, target, timestamp) | Auto | Cloud Function |
@@ -151,25 +160,29 @@ OTP_FROM_NAME=NSAT NIU
 nsat/
 ├── lib/
 │   ├── main.dart
-│   ├── models/           # StudentModel, LeadDetailsModel, TestModel, QuestionModel (MCQ + short-answer), etc.
+│   ├── firebase_options.dart
+│   ├── models/           # 10 models: Student, LeadDetails, Test, TestConfig, TestSession, Question (MCQ + short-answer), Result, Attempt, Notification, User
 │   ├── providers/        # AuthProvider, TestProvider, AdminProvider
-│   ├── services/         # Firestore, Cloud Functions, FCM, CSV export, Analytics, Remote Config
+│   ├── services/         # 14 services: Auth, Student, Test, TestData, Question, Attempt, Scoring, Result, Admin, Notification, FCM, Analytics, RemoteConfig, ResultsExporter, DataStore (legacy mock)
 │   ├── screens/
-│   │   ├── student/      # 7 screens: role selection → login → fee gate → OTP → test category → live test → result
+│   │   ├── student/      # 7 screens: role selection → login → email verification → fee gate → test category → live test → result
 │   │   └── admin/        # 4 screens: login, dashboard, results, push notifications
-│   ├── widgets/          # MeshBackground, GlassCard, Eyebrow, NoteBox, NiuButton, NiuField, StatCard, NiuAppBar
-│   ├── theme/            # AppColors (61 tokens), AppTheme (3 font families)
-│   └── routes/
-├── functions/            # TypeScript Cloud Functions
-│   └── src/              # syncStudents, fetchLeadDetails, otp, scoreSubmission, sendNotification, adminClaims
+│   ├── widgets/          # 11 widgets: MeshBackground, GlassCard, Eyebrow, NoteBox, NiuButton, NiuField, NiuAppBar, StatCard, InfoRow, MenuRow, WebSplitLayout
+│   ├── theme/            # AppColors (61+ tokens), AppTheme (3 font families)
+│   └── routes/           # AppRoutes (10 named routes)
+├── functions/             # TypeScript Cloud Functions
+│   └── src/              # 8 files: index, config, syncStudents, fetchLeadDetails, otp, scoreSubmission, sendNotification, adminClaims
 ├── web/
-│   └── privacy/          # Privacy policy page (hosted at /privacy)
-├── .github/workflows/    # CI/CD: auto-deploy web to Firebase Hosting on push
+│   ├── index.html
+│   ├── privacy/          # Privacy policy page (hosted at /privacy)
+│   └── icons/            # PWA icons (192, 512, maskable)
+├── .github/workflows/    # CI/CD: dart.yml, firebase-hosting-merge.yml, firebase-hosting-pull-request.yml
 ├── firebase.json
 ├── firestore.rules       # Tightened security rules
-├── seed_firestore.py     # Question bank seeder (Excel → Firestore)
-├── import_students_csv.py # Bulk CSV import for historical students
+├── seed_firestore.py     # Question bank seeder (Excel → Firestore, MCQ + short-answer)
+├── import_students_csv.py # Bulk CSV import for historical students (with dry-run)
 ├── setup_admin.py        # Bootstrap first Firebase admin user with custom claims
+├── test_categories.txt   # 15 school/course keys
 └── pubspec.yaml
 ```
 
@@ -240,11 +253,11 @@ python import_students_csv.py students_export.csv             # Import
 ✅ NIU ID login + fee gate<br>
 ✅ NPF auto-sync (every 30 min)<br>
 ✅ Live NPF lead fetch<br>
-✅ Email OTP verification<br>
+✅ Two-factor verification (email OTP + SMS OTP via Firebase Auth)<br>
 ✅ Timed test flow<br>
 ✅ Server-side scoring<br>
 ✅ One-attempt lock (crash-safe)<br>
-✅ Verdant Daylight UI (11 screens)<br>
+✅ Verdant Daylight UI (11 screens + responsive web split-layout)<br>
 ✅ Admin dashboard + CSV export<br>
 ✅ Firestore security rules<br>
 ✅ Android + Web<br>
@@ -291,7 +304,7 @@ python import_students_csv.py students_export.csv             # Import
 | Email OTP — send + verify | ✅ |
 | Server-side scoring | ✅ |
 | Security rules — tightened | ✅ |
-| Question bank — B.Tech (30 Q) | ✅ |
+| Question bank — B.Tech (MCQ + short-answer) | ✅ |
 | Short-answer questions | ✅ |
 | FCM push notifications | ✅ |
 | Admin custom claims | ✅ |

@@ -40,26 +40,32 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
     // Refresh Remote Config and check maintenance mode
     await RemoteConfigService.instance.refresh();
     if (!mounted) return;
-    
+
     final rc = RemoteConfigService.instance;
 
     if (rc.isMaintenanceMode) {
       AnalyticsService.instance.logMaintenanceBlocked();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(rc.maintenanceMessage)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(rc.maintenanceMessage)));
       return;
     }
 
     final provider = context.read<AuthProvider>();
-    AnalyticsService.instance.logLoginAttempted(applicationNo: _idController.text);
+    AnalyticsService.instance.logLoginAttempted(
+      applicationNo: _idController.text,
+    );
     final outcome = await provider.checkNiuIdFeeGate(_idController.text);
     if (!mounted) return;
     if (outcome == FeeGateOutcome.approved) {
-      AnalyticsService.instance.logFeeVerified(applicationNo: _idController.text);
+      AnalyticsService.instance.logFeeVerified(
+        applicationNo: _idController.text,
+      );
       Navigator.pushNamed(context, AppRoutes.emailVerification);
     } else if (outcome == FeeGateOutcome.notApproved) {
-      AnalyticsService.instance.logFeeBlocked(applicationNo: _idController.text);
+      AnalyticsService.instance.logFeeBlocked(
+        applicationNo: _idController.text,
+      );
     }
   }
 
@@ -109,19 +115,14 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
                         TextSpan(
                           text: 'Welcome, ',
                           style: AppTheme.displaySm(size: 22),
-                          children: [
-                            AppTheme.italicSpan('applicant.'),
-                          ],
+                          children: [AppTheme.italicSpan('applicant.')],
                         ),
                       ),
                       const SizedBox(height: 6),
                       Text(
                         "Enter your NIU ID to begin. We'll confirm "
                         'your details before the test.',
-                        style: AppTheme.body(
-                          size: 13.5,
-                          color: AppColors.ink3,
-                        ),
+                        style: AppTheme.body(size: 13.5, color: AppColors.ink3),
                       ),
                       const SizedBox(height: 22),
 
@@ -191,15 +192,33 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
       children: [
         Row(
           children: [
-            Text('NSAT', style: AppTheme.mono(color: AppColors.ivory.withValues(alpha: 0.5))),
+            Text(
+              'NSAT',
+              style: AppTheme.mono(
+                color: AppColors.ivory.withValues(alpha: 0.5),
+              ),
+            ),
             const SizedBox(width: 8),
-            Text('/', style: AppTheme.mono(color: AppColors.ivory.withValues(alpha: 0.2))),
+            Text(
+              '/',
+              style: AppTheme.mono(
+                color: AppColors.ivory.withValues(alpha: 0.2),
+              ),
+            ),
             const SizedBox(width: 8),
-            Text('NOIDA INTERNATIONAL UNIVERSITY', style: AppTheme.eyebrow(color: AppColors.ivory.withValues(alpha: 0.5))),
+            Text(
+              'NOIDA INTERNATIONAL UNIVERSITY',
+              style: AppTheme.eyebrow(
+                color: AppColors.ivory.withValues(alpha: 0.5),
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 16),
-        Text('Student / Sign in', style: AppTheme.body(size: 14, color: AppColors.ivory)),
+        Text(
+          'Student / Sign in',
+          style: AppTheme.body(size: 14, color: AppColors.ivory),
+        ),
         const SizedBox(height: 64),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -207,7 +226,10 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
             color: Colors.white.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(4),
           ),
-          child: Text('STEP 01 OF 04 — IDENTIFY YOURSELF', style: AppTheme.eyebrow(color: AppColors.ivory)),
+          child: Text(
+            'STEP 01 OF 04 — IDENTIFY YOURSELF',
+            style: AppTheme.eyebrow(color: AppColors.ivory),
+          ),
         ),
         const SizedBox(height: 24),
         Text.rich(
@@ -229,7 +251,9 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
               width: active ? 22 : 7,
               height: 7,
               decoration: BoxDecoration(
-                color: active ? AppColors.ivory : AppColors.ivory.withValues(alpha: 0.2),
+                color: active
+                    ? AppColors.ivory
+                    : AppColors.ivory.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(4),
               ),
             );
@@ -242,17 +266,33 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Test Format', style: AppTheme.eyebrow(color: AppColors.ivory.withValues(alpha: 0.5))),
+                Text(
+                  'Test Format',
+                  style: AppTheme.eyebrow(
+                    color: AppColors.ivory.withValues(alpha: 0.5),
+                  ),
+                ),
                 const SizedBox(height: 4),
-                Text('60 Questions / 60 Min', style: AppTheme.mono(size: 12, color: AppColors.ivory)),
+                Text(
+                  '60 Questions / 60 Min',
+                  style: AppTheme.mono(size: 12, color: AppColors.ivory),
+                ),
               ],
             ),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Support', style: AppTheme.eyebrow(color: AppColors.ivory.withValues(alpha: 0.5))),
+                Text(
+                  'Support',
+                  style: AppTheme.eyebrow(
+                    color: AppColors.ivory.withValues(alpha: 0.5),
+                  ),
+                ),
                 const SizedBox(height: 4),
-                Text('nsat@niu.edu.in', style: AppTheme.mono(size: 12, color: AppColors.ivory)),
+                Text(
+                  'nsat@niu.edu.in',
+                  style: AppTheme.mono(size: 12, color: AppColors.ivory),
+                ),
               ],
             ),
           ],
@@ -306,11 +346,7 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
                   ),
                 )
               else
-                NiuButton(
-                  label: 'Continue',
-                  showArrow: true,
-                  onTap: _continue,
-                ),
+                NiuButton(label: 'Continue', showArrow: true, onTap: _continue),
 
               const SizedBox(height: 18),
 
@@ -350,10 +386,7 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
       alignment: Alignment.center,
       child: Padding(
         padding: const EdgeInsets.all(10.0),
-        child: Image.asset(
-          'assets/niu_crest.png',
-          fit: BoxFit.contain,
-        ),
+        child: Image.asset('assets/niu_crest.png', fit: BoxFit.contain),
       ),
     );
   }
@@ -376,24 +409,25 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
     if (outcome == null) {
       return const NoteBox.gold(
         icon: Icons.verified_user_outlined,
-        title: 'Email verification next',
-        body: "After your NIU ID, we'll verify a code sent to your "
+        title: 'Email & Mobile verification next',
+        body:
+            "After your NIU ID, we'll verify a code sent to your "
             'registered email — keeping your attempt secure.',
       );
     }
     if (outcome == FeeGateOutcome.notApproved) {
       return NoteBox.gold(
-  icon: Icons.schedule,
-  title: 'Payment pending',
-  body:
-  "We found your NIU ID, but your application fee hasn't been confirmed as paid yet (Pay your fees https://admissions.niu.edu.in). If you've already paid, please check again later or contact your admission counsellor.",
-
-);
+        icon: Icons.schedule,
+        title: 'Payment pending',
+        body:
+            "We found your NIU ID, but your application fee hasn't been confirmed as paid yet (Pay your fees https://admissions.niu.edu.in). If you've already paid, please check again later or contact your admission counsellor.",
+      );
     }
     if (outcome == FeeGateOutcome.notFound) {
       return const NoteBox.clay(
         icon: Icons.error_outline,
-        body: 'We could not find this NIU ID. Please check it matches '
+        body:
+            'We could not find this NIU ID. Please check it matches '
             'your application number exactly, or contact your admission '
             'counsellor.',
       );
@@ -401,7 +435,8 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
     if (outcome == FeeGateOutcome.error) {
       return NoteBox.clay(
         icon: Icons.cloud_off,
-        body: error ??
+        body:
+            error ??
             'Could not reach the server. Please check your connection '
                 'and try again.',
       );
@@ -464,8 +499,7 @@ class _StepIndicator extends StatelessWidget {
                   style: AppTheme.body(
                     size: 11.5,
                     color: i == current ? AppColors.forest : AppColors.ink4,
-                    weight:
-                        i == current ? FontWeight.w600 : FontWeight.w400,
+                    weight: i == current ? FontWeight.w600 : FontWeight.w400,
                   ),
                 ),
               ],
