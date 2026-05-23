@@ -284,6 +284,7 @@ python import_students_csv.py students_export.csv             # Import
 📋 Network-loss retry on submit<br>
 📋 Admin grading UI for short-answer questions<br>
 🔧 App Check (protect Cloud Functions from abuse)
+📋 AI Proctoring — webcam-based monitoring, face detection, and suspicious behavior detection during tests
 
 </td>
 </tr>
