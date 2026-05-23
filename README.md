@@ -17,7 +17,7 @@
 
 ## 📖 Overview
 
-**NSAT** lets admission candidates take their aptitude test online — from a phone or a web browser. The app verifies that a candidate has paid their application fee via NoPaperForms/Meritto, confirms their identity by two-factor verification (email OTP + SMS OTP), runs a timed test with multiple-choice and short-answer questions, scores server-side, and records the result.
+**NSAT** lets admission candidates take their aptitude test online — from a phone or a web browser. The app verifies that a candidate has paid their application fee via NoPaperForms/Meritto, confirms their identity by two-factor verification (email OTP + WhatsApp OTP), runs a timed test with multiple-choice and short-answer questions, scores server-side, and records the result.
 
 Built once in **Flutter**, runs on **Android, Web, and iOS** from a single codebase, with **Firebase Cloud Functions** handling all server-side logic including NPF integration, email OTP, and scoring.
 
@@ -32,7 +32,7 @@ Built once in **Flutter**, runs on **Android, Web, and iOS** from a single codeb
 | 🔐 **NIU ID Login** | Students log in with their NIU ID (application number). |
 | 💳 **Automatic Fee Check** | Real-time fee verification via NoPaperForms — synced every 30 minutes. |
 | 🔄 **Live NPF Integration** | Student data auto-synced from Meritto/NPF; lead details fetched live at login. |
-| 📧 **Two-Factor Verification** | Email OTP (6-digit, SHA-256 hashed, 10-min expiry, 5-attempt limit) + SMS OTP via Firebase Auth phone verification. |
+| 📧 **Two-Factor Verification** | Email OTP (6-digit, SHA-256 hashed, 10-min expiry, 5-attempt limit) + WhatsApp OTP via Firebase Auth phone verification. |
 | 📝 **Timed Test** | Multiple-choice test with countdown timer, question palette, and auto-submit. |
 | 🔒 **Server-Side Scoring** | Answers scored by Cloud Function — the client never sees the answer key. |
 | 📊 **Instant Results** | Score breakdown shown immediately after submission. |
@@ -77,9 +77,9 @@ Built once in **Flutter**, runs on **Android, Web, and iOS** from a single codeb
                                                     │ verified
                                                     ▼
                                              ┌──────────────┐
-                                             │  Phone OTP   │
+                                             │ WhatsApp OTP │
                                              │  (Firebase   │
-                                             │   Auth SMS)  │
+                                             │   Auth)      │
                                              └──────┬───────┘
                                                     │ verified
                                                     ▼
@@ -122,7 +122,7 @@ All 8 functions deployed in `asia-south1`.
 | `setAdminClaim` | Callable | Sets `admin` custom claim on a Firebase Auth user (requires existing admin + email whitelist) |
 | `removeAdminClaim` | Callable | Removes `admin` custom claim from a Firebase Auth user (requires existing admin) |
 
-> **Phone/SMS OTP** is handled directly by Firebase Auth (`verifyPhoneNumber` + `signInWithCredential`) on the client — no Cloud Function needed. The email OTP path uses Cloud Functions to keep the OTP secret server-side.
+> **WhatsApp OTP** is handled directly by Firebase Auth (`verifyPhoneNumber` + `signInWithCredential`) on the client — no Cloud Function needed. The email OTP path uses Cloud Functions to keep the OTP secret server-side.
 
 ### Environment Variables (`functions/.env`)
 
@@ -253,7 +253,7 @@ python import_students_csv.py students_export.csv             # Import
 ✅ NIU ID login + fee gate<br>
 ✅ NPF auto-sync (every 30 min)<br>
 ✅ Live NPF lead fetch<br>
-✅ Two-factor verification (email OTP + SMS OTP via Firebase Auth)<br>
+✅ Two-factor verification (email OTP + WhatsApp OTP via Firebase Auth)<br>
 ✅ Timed test flow<br>
 ✅ Server-side scoring<br>
 ✅ One-attempt lock (crash-safe)<br>
@@ -272,19 +272,19 @@ python import_students_csv.py students_export.csv             # Import
 ✅ CI/CD — GitHub Actions → Firebase Hosting<br>
 ✅ Privacy policy page<br>
 🔧 Google Play Store listing + AAB<br>
-🔧 Custom domain (nsat.niu.edu.in)<br>
+✅ Custom domain (nsat.niu.edu.in)<br>
 🔧 End-to-end dry run
 
 </td>
 <td valign="top">
 
-📋 iOS release<br>
+🔧 iOS release<br>
 📋 Admin test/question CRUD<br>
 📋 NPF result write-back<br>
 📋 PDF scorecard download<br>
 📋 Network-loss retry on submit<br>
 📋 Admin grading UI for short-answer questions<br>
-📋 App Check (protect Cloud Functions from abuse)
+🔧 App Check (protect Cloud Functions from abuse)
 
 </td>
 </tr>
@@ -317,10 +317,11 @@ python import_students_csv.py students_export.csv             # Import
 | CI/CD (GitHub Actions) | ✅ |
 | Privacy policy | ✅ |
 | Web app (Firebase Hosting) | ✅ |
-| Custom domain (nsat.niu.edu.in) | 🔧 |
+| Custom domain (nsat.niu.edu.in) | ✅ |
 | Release AAB | 🔧 |
 | Google Play listing | 📋 |
-| iOS build | 📋 |
+| iOS build | 🔧 |
+| App Check (Cloud Functions) | 🔧 |
 
 ---
 
