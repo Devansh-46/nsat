@@ -44,17 +44,12 @@ class QuestionService {
         .get();
 
     return snapshot.docs.map((doc) {
-      final data = doc.data();
-      return QuestionModel(
-        id: doc.id,
-        text: data['text'] ?? '',
-        options: List<String>.from(data['options'] ?? const []),
-        // When _stripAnswers is true the app receives a sentinel (-1)
-        // instead of the real index; scoring then MUST go server-side.
-        correctAnswerIndex:
-            _stripAnswers ? -1 : ((data['correctAnswerIndex'] ?? 0) as int),
-        category: data['course'] ?? '',
-      );
+      Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+      if (_stripAnswers) {
+        data = Map<String, dynamic>.from(data);
+        data['correctAnswerIndex'] = -1;
+      }
+      return QuestionModel.fromMap(data, id: doc.id);
     }).toList();
   }
 }

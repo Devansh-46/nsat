@@ -263,22 +263,7 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Test Format',
-                  style: AppTheme.eyebrow(
-                    color: AppColors.ivory.withValues(alpha: 0.5),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '60 Questions / 60 Min',
-                  style: AppTheme.mono(size: 12, color: AppColors.ivory),
-                ),
-              ],
-            ),
+            Column(crossAxisAlignment: CrossAxisAlignment.start),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [

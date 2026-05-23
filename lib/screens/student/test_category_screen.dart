@@ -14,6 +14,7 @@ import '../../widgets/note_box.dart';
 import '../../services/remote_config_service.dart';
 import '../../services/analytics_service.dart';
 import '../../widgets/web_split_layout.dart';
+
 /// Step 3 — Shows the student's published test and lets them start it.
 /// Identity from AuthProvider (verifiedStudent + leadDetails).
 class TestCategoryScreen extends StatefulWidget {
@@ -46,9 +47,9 @@ class _TestCategoryScreenState extends State<TestCategoryScreen> {
 
     if (rc.isMaintenanceMode) {
       AnalyticsService.instance.logMaintenanceBlocked();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(rc.maintenanceMessage)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(rc.maintenanceMessage)));
       return;
     }
 
@@ -56,12 +57,16 @@ class _TestCategoryScreenState extends State<TestCategoryScreen> {
       final auth = context.read<AuthProvider>();
       final student = auth.verifiedStudent;
       if (student != null) {
-        AnalyticsService.instance.logExamWindowBlocked(applicationNo: student.applicationNo);
+        AnalyticsService.instance.logExamWindowBlocked(
+          applicationNo: student.applicationNo,
+        );
       }
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('The exam window is currently closed. '
-              'Please wait for the scheduled time.'),
+          content: Text(
+            'The exam window is currently closed. '
+            'Please wait for the scheduled time.',
+          ),
         ),
       );
       return;
@@ -93,7 +98,9 @@ class _TestCategoryScreenState extends State<TestCategoryScreen> {
     }
 
     if (testProvider.alreadyCompleted) {
-      AnalyticsService.instance.logAlreadyCompleted(applicationNo: student.applicationNo);
+      AnalyticsService.instance.logAlreadyCompleted(
+        applicationNo: student.applicationNo,
+      );
       _showBlocked(
         'Test already completed',
         'Our records show this NIU ID has already taken the test. '
@@ -119,11 +126,12 @@ class _TestCategoryScreenState extends State<TestCategoryScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.ivory,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
         title: Text(title, style: AppTheme.displaySm(size: 18)),
-        content: Text(body, style: AppTheme.body(size: 13.5, color: AppColors.ink3)),
+        content: Text(
+          body,
+          style: AppTheme.body(size: 13.5, color: AppColors.ink3),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
@@ -165,9 +173,7 @@ class _TestCategoryScreenState extends State<TestCategoryScreen> {
                     text: 'Hello, ',
                     style: AppTheme.display(size: 28),
                     children: [
-                      AppTheme.italicSpan(
-                        '${lead?.name ?? "Student"}.',
-                      ),
+                      AppTheme.italicSpan('${lead?.name ?? "Student"}.'),
                     ],
                   ),
                 ),
@@ -204,8 +210,11 @@ class _TestCategoryScreenState extends State<TestCategoryScreen> {
                                 color: AppColors.forestTint,
                                 borderRadius: BorderRadius.circular(12),
                               ),
-                              child: const Icon(Icons.assignment_outlined,
-                                  size: 20, color: AppColors.forest),
+                              child: const Icon(
+                                Icons.assignment_outlined,
+                                size: 20,
+                                color: AppColors.forest,
+                              ),
                             ),
                             const SizedBox(width: 14),
                             Expanded(
@@ -241,8 +250,7 @@ class _TestCategoryScreenState extends State<TestCategoryScreen> {
                           children: [
                             Expanded(
                               child: _StatTile(
-                                value: test.marksPerQuestion
-                                    .toStringAsFixed(0),
+                                value: test.marksPerQuestion.toStringAsFixed(0),
                                 label: 'Mark / question',
                               ),
                             ),
@@ -266,7 +274,8 @@ class _TestCategoryScreenState extends State<TestCategoryScreen> {
                   const NoteBox.gold(
                     icon: Icons.warning_amber_rounded,
                     title: 'One attempt only',
-                    body: 'Once you start, the test cannot be retaken '
+                    body:
+                        'Once you start, the test cannot be retaken '
                         '— make sure you are ready.',
                   ),
                   const SizedBox(height: 20),
@@ -281,11 +290,16 @@ class _TestCategoryScreenState extends State<TestCategoryScreen> {
                   // ── Empty state ──
                   GlassCard(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 22, vertical: 36),
+                      horizontal: 22,
+                      vertical: 36,
+                    ),
                     child: Column(
                       children: [
-                        const Icon(Icons.info_outline,
-                            size: 36, color: AppColors.ink4),
+                        const Icon(
+                          Icons.info_outline,
+                          size: 36,
+                          color: AppColors.ink4,
+                        ),
                         const SizedBox(height: 14),
                         Text(
                           'No test available',
@@ -297,10 +311,7 @@ class _TestCategoryScreenState extends State<TestCategoryScreen> {
                               'There is no published test for your '
                                   'course yet.',
                           textAlign: TextAlign.center,
-                          style: AppTheme.body(
-                            size: 13,
-                            color: AppColors.ink3,
-                          ),
+                          style: AppTheme.body(size: 13, color: AppColors.ink3),
                         ),
                       ],
                     ),
@@ -322,15 +333,33 @@ class _TestCategoryScreenState extends State<TestCategoryScreen> {
       children: [
         Row(
           children: [
-            Text('NSAT', style: AppTheme.mono(color: AppColors.ivory.withValues(alpha: 0.5))),
+            Text(
+              'NSAT',
+              style: AppTheme.mono(
+                color: AppColors.ivory.withValues(alpha: 0.5),
+              ),
+            ),
             const SizedBox(width: 8),
-            Text('/', style: AppTheme.mono(color: AppColors.ivory.withValues(alpha: 0.2))),
+            Text(
+              '/',
+              style: AppTheme.mono(
+                color: AppColors.ivory.withValues(alpha: 0.2),
+              ),
+            ),
             const SizedBox(width: 8),
-            Text('NOIDA INTERNATIONAL UNIVERSITY', style: AppTheme.eyebrow(color: AppColors.ivory.withValues(alpha: 0.5))),
+            Text(
+              'NOIDA INTERNATIONAL UNIVERSITY',
+              style: AppTheme.eyebrow(
+                color: AppColors.ivory.withValues(alpha: 0.5),
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 16),
-        Text('Student / Your test', style: AppTheme.body(size: 14, color: AppColors.ivory)),
+        Text(
+          'Student / Your test',
+          style: AppTheme.body(size: 14, color: AppColors.ivory),
+        ),
         const SizedBox(height: 64),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -338,7 +367,10 @@ class _TestCategoryScreenState extends State<TestCategoryScreen> {
             color: Colors.white.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(4),
           ),
-          child: Text('STEP 03 OF 04 — START EXAM', style: AppTheme.eyebrow(color: AppColors.ivory)),
+          child: Text(
+            'STEP 03 OF 04 — START EXAM',
+            style: AppTheme.eyebrow(color: AppColors.ivory),
+          ),
         ),
         const SizedBox(height: 24),
         Text.rich(
@@ -346,7 +378,10 @@ class _TestCategoryScreenState extends State<TestCategoryScreen> {
             style: AppTheme.display(size: 52, color: AppColors.ivory),
             children: [
               const TextSpan(text: 'Hello,\n'),
-              AppTheme.italicSpan('${lead?.name ?? "Student"}.', color: AppColors.ivory),
+              AppTheme.italicSpan(
+                '${lead?.name ?? "Student"}.',
+                color: AppColors.ivory,
+              ),
             ],
           ),
         ),
@@ -360,7 +395,9 @@ class _TestCategoryScreenState extends State<TestCategoryScreen> {
               width: active ? 22 : 7,
               height: 7,
               decoration: BoxDecoration(
-                color: active ? AppColors.ivory : AppColors.ivory.withValues(alpha: 0.2),
+                color: active
+                    ? AppColors.ivory
+                    : AppColors.ivory.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(4),
               ),
             );
@@ -370,20 +407,21 @@ class _TestCategoryScreenState extends State<TestCategoryScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
+            Column(crossAxisAlignment: CrossAxisAlignment.start),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Test Format', style: AppTheme.eyebrow(color: AppColors.ivory.withValues(alpha: 0.5))),
+                Text(
+                  'Support',
+                  style: AppTheme.eyebrow(
+                    color: AppColors.ivory.withValues(alpha: 0.5),
+                  ),
+                ),
                 const SizedBox(height: 4),
-                Text('60 Questions / 60 Min', style: AppTheme.mono(size: 12, color: AppColors.ivory)),
-              ],
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Support', style: AppTheme.eyebrow(color: AppColors.ivory.withValues(alpha: 0.5))),
-                const SizedBox(height: 4),
-                Text('nsat@niu.edu.in', style: AppTheme.mono(size: 12, color: AppColors.ivory)),
+                Text(
+                  'nsat@niu.edu.in',
+                  style: AppTheme.mono(size: 12, color: AppColors.ivory),
+                ),
               ],
             ),
           ],
@@ -426,8 +464,11 @@ class _TestCategoryScreenState extends State<TestCategoryScreen> {
                         color: AppColors.forestTint,
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Icon(Icons.assignment_outlined,
-                          size: 20, color: AppColors.forest),
+                      child: const Icon(
+                        Icons.assignment_outlined,
+                        size: 20,
+                        color: AppColors.forest,
+                      ),
                     ),
                     const SizedBox(width: 14),
                     Expanded(
@@ -463,8 +504,7 @@ class _TestCategoryScreenState extends State<TestCategoryScreen> {
                   children: [
                     Expanded(
                       child: _StatTile(
-                        value: test.marksPerQuestion
-                            .toStringAsFixed(0),
+                        value: test.marksPerQuestion.toStringAsFixed(0),
                         label: 'Mark / question',
                       ),
                     ),
@@ -488,7 +528,8 @@ class _TestCategoryScreenState extends State<TestCategoryScreen> {
           const NoteBox.gold(
             icon: Icons.warning_amber_rounded,
             title: 'One attempt only',
-            body: 'Once you start, the test cannot be retaken '
+            body:
+                'Once you start, the test cannot be retaken '
                 '— make sure you are ready.',
           ),
           const SizedBox(height: 20),
@@ -502,27 +543,19 @@ class _TestCategoryScreenState extends State<TestCategoryScreen> {
         ] else ...[
           // ── Empty state ──
           GlassCard(
-            padding: const EdgeInsets.symmetric(
-                horizontal: 22, vertical: 36),
+            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 36),
             child: Column(
               children: [
-                const Icon(Icons.info_outline,
-                    size: 36, color: AppColors.ink4),
+                const Icon(Icons.info_outline, size: 36, color: AppColors.ink4),
                 const SizedBox(height: 14),
-                Text(
-                  'No test available',
-                  style: AppTheme.displaySm(size: 17),
-                ),
+                Text('No test available', style: AppTheme.displaySm(size: 17)),
                 const SizedBox(height: 6),
                 Text(
                   testProvider.error ??
                       'There is no published test for your '
                           'course yet.',
                   textAlign: TextAlign.center,
-                  style: AppTheme.body(
-                    size: 13,
-                    color: AppColors.ink3,
-                  ),
+                  style: AppTheme.body(size: 13, color: AppColors.ink3),
                 ),
               ],
             ),
