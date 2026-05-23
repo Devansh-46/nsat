@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -30,44 +31,47 @@ import 'widgets/splash_screen.dart';
 
 final _log = AppLogger.instance;
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+void main() {
+  runZonedGuarded(() async {
+    WidgetsFlutterBinding.ensureInitialized();
 
-  try {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
-  } catch (e) {
-    _log.error('Main', 'Firebase init failed', error: e);
-  }
-
-  _log.init();
-
-  if (!kIsWeb) {
-    FlutterError.onError = (details) {
-      _log.error(
-        'FlutterError',
-        details.exceptionAsString(),
-        error: details.exception,
-        stackTrace: details.stack,
+    try {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
       );
-      FirebaseCrashlytics.instance.recordFlutterFatalError(details);
-    };
+    } catch (e) {
+      _log.error('Main', 'Firebase init failed', error: e);
+    }
 
-    PlatformDispatcher.instance.onError = (error, stack) {
-      _log.error(
-        'PlatformDispatcher',
-        'Uncaught async error',
-        error: error,
-        stackTrace: stack,
-      );
-      FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
-      return true;
-    };
-  }
+    _log.init();
 
-  // Defer services that touch Firestore until after splash
-  runApp(const AppRoot());
+    if (!kIsWeb) {
+      FlutterError.onError = (details) {
+        _log.error(
+          'FlutterError',
+          details.exceptionAsString(),
+          error: details.exception,
+          stackTrace: details.stack,
+        );
+        FirebaseCrashlytics.instance.recordFlutterFatalError(details);
+      };
+
+      PlatformDispatcher.instance.onError = (error, stack) {
+        _log.error(
+          'PlatformDispatcher',
+          'Uncaught async error',
+          error: error,
+          stackTrace: stack,
+        );
+        FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+        return true;
+      };
+    }
+
+    runApp(const AppRoot());
+  }, (error, stack) {
+    _log.error('Zone', 'Uncaught zone error', error: error, stackTrace: stack);
+  });
 }
 
 class NiuSatApp extends StatelessWidget {
@@ -129,7 +133,9 @@ class _AppRootState extends State<AppRoot> {
       _log.error('Main', 'FCM init failed', error: e);
     }
 
-    _servicesReady = true;
+    if (mounted) {
+      setState(() => _servicesReady = true);
+    }
   }
 
   @override
