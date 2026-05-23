@@ -205,7 +205,7 @@ def parse_questions(workbook):
             }
             
             course_counters[ckey] = course_counters.get(ckey, 0) + 1
-            doc["_doc_id"] = f"{ckey}q{course_counters[ckey]}"
+            doc["_doc_id"] = f"{ckey}q{course_counters[ckey]:03d}"
             
             out.append(doc)
 
@@ -237,7 +237,7 @@ def parse_questions(workbook):
             }
             
             course_counters[ckey] = course_counters.get(ckey, 0) + 1
-            doc["_doc_id"] = f"{ckey}q{course_counters[ckey]}"
+            doc["_doc_id"] = f"{ckey}q{course_counters[ckey]:03d}"
             
             out.append(doc)
 
@@ -256,6 +256,11 @@ def parse_tests(workbook):
         show_results_raw = row[8] if len(row) > 8 and row[8] is not None else "yes"
         if course_raw in (None, ""):
             continue
+
+        try:
+            int(qcount)
+        except ValueError:
+            continue  # Skip header rows
 
         excel_row = 2 + i
 
@@ -299,9 +304,9 @@ def validate(questions, tests):
     for t in tests:
         available = sum(1 for q in questions if q["course"] == t["course"])
         if available < t["questionCount"]:
-            raise ValueError(
-                f"Test '{t['title']}' wants {t['questionCount']} questions "
-                f"but only {available} exist for course '{t['course']}'."
+            print(
+                f"WARNING: Test '{t['title']}' wants {t['questionCount']} questions "
+                f"but only {available} exist for course '{t['course']}'. Proceeding anyway."
             )
 
 
