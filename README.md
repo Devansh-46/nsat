@@ -21,7 +21,6 @@
 
 Built once in **Flutter**, runs on **Android, Web, and iOS** from a single codebase, with **Firebase Cloud Functions** handling all server-side logic including NPF integration, email OTP, and scoring.
 
-> **Target:** 14 June 2026 entrance test. Dry run planned ~7 June.
 
 ---
 
