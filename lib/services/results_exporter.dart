@@ -4,6 +4,7 @@ import 'package:csv/csv.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../models/result_model.dart';
+import 'web_download_stub.dart' if (dart.library.html) 'web_download.dart';
 
 /// Result of an export attempt, so the UI can show the right message.
 class ExportResult {
@@ -61,10 +62,14 @@ class ResultsExporter {
     }
 
     if (kIsWeb) {
-      return ExportResult(
-        false,
-        'Export is available in the NSAT mobile app.',
-      );
+      try {
+        final csv = buildCsv(results);
+        final fileName = 'nsat_results_${DateTime.now().millisecondsSinceEpoch}.csv';
+        downloadCsvWeb(fileName, csv);
+        return ExportResult(true, 'Downloading: $fileName');
+      } catch (e) {
+        return ExportResult(false, 'Export failed on web. Please try again.');
+      }
     }
 
     try {
