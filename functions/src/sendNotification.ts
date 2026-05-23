@@ -47,6 +47,21 @@ export const sendNotification = onCall(
                         priority: "high" as const,
                     },
                 },
+                apns: {
+                    headers: {
+                        "apns-priority": "10",
+                    },
+                    payload: {
+                        aps: {
+                            alert: {
+                                title,
+                                body,
+                            },
+                            sound: "default",
+                            contentAvailable: true,
+                        },
+                    },
+                },
             };
 
             const response = await admin.messaging().send(message);

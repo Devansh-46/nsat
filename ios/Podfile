@@ -32,9 +32,6 @@ target 'Runner' do
 
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
 
-  # Pin gRPC versions to fix missing headers issue in 1.69.0
-  pod 'gRPC-C++', '1.65.0'
-  pod 'gRPC-Core', '1.65.0'
 
   target 'RunnerTests' do
     inherit! :search_paths

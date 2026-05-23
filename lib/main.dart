@@ -7,6 +7,7 @@ import 'firebase_options.dart';
 import 'services/remote_config_service.dart';
 import 'services/analytics_service.dart';
 import 'services/app_logger.dart';
+import 'services/fcm_service.dart';
 import 'providers/auth_provider.dart';
 import 'providers/test_provider.dart';
 import 'providers/admin_provider.dart';
@@ -63,6 +64,10 @@ void main() async {
 
   // --- Remote Config setup ---
   await RemoteConfigService.instance.init();
+
+  // --- FCM setup — request permission and subscribe to broadcast topic
+  // for every device on app open, regardless of course or login state.
+  await FcmService().initializeForStudent('');
 
   log.info('Main', 'App startup complete', persist: true);
 

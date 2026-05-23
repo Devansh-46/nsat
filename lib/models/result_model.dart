@@ -13,6 +13,7 @@ class ResultModel {
   final double netScore;
   final double maxScore;
   final DateTime? submittedAt;
+  final Map<String, String> shortAnswerResponses;
 
   ResultModel({
     required this.applicationNo,
@@ -25,10 +26,18 @@ class ResultModel {
     required this.netScore,
     required this.maxScore,
     this.submittedAt,
+    this.shortAnswerResponses = const {},
   });
 
   factory ResultModel.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>? ?? {};
+    final rawShort = data['shortAnswerResponses'];
+    final Map<String, String> shortAnswers;
+    if (rawShort is Map) {
+      shortAnswers = rawShort.map((k, v) => MapEntry(k.toString(), v.toString()));
+    } else {
+      shortAnswers = {};
+    }
     return ResultModel(
       applicationNo: data['application_no'] ?? '',
       studentName: data['studentName'] ?? '',
@@ -42,6 +51,7 @@ class ResultModel {
       submittedAt: data['submittedAt'] is Timestamp
           ? (data['submittedAt'] as Timestamp).toDate()
           : null,
+      shortAnswerResponses: shortAnswers,
     );
   }
 
@@ -57,5 +67,6 @@ class ResultModel {
         'skippedCount': skippedCount,
         'netScore': netScore,
         'maxScore': maxScore,
+        'shortAnswerResponses': shortAnswerResponses,
       };
 }

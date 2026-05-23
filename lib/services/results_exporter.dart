@@ -22,7 +22,7 @@ class ExportResult {
 /// Android app for results, so this is the intended path.
 class ResultsExporter {
   /// CSV column order. Keep stable — NIU staff may build on this.
-  static const _headers = [
+  static const _baseHeaders = [
     'NIU ID',
     'Student Name',
     'Course',
@@ -36,8 +36,25 @@ class ResultsExporter {
 
   /// Turns the results into CSV text.
   static String buildCsv(List<ResultModel> results) {
+    // Collect all short answer question indices across all results
+    final allShortIndices = <String>{};
+    for (final r in results) {
+      allShortIndices.addAll(r.shortAnswerResponses.keys);
+    }
+    final sortedShortIndices = allShortIndices.toList()..sort((a, b) {
+      final ai = int.tryParse(a) ?? 0;
+      final bi = int.tryParse(b) ?? 0;
+      return ai.compareTo(bi);
+    });
+
+    final headers = <String>[
+      ..._baseHeaders,
+      for (final idx in sortedShortIndices)
+        'Short Answer Q${(int.tryParse(idx) ?? 0) + 1}',
+    ];
+
     final rows = <List<dynamic>>[
-      _headers,
+      headers,
       for (final r in results)
         [
           r.applicationNo,
@@ -49,6 +66,8 @@ class ResultsExporter {
           r.netScore,
           r.maxScore,
           r.submittedAt != null ? _formatDateTime(r.submittedAt!) : '',
+          for (final idx in sortedShortIndices)
+            r.shortAnswerResponses[idx] ?? '',
         ],
     ];
     return const ListToCsvConverter().convert(rows);
