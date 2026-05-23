@@ -162,6 +162,7 @@ def parse_questions(workbook):
     """Returns a list of dicts ready for the `questions` collection."""
     ws = workbook["Questions"]
     out = []
+    course_counters = {}
 
     for i, row in enumerate(
         ws.iter_rows(min_row=DATA_START_ROW, values_only=True)
@@ -202,6 +203,10 @@ def parse_questions(workbook):
                 "course": ckey,
                 "topic": topic_str,
             }
+            
+            course_counters[ckey] = course_counters.get(ckey, 0) + 1
+            doc["_doc_id"] = f"{ckey}q{course_counters[ckey]}"
+            
             out.append(doc)
 
         else:
@@ -230,6 +235,10 @@ def parse_questions(workbook):
                 "course": ckey,
                 "topic": topic_str,
             }
+            
+            course_counters[ckey] = course_counters.get(ckey, 0) + 1
+            doc["_doc_id"] = f"{ckey}q{course_counters[ckey]}"
+            
             out.append(doc)
 
     return out
@@ -375,7 +384,8 @@ def main():
     batch = db.batch()
     ops = 0
     for q in questions:
-        ref = db.collection("questions").document()  # auto-id
+        doc_id = q.pop("_doc_id")
+        ref = db.collection("questions").document(doc_id)
         batch.set(ref, q)
         ops += 1
         if ops == 450:

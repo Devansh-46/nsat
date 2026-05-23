@@ -1,4 +1,5 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 
 /// Manages FCM topic subscriptions and permissions.
 ///
@@ -22,6 +23,8 @@ class FcmService {
       return; // User declined — don't subscribe
     }
 
+    if (kIsWeb) return; // Topic subscription is not supported on Web
+
     // Subscribe to broadcast topic
     await _messaging.subscribeToTopic('all_students');
 
@@ -33,6 +36,8 @@ class FcmService {
 
   /// Unsubscribe from all topics (on logout).
   Future<void> unsubscribeAll(String? courseKey) async {
+    if (kIsWeb) return; // Topic subscription is not supported on Web
+    
     await _messaging.unsubscribeFromTopic('all_students');
     if (courseKey != null && courseKey.isNotEmpty) {
       await _messaging.unsubscribeFromTopic('school_$courseKey');

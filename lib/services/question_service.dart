@@ -43,7 +43,7 @@ class QuestionService {
         .limit(limit)
         .get();
 
-    return snapshot.docs.map((doc) {
+    final questions = snapshot.docs.map((doc) {
       Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
       if (_stripAnswers) {
         data = Map<String, dynamic>.from(data);
@@ -51,5 +51,24 @@ class QuestionService {
       }
       return QuestionModel.fromMap(data, id: doc.id);
     }).toList();
+
+    // Sort so short answers are at the end, otherwise preserve order by ID
+    questions.sort((a, b) {
+      if (a.isShortAnswer && !b.isShortAnswer) return 1;
+      if (!a.isShortAnswer && b.isShortAnswer) return -1;
+      
+      // If both are same type, sort by ID to match sequence (e.g. q1, q2)
+      // Custom comparator needed since "q10" string-sorts before "q2"
+      final aNumMatch = RegExp(r'\d+$').firstMatch(a.id);
+      final bNumMatch = RegExp(r'\d+$').firstMatch(b.id);
+      if (aNumMatch != null && bNumMatch != null) {
+        final aNum = int.parse(aNumMatch.group(0)!);
+        final bNum = int.parse(bNumMatch.group(0)!);
+        return aNum.compareTo(bNum);
+      }
+      return a.id.compareTo(b.id);
+    });
+
+    return questions;
   }
 }

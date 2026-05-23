@@ -180,42 +180,45 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
       _error = null;
     });
 
-    // Ensure phone has country code
-    String phone = _fullPhone!.trim();
-    if (!phone.startsWith('+')) {
-      phone = '+91$phone'; // Default India
+    final auth = context.read<app.AuthProvider>();
+    final student = auth.verifiedStudent;
+    if (student == null) {
+       setState(() {
+         _busy = false;
+         _error = 'Session expired. Please start over.';
+       });
+       return;
     }
 
-    await FirebaseAuth.instance.verifyPhoneNumber(
-      phoneNumber: phone,
-      timeout: const Duration(seconds: 60),
-      verificationCompleted: (PhoneAuthCredential credential) async {
-        // Auto-verification (Android auto-read)
-        if (!mounted) return;
-        _onFullyVerified();
-      },
-      verificationFailed: (FirebaseAuthException e) {
-        if (!mounted) return;
-        setState(() {
-          _busy = false;
-          _error = e.message ?? 'Phone verification failed.';
-          _stage = _VerifyStage.phoneOtp; // Let them retry manually
-        });
-      },
-      codeSent: (String verificationId, int? resendToken) {
-        if (!mounted) return;
-        _verificationId = verificationId;
-        _resendToken = resendToken;
-        setState(() {
-          _stage = _VerifyStage.phoneOtp;
-          _busy = false;
-        });
-      },
-      codeAutoRetrievalTimeout: (String verificationId) {
-        _verificationId = verificationId;
-      },
-      forceResendingToken: _resendToken,
-    );
+    try {
+      final callable = FirebaseFunctions.instanceFor(region: 'asia-south1')
+          .httpsCallable('sendWhatsAppOtp');
+      await callable.call({
+        'application_no': student.applicationNo,
+        'phone': _fullPhone,
+        'name': auth.leadDetails?.name,
+      });
+
+      if (!mounted) return;
+      setState(() {
+        _stage = _VerifyStage.phoneOtp;
+        _busy = false;
+      });
+    } on FirebaseFunctionsException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _error = e.message ?? 'Failed to send WhatsApp code.';
+        _stage = _VerifyStage.phoneOtp; // Let them retry manually
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _error = 'Failed to send WhatsApp code. Check your connection.';
+        _stage = _VerifyStage.phoneOtp;
+      });
+    }
   }
 
   // ── Step 4: Verify phone OTP ──
@@ -223,12 +226,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
   Future<void> _verifyPhoneOtp() async {
     final code = _phoneOtpController.text.trim();
     if (code.length != 6) {
-      setState(() => _error = 'Please enter the 6-digit SMS code.');
-      return;
-    }
-
-    if (_verificationId == null) {
-      setState(() => _error = 'Verification expired. Tap resend.');
+      setState(() => _error = 'Please enter the 6-digit WhatsApp code.');
       return;
     }
 
@@ -237,22 +235,31 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
       _error = null;
     });
 
+    final auth = context.read<app.AuthProvider>();
+    final student = auth.verifiedStudent;
+    if (student == null) {
+      setState(() {
+        _busy = false;
+        _error = 'Session expired.';
+      });
+      return;
+    }
+
     try {
-      final credential = PhoneAuthProvider.credential(
-        verificationId: _verificationId!,
-        smsCode: code,
-      );
-      // Sign in anonymously first if not signed in, then link
-      // Or just verify the credential
-      await FirebaseAuth.instance.signInWithCredential(credential);
+      final callable = FirebaseFunctions.instanceFor(region: 'asia-south1')
+          .httpsCallable('verifyOtp');
+      await callable.call({
+        'application_no': student.applicationNo,
+        'code': code,
+      });
 
       if (!mounted) return;
       _onFullyVerified();
-    } on FirebaseAuthException catch (e) {
+    } on FirebaseFunctionsException catch (e) {
       if (!mounted) return;
       setState(() {
         _busy = false;
-        _error = e.message ?? 'Invalid SMS code.';
+        _error = e.message ?? 'Invalid WhatsApp code.';
       });
     } catch (e) {
       if (!mounted) return;
@@ -490,7 +497,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                                     color: AppColors.forest))),
                         const SizedBox(height: 8),
                         Center(
-                            child: Text('Sending SMS code…',
+                            child: Text('Sending WhatsApp code…',
                                 style: AppTheme.body(
                                     size: 12.5, color: AppColors.ink4))),
                       ] else if (_stage == _VerifyStage.phoneOtp) ...[
@@ -499,7 +506,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                             body: 'Email verified successfully!'),
                         const SizedBox(height: 16),
                         if (_maskedPhone != null) ...[
-                          const Eyebrow('sms sent to'),
+                          const Eyebrow('whatsapp sent to'),
                           const SizedBox(height: 4),
                           Text(_maskedPhone!,
                               style: AppTheme.mono(
@@ -507,9 +514,9 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                           const SizedBox(height: 16),
                         ],
                         NiuField(
-                          label: 'SMS verification code',
+                          label: 'WhatsApp verification code',
                           hint: '6-digit code',
-                          icon: Icons.phone_android,
+                          icon: Icons.chat_bubble_outline,
                           controller: _phoneOtpController,
                           keyboardType: TextInputType.number,
                           maxLength: 6,
@@ -518,7 +525,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                         const SizedBox(height: 10),
                         GestureDetector(
                           onTap: _startPhoneOtp,
-                          child: Text('Resend SMS',
+                          child: Text('Resend WhatsApp',
                               style: AppTheme.body(
                                       size: 12,
                                       color: AppColors.forest,
@@ -785,7 +792,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                             strokeWidth: 2.5, color: AppColors.forest))),
                 const SizedBox(height: 8),
                 Center(
-                    child: Text('Sending SMS code…',
+                    child: Text('Sending WhatsApp code…',
                         style:
                             AppTheme.body(size: 12.5, color: AppColors.ink4))),
               ] else if (_stage == _VerifyStage.phoneOtp) ...[
@@ -794,16 +801,16 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                     body: 'Email verified successfully!'),
                 const SizedBox(height: 16),
                 if (_maskedPhone != null) ...[
-                  const Eyebrow('sms sent to'),
+                  const Eyebrow('whatsapp sent to'),
                   const SizedBox(height: 4),
                   Text(_maskedPhone!,
                       style: AppTheme.mono(size: 14, color: AppColors.ink)),
                   const SizedBox(height: 16),
                 ],
                 NiuField(
-                  label: 'SMS verification code',
+                  label: 'WhatsApp verification code',
                   hint: '6-digit code',
-                  icon: Icons.phone_android,
+                  icon: Icons.chat_bubble_outline,
                   controller: _phoneOtpController,
                   keyboardType: TextInputType.number,
                   maxLength: 6,
@@ -812,7 +819,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                 const SizedBox(height: 10),
                 GestureDetector(
                   onTap: _startPhoneOtp,
-                  child: Text('Resend SMS',
+                  child: Text('Resend WhatsApp',
                       style: AppTheme.body(
                               size: 12,
                               color: AppColors.forest,
