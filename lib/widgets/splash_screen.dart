@@ -118,14 +118,16 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
-    return ListenableBuilder(
-      listenable: Listenable.merge([
-        _crestCtrl,
-        _wordmarkCtrl,
-        _progressCtrl,
-        _exitCtrl,
-      ]),
-      builder: (context, _) {
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: ListenableBuilder(
+        listenable: Listenable.merge([
+          _crestCtrl,
+          _wordmarkCtrl,
+          _progressCtrl,
+          _exitCtrl,
+        ]),
+        builder: (context, _) {
         return Stack(
           children: [
             Container(
@@ -278,6 +280,7 @@ class _SplashScreenState extends State<SplashScreen>
           ],
         );
       },
+    ),
     );
   }
 

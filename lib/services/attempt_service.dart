@@ -122,20 +122,6 @@ class AttemptService {
     }
   }
 
-  /// Flips the attempt to `completed`. Called after the result is written.
-  ///
-  /// Uses merge so `attemptedAt` and `testId` from the start are kept.
-  Future<void> markCompleted(String applicationNo) async {
-    _log.info(_tag, 'Marking attempt completed for $applicationNo', persist: true);
-    await _db.collection(_collection).doc(applicationNo).set(
-      {
-        'status': AttemptModel.statusToString(AttemptStatus.completed),
-        'completedAt': FieldValue.serverTimestamp(),
-      },
-      SetOptions(merge: true),
-    );
-  }
-
   /// Fast read used before login completes — does this student already
   /// have a finished attempt?
   Future<AttemptModel?> getAttempt(String applicationNo) async {
