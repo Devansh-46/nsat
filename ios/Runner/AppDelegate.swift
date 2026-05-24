@@ -13,7 +13,7 @@ import UserNotifications
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 
-  func didInitializeImplicitEngine(_ engineBridge: FlutterImplicitEngineBridge) {
-    GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
+  func didInitializeImplicitFlutterEngine(_ engine: FlutterEngine) {
+    GeneratedPluginRegistrant.register(with: engine)
   }
 }
