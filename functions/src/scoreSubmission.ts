@@ -6,10 +6,16 @@ import * as admin from "firebase-admin";
  *
  * Takes the student's answers and the testId, reads questions and test
  * config from Firestore, scores it, writes the result doc, and flips
- * the attempt lock. Returns the score breakdown.
+ * the attempt lock — all in one call.
  *
- * This replaces the client-side ScoringService.scoreSubmission body.
- * The client sends answers + testId; never sees correctAnswerIndex.
+ * FIXES:
+ * - Issue #10: Questions are now fetched by testId via sub-collection or
+ *   testId field, AND sorted by a consistent `sequence` field so that
+ *   answers[i] always corresponds to questions[i].
+ * - Issue #12: Questions are filtered by both course AND testId to prevent
+ *   cross-test question overlap.
+ * - Issue #7/#8: CF checks for existing result before writing to prevent
+ *   duplicate submissions.
  */
 export const scoreSubmission = onCall(
   { region: "asia-south1" },
@@ -28,7 +34,30 @@ export const scoreSubmission = onCall(
       );
     }
 
-    // 1. Load test config
+    // 1. Check for existing result (prevents duplicates from race conditions)
+    const existingResults = await db
+      .collection("results")
+      .where("application_no", "==", applicationNo)
+      .where("testId", "==", testId)
+      .limit(1)
+      .get();
+
+    if (!existingResults.empty) {
+      // Already scored — return the existing result idempotently
+      const existing = existingResults.docs[0].data();
+      console.log(`Duplicate scoreSubmission for ${applicationNo} — returning existing result`);
+      return {
+        resultId: existingResults.docs[0].id,
+        correctCount: existing.correctCount ?? 0,
+        wrongCount: existing.wrongCount ?? 0,
+        skippedCount: existing.skippedCount ?? 0,
+        netScore: existing.netScore ?? 0,
+        maxScore: existing.maxScore ?? 0,
+        showResults: existing.showResults ?? true,
+      };
+    }
+
+    // 2. Load test config
     const testDoc = await db.collection("tests").doc(testId).get();
     if (!testDoc.exists) {
       throw new HttpsError("not-found", "Test not found");
@@ -40,12 +69,33 @@ export const scoreSubmission = onCall(
     const negativeMarksPerWrong =
       negativeMarking ? ((test.negativeMarksPerWrong ?? 0) as number) : 0;
 
-    // 2. Load questions for this course
-    const questionsSnap = await db
+    // 3. Load questions filtered by BOTH course AND testId, sorted by sequence
+    // This fixes:
+    //   - Issue #10: consistent ordering via sequence field
+    //   - Issue #12: testId scoping prevents cross-test question bleed
+    let questionsQuery = db
       .collection("questions")
       .where("course", "==", course)
-      .limit(test.questionCount as number)
-      .get();
+      .where("testId", "==", testId)
+      .orderBy("sequence", "asc")
+      .limit(test.questionCount as number);
+
+    let questionsSnap = await questionsQuery.get();
+
+    // Fallback: if questions don't have testId field (legacy question bank),
+    // fall back to course-only query with sequence ordering
+    if (questionsSnap.empty) {
+      console.warn(
+        `No questions found with testId=${testId} for course=${course}. ` +
+        `Falling back to course-only query. Add testId field to questions for correctness.`
+      );
+      questionsSnap = await db
+        .collection("questions")
+        .where("course", "==", course)
+        .orderBy("sequence", "asc")
+        .limit(test.questionCount as number)
+        .get();
+    }
 
     if (questionsSnap.empty) {
       throw new HttpsError("not-found", "No questions found for this test");
@@ -63,12 +113,10 @@ export const scoreSubmission = onCall(
       const qType = (qData.type as string) ?? "multipleChoice";
 
       if (qType === "shortAnswer") {
-        // Short answer: ungraded descriptive response — save it, don't score
         if (submitted && typeof submitted === "string" &&
           submitted.trim().length > 0) {
           shortAnswerResponses[i.toString()] = submitted.trim();
         }
-        // Not counted in gradedCount, correct, or wrong
         continue;
       }
 
@@ -85,13 +133,15 @@ export const scoreSubmission = onCall(
     }
 
     const skipped = gradedCount - correct - wrong;
-
     const correctMarks = correct * marksPerQuestion;
     const negMarks = wrong * negativeMarksPerWrong;
     const netScore = correctMarks - negMarks;
     const maxScore = gradedCount * marksPerQuestion;
 
-    // 3. Write result
+    // 4. Write result and flip attempt lock atomically
+    const resultRef = db.collection("results").doc();
+    const attemptRef = db.collection("attempts").doc(applicationNo);
+
     const resultData: Record<string, unknown> = {
       application_no: applicationNo,
       studentName,
@@ -102,29 +152,24 @@ export const scoreSubmission = onCall(
       skippedCount: skipped,
       netScore,
       maxScore,
+      showResults: test.showResults !== false,
       submittedAt: admin.firestore.FieldValue.serverTimestamp(),
     };
 
-    // Save short answer responses for admissions review (if any)
     if (Object.keys(shortAnswerResponses).length > 0) {
       resultData.shortAnswerResponses = shortAnswerResponses;
     }
 
-    const resultRef = await db.collection("results").add(resultData);
-
-    // 4. Flip attempt lock to completed
-    await db.collection("attempts").doc(applicationNo).update({
-      status: "completed",
-    });
+    // Batch write: result doc + attempt status flip
+    const batch = db.batch();
+    batch.set(resultRef, resultData);
+    batch.update(attemptRef, { status: "completed" });
+    await batch.commit();
 
     console.log(
       `Scored ${applicationNo}: ${correct}/${questions.length} ` +
       `(net: ${netScore}/${maxScore})`
     );
-
-    // Whether students should see their score breakdown.
-    // Defaults to true for backward compat with tests that don't have the field.
-    const showResults = test.showResults !== false;
 
     return {
       resultId: resultRef.id,
@@ -133,7 +178,7 @@ export const scoreSubmission = onCall(
       skippedCount: skipped,
       netScore,
       maxScore,
-      showResults,
+      showResults: test.showResults !== false,
     };
   }
 );

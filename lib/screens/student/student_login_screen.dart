@@ -15,9 +15,6 @@ import '../../services/analytics_service.dart';
 import '../../widgets/web_split_layout.dart';
 
 /// Step 1 — NIU ID entry + fee gate.
-///
-/// Verdant Daylight redesign. Logic unchanged:
-/// AuthProvider.checkNiuIdFeeGate → navigate to email verification.
 class StudentLoginScreen extends StatefulWidget {
   const StudentLoginScreen({super.key});
 
@@ -29,6 +26,16 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
   final _idController = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    // FIXES Issue #18: RemoteConfig refresh is done once on screen entry,
+    // NOT on every button tap. This avoids network latency on each Continue press.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      RemoteConfigService.instance.refresh();
+    });
+  }
+
+  @override
   void dispose() {
     _idController.dispose();
     super.dispose();
@@ -37,17 +44,16 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
   Future<void> _continue() async {
     FocusScope.of(context).unfocus();
 
-    // Refresh Remote Config and check maintenance mode
-    await RemoteConfigService.instance.refresh();
-    if (!mounted) return;
-
+    // Read from already-fetched config (refreshed on screen entry, not here)
     final rc = RemoteConfigService.instance;
 
     if (rc.isMaintenanceMode) {
       AnalyticsService.instance.logMaintenanceBlocked();
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(rc.maintenanceMessage)));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(rc.maintenanceMessage)),
+        );
+      }
       return;
     }
 
@@ -83,7 +89,6 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
             padding: EdgeInsets.fromLTRB(22, topPad > 0 ? 12 : 28, 22, 32),
             child: Column(
               children: [
-                // ── Brand header ──
                 _buildCrest(),
                 const SizedBox(height: 14),
                 Text(
@@ -103,7 +108,6 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
                 ),
                 const SizedBox(height: 28),
 
-                // ── Welcome card ──
                 GlassCard(
                   padding: const EdgeInsets.fromLTRB(22, 24, 22, 22),
                   child: Column(
@@ -126,7 +130,6 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
                       ),
                       const SizedBox(height: 22),
 
-                      // NIU ID field
                       NiuField(
                         label: 'NIU ID',
                         hint: 'e.g. NIU-26-XXXXX',
@@ -145,7 +148,6 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
                       ),
                       const SizedBox(height: 22),
 
-                      // Continue button
                       if (provider.isLoading)
                         const SizedBox(
                           height: 48,
@@ -168,16 +170,12 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
                         ),
 
                       const SizedBox(height: 18),
-
-                      // ── State note boxes ──
                       _buildNote(outcome, provider.error),
                     ],
                   ),
                 ),
 
                 const SizedBox(height: 28),
-
-                // ── Step indicator ──
                 const _StepIndicator(current: 0),
               ],
             ),
@@ -194,33 +192,19 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
           children: [
             Image.asset('assets/niu_crest.png', width: 24, height: 24),
             const SizedBox(width: 12),
-            Text(
-              'NSAT',
-              style: AppTheme.mono(
-                color: AppColors.ivory.withValues(alpha: 0.5),
-              ),
-            ),
+            Text('NSAT',
+                style: AppTheme.mono(color: AppColors.ivory.withValues(alpha: 0.5))),
             const SizedBox(width: 8),
-            Text(
-              '/',
-              style: AppTheme.mono(
-                color: AppColors.ivory.withValues(alpha: 0.2),
-              ),
-            ),
+            Text('/',
+                style: AppTheme.mono(color: AppColors.ivory.withValues(alpha: 0.2))),
             const SizedBox(width: 8),
-            Text(
-              'NOIDA INTERNATIONAL UNIVERSITY',
-              style: AppTheme.eyebrow(
-                color: AppColors.ivory.withValues(alpha: 0.5),
-              ),
-            ),
+            Text('NOIDA INTERNATIONAL UNIVERSITY',
+                style: AppTheme.eyebrow(color: AppColors.ivory.withValues(alpha: 0.5))),
           ],
         ),
         const SizedBox(height: 16),
-        Text(
-          'Student / Sign in',
-          style: AppTheme.body(size: 14, color: AppColors.ivory),
-        ),
+        Text('Student / Sign in',
+            style: AppTheme.body(size: 14, color: AppColors.ivory)),
         const SizedBox(height: 64),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -228,10 +212,8 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
             color: Colors.white.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(4),
           ),
-          child: Text(
-            'STEP 01 OF 04 — IDENTIFY YOURSELF',
-            style: AppTheme.eyebrow(color: AppColors.ivory),
-          ),
+          child: Text('STEP 01 OF 04 — IDENTIFY YOURSELF',
+              style: AppTheme.eyebrow(color: AppColors.ivory)),
         ),
         const SizedBox(height: 24),
         Text.rich(
@@ -244,7 +226,6 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
           ),
         ),
         const Spacer(),
-        // ── Step indicator ──
         Row(
           children: List.generate(4, (i) {
             final active = i == 0;
@@ -269,17 +250,12 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Support',
-                  style: AppTheme.eyebrow(
-                    color: AppColors.ivory.withValues(alpha: 0.5),
-                  ),
-                ),
+                Text('Support',
+                    style: AppTheme.eyebrow(
+                        color: AppColors.ivory.withValues(alpha: 0.5))),
                 const SizedBox(height: 4),
-                Text(
-                  'nsat@niu.edu.in',
-                  style: AppTheme.mono(size: 12, color: AppColors.ivory),
-                ),
+                Text('nsat@niu.edu.in',
+                    style: AppTheme.mono(size: 12, color: AppColors.ivory)),
               ],
             ),
           ],
@@ -298,7 +274,6 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // NIU ID field
               NiuField(
                 label: 'NIU ID',
                 hint: 'e.g. NIU-26-XXXXX',
@@ -317,7 +292,6 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
               ),
               const SizedBox(height: 22),
 
-              // Continue button
               if (provider.isLoading)
                 const SizedBox(
                   height: 48,
@@ -333,11 +307,10 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
                   ),
                 )
               else
-                NiuButton(label: 'Continue', showArrow: true, onTap: _continue),
+                NiuButton(
+                    label: 'Continue', showArrow: true, onTap: _continue),
 
               const SizedBox(height: 18),
-
-              // ── State note boxes ──
               _buildNote(outcome, provider.error),
             ],
           ),
@@ -351,8 +324,6 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
       mobileChild: mobileView,
     );
   }
-
-  // ── Helpers ──
 
   Widget _buildCrest() {
     return Container(
@@ -378,8 +349,6 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
     );
   }
 
-  /// Returns error text for the NiuField if the outcome warrants it,
-  /// or null for the default / approved / loading states.
   String? _errorText(FeeGateOutcome? outcome) {
     switch (outcome) {
       case FeeGateOutcome.notFound:
@@ -391,7 +360,6 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
     }
   }
 
-  /// Builds the appropriate NoteBox for each state.
   Widget _buildNote(FeeGateOutcome? outcome, String? error) {
     if (outcome == null) {
       return const NoteBox.gold(
@@ -428,26 +396,19 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
                 'and try again.',
       );
     }
-    // approved — no note needed, screen navigates away
     return const SizedBox.shrink();
   }
 }
 
-// ─── Reusable step indicator ───────────────────────────────────────
-
 class _StepIndicator extends StatelessWidget {
-  /// 0-based: 0 = ID, 1 = Email, 2 = Verify, 3 = Test.
   final int current;
-
   const _StepIndicator({this.current = 0});
-
   static const _labels = ['ID', 'Email', 'Verify', 'Test'];
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // Dot row
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: List.generate(4, (i) {
@@ -465,7 +426,6 @@ class _StepIndicator extends StatelessWidget {
           }),
         ),
         const SizedBox(height: 10),
-        // Label row
         Text.rich(
           TextSpan(
             style: AppTheme.body(size: 11.5, color: AppColors.ink4),

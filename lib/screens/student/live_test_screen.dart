@@ -10,7 +10,8 @@ import '../../services/analytics_service.dart';
 import '../../widgets/web_split_layout.dart';
 
 /// Live test — one question per screen, progress bar, timer, palette.
-/// Verdant Daylight reskin. All logic identical to the previous build.
+/// FIXES Issue #19: Back navigation is intercepted with PopScope to prevent
+/// accidental test abandonment. A confirmation dialog is shown.
 class LiveTestScreen extends StatefulWidget {
   const LiveTestScreen({super.key});
 
@@ -159,6 +160,49 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
     );
   }
 
+  /// FIXES Issue #19: Shows a confirmation dialog before allowing back navigation.
+  Future<bool> _onWillPop() async {
+    final provider = context.read<TestProvider>();
+    final session = provider.currentSession;
+
+    // If already submitted or no session, allow navigation
+    if (session == null || session.isSubmitted) return true;
+
+    final shouldExit = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.ivory,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+        ),
+        title: Text('Exit test?', style: AppTheme.displaySm(size: 18)),
+        content: Text(
+          'If you exit now, your progress will be lost and your attempt '
+          'will remain in-progress. You will need to contact an invigilator.\n\n'
+          'Are you sure you want to exit?',
+          style: AppTheme.body(size: 13.5, color: AppColors.ink3),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('Stay',
+                style: AppTheme.body(
+                    size: 14, color: AppColors.forest, weight: FontWeight.w600)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text('Exit anyway',
+                style: AppTheme.body(
+                    size: 14, color: AppColors.clay, weight: FontWeight.w500)),
+          ),
+        ],
+      ),
+    );
+
+    return shouldExit ?? false;
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<TestProvider>();
@@ -199,352 +243,383 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
     final progress = (_currentIndex + 1) / session.totalQuestions;
     final timeLow = session.timeRemainingSeconds <= 300;
 
-    final mobileView = Scaffold(
-      backgroundColor: AppColors.ivory,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // ── Header ──
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-              child: Row(
-                children: [
-                  GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: Container(
-                      width: 36,
-                      height: 36,
+    // FIXES Issue #19: Wrap with PopScope to intercept back navigation
+    final mobileView = PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final shouldPop = await _onWillPop();
+        if (shouldPop && context.mounted) {
+          Navigator.of(context).pop();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.ivory,
+        body: SafeArea(
+          child: Column(
+            children: [
+              // ── Header ──
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                child: Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () async {
+                        final shouldPop = await _onWillPop();
+                        if (shouldPop && context.mounted) {
+                          Navigator.of(context).pop();
+                        }
+                      },
+                      child: Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: AppColors.bone,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.chevron_left,
+                            size: 20, color: AppColors.ink3),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            session.categoryName,
+                            style: AppTheme.eyebrow(color: AppColors.ink4),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            'Question ${_currentIndex + 1} '
+                            'of ${session.totalQuestions}',
+                            style: AppTheme.displaySm(size: 15),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Timer
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 7),
                       decoration: BoxDecoration(
-                        color: AppColors.bone,
+                        color: timeLow ? AppColors.goldTint : AppColors.forestTint,
                         borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(Icons.chevron_left,
-                          size: 20, color: AppColors.ink3),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          session.categoryName,
-                          style: AppTheme.eyebrow(color: AppColors.ink4),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        Text(
-                          'Question ${_currentIndex + 1} '
-                          'of ${session.totalQuestions}',
-                          style: AppTheme.displaySm(size: 15),
-                        ),
-                      ],
-                    ),
-                  ),
-                  // Timer
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 7),
-                    decoration: BoxDecoration(
-                      color: timeLow ? AppColors.goldTint : AppColors.forestTint,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: timeLow
-                            ? AppColors.gold.withValues(alpha: 0.3)
-                            : AppColors.forest.withValues(alpha: 0.2),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.timer_outlined,
-                          size: 14,
+                        border: Border.all(
                           color: timeLow
-                              ? const Color(0xFF8A6516)
-                              : AppColors.forest,
+                              ? AppColors.gold.withValues(alpha: 0.3)
+                              : AppColors.forest.withValues(alpha: 0.2),
                         ),
-                        const SizedBox(width: 5),
-                        Text(
-                          _formatTime(session.timeRemainingSeconds),
-                          style: AppTheme.mono(
-                            size: 13,
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.timer_outlined,
+                            size: 14,
                             color: timeLow
                                 ? const Color(0xFF8A6516)
                                 : AppColors.forest,
                           ),
-                        ),
-                      ],
+                          const SizedBox(width: 5),
+                          Text(
+                            _formatTime(session.timeRemainingSeconds),
+                            style: AppTheme.mono(
+                              size: 13,
+                              color: timeLow
+                                  ? const Color(0xFF8A6516)
+                                  : AppColors.forest,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // ── Progress bar ──
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: LinearProgressIndicator(
-                  value: progress,
-                  minHeight: 5,
-                  backgroundColor: AppColors.bone,
-                  valueColor:
-                      const AlwaysStoppedAnimation(AppColors.forest),
+                  ],
                 ),
               ),
-            ),
-            const SizedBox(height: 8),
+              const SizedBox(height: 12),
 
-            // ── Answered + Review ──
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    '${session.answeredCount} answered',
-                    style: AppTheme.body(size: 11.5, color: AppColors.ink4),
+              // ── Progress bar ──
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: progress,
+                    minHeight: 5,
+                    backgroundColor: AppColors.bone,
+                    valueColor:
+                        const AlwaysStoppedAnimation(AppColors.forest),
                   ),
-                  GestureDetector(
-                    onTap: () => _openPalette(provider),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.grid_view_rounded,
-                            size: 13, color: AppColors.forest),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Review',
-                          style: AppTheme.body(
-                            size: 11.5,
-                            color: AppColors.forest,
-                            weight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+                ),
               ),
-            ),
+              const SizedBox(height: 8),
 
-            // ── Question + options / short answer ──
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(18, 18, 18, 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      question.text,
-                      style: AppTheme.body(
-                        size: 15,
-                        color: AppColors.ink,
+                      '${session.answeredCount} answered',
+                      style: AppTheme.body(size: 11.5, color: AppColors.ink4),
+                    ),
+                    GestureDetector(
+                      onTap: () => _openPalette(provider),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.grid_view_rounded,
+                              size: 13, color: AppColors.forest),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Review',
+                            style: AppTheme.body(
+                              size: 11.5,
+                              color: AppColors.forest,
+                              weight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 18),
-                    if (question.isShortAnswer)
-                      _ShortAnswerField(
-                        currentAnswer: selected is String ? selected : '',
-                        minWords: question.minWords > 0 ? question.minWords : 100,
-                        maxWords: question.maxWords > 0 ? question.maxWords : 150,
-                        onChanged: (value) =>
-                            provider.selectAnswer(_currentIndex, value),
-                        onClear: () => provider.clearAnswer(_currentIndex),
-                      )
-                    else ...[
-                      ...List.generate(question.options.length, (i) {
-                        final isSelected = selected is int && i == selected;
-                        final letter = String.fromCharCode(65 + i);
-                        return GestureDetector(
-                          onTap: () =>
-                              provider.selectAnswer(_currentIndex, i),
-                          child: Container(
-                            margin: const EdgeInsets.only(bottom: 10),
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 14, vertical: 13),
-                            decoration: BoxDecoration(
-                              gradient: isSelected
-                                  ? AppColors.glassBgStrong
-                                  : AppColors.glassBg,
-                              border: Border.all(
-                                color: isSelected
-                                    ? AppColors.forest
-                                    : AppColors.glassBorder,
-                                width: isSelected ? 1.5 : 1,
+                  ],
+                ),
+              ),
+
+              // ── Question + options ──
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(18, 18, 18, 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        question.text,
+                        style: AppTheme.body(size: 15, color: AppColors.ink),
+                      ),
+                      const SizedBox(height: 18),
+                      if (question.isShortAnswer)
+                        _ShortAnswerField(
+                          currentAnswer: selected is String ? selected : '',
+                          minWords: question.minWords > 0 ? question.minWords : 100,
+                          maxWords: question.maxWords > 0 ? question.maxWords : 150,
+                          onChanged: (value) =>
+                              provider.selectAnswer(_currentIndex, value),
+                          onClear: () => provider.clearAnswer(_currentIndex),
+                        )
+                      else ...[
+                        ...List.generate(question.options.length, (i) {
+                          final isSelected = selected is int && i == selected;
+                          final letter = String.fromCharCode(65 + i);
+                          return GestureDetector(
+                            onTap: () =>
+                                provider.selectAnswer(_currentIndex, i),
+                            child: Container(
+                              margin: const EdgeInsets.only(bottom: 10),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 13),
+                              decoration: BoxDecoration(
+                                gradient: isSelected
+                                    ? AppColors.glassBgStrong
+                                    : AppColors.glassBg,
+                                border: Border.all(
+                                  color: isSelected
+                                      ? AppColors.forest
+                                      : AppColors.glassBorder,
+                                  width: isSelected ? 1.5 : 1,
+                                ),
+                                borderRadius: BorderRadius.circular(14),
                               ),
-                              borderRadius: BorderRadius.circular(14),
-                              boxShadow: isSelected
-                                  ? const [
-                                      BoxShadow(
-                                        color: Color(0x1A2C6B42),
-                                        offset: Offset(0, 0),
-                                        blurRadius: 8,
-                                      ),
-                                    ]
-                                  : null,
-                            ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 28,
-                                  height: 28,
-                                  decoration: BoxDecoration(
-                                    color: isSelected
-                                        ? AppColors.forest
-                                        : AppColors.bone,
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  alignment: Alignment.center,
-                                  child: Text(
-                                    letter,
-                                    style: AppTheme.mono(
-                                      size: 12,
-                                      color: isSelected
-                                          ? Colors.white
-                                          : AppColors.ink4,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Text(
-                                    question.options[i],
-                                    style: AppTheme.body(
-                                      size: 13.5,
-                                      color: AppColors.ink,
-                                      weight: isSelected
-                                          ? FontWeight.w600
-                                          : FontWeight.w400,
-                                    ),
-                                  ),
-                                ),
-                                Container(
-                                  width: 18,
-                                  height: 18,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: isSelected
-                                        ? AppColors.forest
-                                        : Colors.transparent,
-                                    border: Border.all(
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 28,
+                                    height: 28,
+                                    decoration: BoxDecoration(
                                       color: isSelected
                                           ? AppColors.forest
-                                          : AppColors.ink5,
-                                      width: 2,
+                                          : AppColors.bone,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    alignment: Alignment.center,
+                                    child: Text(
+                                      letter,
+                                      style: AppTheme.mono(
+                                        size: 12,
+                                        color: isSelected
+                                            ? Colors.white
+                                            : AppColors.ink4,
+                                      ),
                                     ),
                                   ),
-                                  child: isSelected
-                                      ? const Center(
-                                          child: Icon(Icons.circle,
-                                              size: 7,
-                                              color: Colors.white),
-                                        )
-                                      : null,
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      question.options[i],
+                                      style: AppTheme.body(
+                                        size: 13.5,
+                                        color: AppColors.ink,
+                                        weight: isSelected
+                                            ? FontWeight.w600
+                                            : FontWeight.w400,
+                                      ),
+                                    ),
+                                  ),
+                                  Container(
+                                    width: 18,
+                                    height: 18,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: isSelected
+                                          ? AppColors.forest
+                                          : Colors.transparent,
+                                      border: Border.all(
+                                        color: isSelected
+                                            ? AppColors.forest
+                                            : AppColors.ink5,
+                                        width: 2,
+                                      ),
+                                    ),
+                                    child: isSelected
+                                        ? const Center(
+                                            child: Icon(Icons.circle,
+                                                size: 7,
+                                                color: Colors.white),
+                                          )
+                                        : null,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }),
+                        if (selected != null && selected is int)
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: TextButton(
+                              onPressed: () =>
+                                  provider.clearAnswer(_currentIndex),
+                              style: TextButton.styleFrom(
+                                padding: EdgeInsets.zero,
+                                minimumSize: const Size(0, 32),
+                              ),
+                              child: Text(
+                                'Clear selection',
+                                style: AppTheme.body(
+                                  size: 11.5,
+                                  color: AppColors.ink4,
+                                ).copyWith(
+                                  decoration: TextDecoration.underline,
                                 ),
-                              ],
-                            ),
-                          ),
-                        );
-                      }),
-                      if (selected != null && selected is int)
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: TextButton(
-                            onPressed: () =>
-                                provider.clearAnswer(_currentIndex),
-                            style: TextButton.styleFrom(
-                              padding: EdgeInsets.zero,
-                              minimumSize: const Size(0, 32),
-                            ),
-                            child: Text(
-                              'Clear selection',
-                              style: AppTheme.body(
-                                size: 11.5,
-                                color: AppColors.ink4,
-                              ).copyWith(
-                                decoration: TextDecoration.underline,
                               ),
                             ),
                           ),
-                        ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-
-            // ── Bottom nav ──
-            Container(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
-              decoration: BoxDecoration(
-                color: AppColors.ivory,
-                border: Border(
-                  top: BorderSide(color: AppColors.line2),
-                ),
-              ),
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: NiuButton(
-                          label: 'Previous',
-                          variant: NiuButtonVariant.outline,
-                          onTap: _currentIndex > 0
-                              ? () => setState(() => _currentIndex--)
-                              : null,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _currentIndex < session.totalQuestions - 1
-                            ? NiuButton(
-                                label: 'Next',
-                                onTap: () =>
-                                    setState(() => _currentIndex++),
-                              )
-                            : NiuButton(
-                                label: 'Submit test',
-                                variant: NiuButtonVariant.gold,
-                                onTap: () => _confirmSubmit(provider),
-                              ),
-                      ),
+                      ],
                     ],
                   ),
-                  if (provider.isLoading) ...[
-                    const SizedBox(height: 10),
-                    LinearProgressIndicator(
-                      minHeight: 2,
-                      backgroundColor: AppColors.bone,
-                      valueColor:
-                          const AlwaysStoppedAnimation(AppColors.forest),
-                    ),
-                  ],
-                ],
+                ),
               ),
-            ),
-          ],
+
+              // ── Bottom nav ──
+              Container(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+                decoration: BoxDecoration(
+                  color: AppColors.ivory,
+                  border: Border(top: BorderSide(color: AppColors.line2)),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: NiuButton(
+                            label: 'Previous',
+                            variant: NiuButtonVariant.outline,
+                            onTap: _currentIndex > 0
+                                ? () => setState(() => _currentIndex--)
+                                : null,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _currentIndex < session.totalQuestions - 1
+                              ? NiuButton(
+                                  label: 'Next',
+                                  onTap: () =>
+                                      setState(() => _currentIndex++),
+                                )
+                              : NiuButton(
+                                  label: 'Submit test',
+                                  variant: NiuButtonVariant.gold,
+                                  onTap: () => _confirmSubmit(provider),
+                                ),
+                        ),
+                      ],
+                    ),
+                    if (provider.isLoading) ...[
+                      const SizedBox(height: 10),
+                      LinearProgressIndicator(
+                        minHeight: 2,
+                        backgroundColor: AppColors.bone,
+                        valueColor:
+                            const AlwaysStoppedAnimation(AppColors.forest),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
 
-    final leftPanel = Column(
+    // Web layout uses the same PopScope wrapper
+    final leftPanel = _buildWebLeftPanel(session, progress, timeLow);
+    final rightPanel = _buildWebRightPanel(
+        session, question, selected, provider, timeLow);
+
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final shouldPop = await _onWillPop();
+        if (shouldPop && context.mounted) {
+          Navigator.of(context).pop();
+        }
+      },
+      child: WebSplitLayout(
+        leftChild: leftPanel,
+        rightChild: rightPanel,
+        mobileChild: mobileView,
+      ),
+    );
+  }
+
+  Widget _buildWebLeftPanel(session, double progress, bool timeLow) {
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
             Image.asset('assets/niu_crest.png', width: 24, height: 24),
             const SizedBox(width: 12),
-            Text('NSAT', style: AppTheme.mono(color: AppColors.ivory.withValues(alpha: 0.5))),
+            Text('NSAT',
+                style: AppTheme.mono(
+                    color: AppColors.ivory.withValues(alpha: 0.5))),
             const SizedBox(width: 8),
-            Text('/', style: AppTheme.mono(color: AppColors.ivory.withValues(alpha: 0.2))),
+            Text('/',
+                style: AppTheme.mono(
+                    color: AppColors.ivory.withValues(alpha: 0.2))),
             const SizedBox(width: 8),
-            Text('NOIDA INTERNATIONAL UNIVERSITY', style: AppTheme.eyebrow(color: AppColors.ivory.withValues(alpha: 0.5))),
+            Text('NOIDA INTERNATIONAL UNIVERSITY',
+                style: AppTheme.eyebrow(
+                    color: AppColors.ivory.withValues(alpha: 0.5))),
           ],
         ),
         const SizedBox(height: 16),
-        Text('Student / Live test', style: AppTheme.body(size: 14, color: AppColors.ivory)),
+        Text('Student / Live test',
+            style: AppTheme.body(size: 14, color: AppColors.ivory)),
         const SizedBox(height: 32),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -552,41 +627,48 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
             color: Colors.white.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(4),
           ),
-          child: Text('STEP 04 OF 04 — EXAM IN PROGRESS', style: AppTheme.eyebrow(color: AppColors.ivory)),
+          child: Text('STEP 04 OF 04 — EXAM IN PROGRESS',
+              style: AppTheme.eyebrow(color: AppColors.ivory)),
         ),
         const SizedBox(height: 32),
-        
-        // Timer
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
             color: timeLow ? AppColors.goldTint : AppColors.forestTint,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: timeLow ? AppColors.gold.withValues(alpha: 0.3) : AppColors.forest.withValues(alpha: 0.2),
+              color: timeLow
+                  ? AppColors.gold.withValues(alpha: 0.3)
+                  : AppColors.forest.withValues(alpha: 0.2),
             ),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.timer_outlined, size: 20, color: timeLow ? const Color(0xFF8A6516) : AppColors.forest),
+              Icon(Icons.timer_outlined,
+                  size: 20,
+                  color: timeLow
+                      ? const Color(0xFF8A6516)
+                      : AppColors.forest),
               const SizedBox(width: 8),
               Text(
                 _formatTime(session.timeRemainingSeconds),
-                style: AppTheme.mono(size: 24, color: timeLow ? const Color(0xFF8A6516) : AppColors.forest),
+                style: AppTheme.mono(
+                    size: 24,
+                    color: timeLow
+                        ? const Color(0xFF8A6516)
+                        : AppColors.forest),
               ),
             ],
           ),
         ),
         const SizedBox(height: 32),
-        
-        // Progress text
         Text(
           '${session.answeredCount} of ${session.totalQuestions} answered',
-          style: AppTheme.body(size: 14, color: AppColors.ivory.withValues(alpha: 0.7)),
+          style: AppTheme.body(
+              size: 14, color: AppColors.ivory.withValues(alpha: 0.7)),
         ),
         const SizedBox(height: 16),
-        // Progress bar
         ClipRRect(
           borderRadius: BorderRadius.circular(4),
           child: LinearProgressIndicator(
@@ -597,8 +679,6 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
           ),
         ),
         const SizedBox(height: 32),
-
-        // Palette
         Expanded(
           child: SingleChildScrollView(
             child: Wrap(
@@ -643,15 +723,15 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
         ),
       ],
     );
+  }
 
-    final rightPanel = Column(
+  Widget _buildWebRightPanel(session, question, selected, TestProvider provider, bool timeLow) {
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          session.categoryName,
-          style: AppTheme.eyebrow(color: AppColors.ink4),
-          overflow: TextOverflow.ellipsis,
-        ),
+        Text(session.categoryName,
+            style: AppTheme.eyebrow(color: AppColors.ink4),
+            overflow: TextOverflow.ellipsis),
         const SizedBox(height: 4),
         Text(
           'Question ${_currentIndex + 1} of ${session.totalQuestions}',
@@ -664,20 +744,16 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  question.text,
-                  style: AppTheme.body(
-                    size: 16,
-                    color: AppColors.ink,
-                  ),
-                ),
+                Text(question.text,
+                    style: AppTheme.body(size: 16, color: AppColors.ink)),
                 const SizedBox(height: 24),
                 if (question.isShortAnswer)
                   _ShortAnswerField(
                     currentAnswer: selected is String ? selected : '',
                     minWords: question.minWords > 0 ? question.minWords : 100,
                     maxWords: question.maxWords > 0 ? question.maxWords : 150,
-                    onChanged: (value) => provider.selectAnswer(_currentIndex, value),
+                    onChanged: (value) =>
+                        provider.selectAnswer(_currentIndex, value),
                     onClear: () => provider.clearAnswer(_currentIndex),
                   )
                 else ...[
@@ -688,23 +764,19 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
                       onTap: () => provider.selectAnswer(_currentIndex, i),
                       child: Container(
                         margin: const EdgeInsets.only(bottom: 12),
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 16),
                         decoration: BoxDecoration(
-                          gradient: isSelected ? AppColors.glassBgStrong : AppColors.glassBg,
+                          gradient: isSelected
+                              ? AppColors.glassBgStrong
+                              : AppColors.glassBg,
                           border: Border.all(
-                            color: isSelected ? AppColors.forest : AppColors.glassBorder,
+                            color: isSelected
+                                ? AppColors.forest
+                                : AppColors.glassBorder,
                             width: isSelected ? 1.5 : 1,
                           ),
                           borderRadius: BorderRadius.circular(14),
-                          boxShadow: isSelected
-                              ? const [
-                                  BoxShadow(
-                                    color: Color(0x1A2C6B42),
-                                    offset: Offset(0, 0),
-                                    blurRadius: 8,
-                                  ),
-                                ]
-                              : null,
                         ),
                         child: Row(
                           children: [
@@ -712,7 +784,9 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
                               width: 32,
                               height: 32,
                               decoration: BoxDecoration(
-                                color: isSelected ? AppColors.forest : AppColors.bone,
+                                color: isSelected
+                                    ? AppColors.forest
+                                    : AppColors.bone,
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               alignment: Alignment.center,
@@ -720,7 +794,9 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
                                 letter,
                                 style: AppTheme.mono(
                                   size: 14,
-                                  color: isSelected ? Colors.white : AppColors.ink4,
+                                  color: isSelected
+                                      ? Colors.white
+                                      : AppColors.ink4,
                                 ),
                               ),
                             ),
@@ -731,7 +807,9 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
                                 style: AppTheme.body(
                                   size: 15,
                                   color: AppColors.ink,
-                                  weight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                                  weight: isSelected
+                                      ? FontWeight.w600
+                                      : FontWeight.w400,
                                 ),
                               ),
                             ),
@@ -740,16 +818,20 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
                               height: 20,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: isSelected ? AppColors.forest : Colors.transparent,
+                                color: isSelected
+                                    ? AppColors.forest
+                                    : Colors.transparent,
                                 border: Border.all(
-                                  color: isSelected ? AppColors.forest : AppColors.ink5,
+                                  color: isSelected
+                                      ? AppColors.forest
+                                      : AppColors.ink5,
                                   width: 2,
                                 ),
                               ),
                               child: isSelected
                                   ? const Center(
-                                      child: Icon(Icons.circle, size: 8, color: Colors.white),
-                                    )
+                                      child: Icon(Icons.circle,
+                                          size: 8, color: Colors.white))
                                   : null,
                             ),
                           ],
@@ -763,16 +845,13 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
                       child: TextButton(
                         onPressed: () => provider.clearAnswer(_currentIndex),
                         style: TextButton.styleFrom(
-                          padding: EdgeInsets.zero,
-                          minimumSize: const Size(0, 32),
-                        ),
-                        child: Text(
-                          'Clear selection',
-                          style: AppTheme.body(
-                            size: 13,
-                            color: AppColors.ink4,
-                          ).copyWith(decoration: TextDecoration.underline),
-                        ),
+                            padding: EdgeInsets.zero,
+                            minimumSize: const Size(0, 32)),
+                        child: Text('Clear selection',
+                            style: AppTheme.body(
+                                size: 13, color: AppColors.ink4)
+                                .copyWith(
+                                    decoration: TextDecoration.underline)),
                       ),
                     ),
                 ],
@@ -780,13 +859,10 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
             ),
           ),
         ),
-        
-        // Bottom nav
         Container(
           padding: const EdgeInsets.only(top: 16),
-          decoration: BoxDecoration(
-            border: Border(top: BorderSide(color: AppColors.line2)),
-          ),
+          decoration:
+              BoxDecoration(border: Border(top: BorderSide(color: AppColors.line2))),
           child: Column(
             children: [
               Row(
@@ -795,7 +871,9 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
                     child: NiuButton(
                       label: 'Previous',
                       variant: NiuButtonVariant.outline,
-                      onTap: _currentIndex > 0 ? () => setState(() => _currentIndex--) : null,
+                      onTap: _currentIndex > 0
+                          ? () => setState(() => _currentIndex--)
+                          : null,
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -818,7 +896,8 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
                 LinearProgressIndicator(
                   minHeight: 2,
                   backgroundColor: AppColors.bone,
-                  valueColor: const AlwaysStoppedAnimation(AppColors.forest),
+                  valueColor:
+                      const AlwaysStoppedAnimation(AppColors.forest),
                 ),
               ],
             ],
@@ -826,16 +905,10 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
         ),
       ],
     );
-
-    return WebSplitLayout(
-      leftChild: leftPanel,
-      rightChild: rightPanel,
-      mobileChild: mobileView,
-    );
   }
 }
 
-// ─── Short answer text field ────────────────────────────────────────
+// ─── Short answer text field (unchanged from original) ──────────────
 
 class _ShortAnswerField extends StatefulWidget {
   final String currentAnswer;
@@ -893,9 +966,9 @@ class _ShortAnswerFieldState extends State<_ShortAnswerField> {
 
   Color get _wordCountColor {
     if (_wordCount == 0) return AppColors.ink4;
-    if (_wordCount < widget.minWords) return const Color(0xFF8A6516); // gold
+    if (_wordCount < widget.minWords) return const Color(0xFF8A6516);
     if (_wordCount > widget.maxWords) return AppColors.clay;
-    return AppColors.forest; // in range
+    return AppColors.forest;
   }
 
   @override
@@ -903,7 +976,6 @@ class _ShortAnswerFieldState extends State<_ShortAnswerField> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Hint label
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
@@ -918,18 +990,15 @@ class _ShortAnswerFieldState extends State<_ShortAnswerField> {
                 child: Text(
                   'Write your answer in ${widget.minWords}–${widget.maxWords} words',
                   style: AppTheme.body(
-                    size: 12,
-                    color: AppColors.forest,
-                    weight: FontWeight.w500,
-                  ),
+                      size: 12,
+                      color: AppColors.forest,
+                      weight: FontWeight.w500),
                 ),
               ),
             ],
           ),
         ),
         const SizedBox(height: 12),
-
-        // Text field
         Container(
           decoration: BoxDecoration(
             gradient: AppColors.glassBg,
@@ -955,8 +1024,6 @@ class _ShortAnswerFieldState extends State<_ShortAnswerField> {
           ),
         ),
         const SizedBox(height: 8),
-
-        // Word count + clear row
         Row(
           children: [
             Text(
@@ -984,16 +1051,12 @@ class _ShortAnswerFieldState extends State<_ShortAnswerField> {
                 },
                 child: Text(
                   'Clear',
-                  style: AppTheme.body(
-                    size: 11.5,
-                    color: AppColors.ink4,
-                  ).copyWith(decoration: TextDecoration.underline),
+                  style: AppTheme.body(size: 11.5, color: AppColors.ink4)
+                      .copyWith(decoration: TextDecoration.underline),
                 ),
               ),
           ],
         ),
-
-        // Note about this question being ungraded
         const SizedBox(height: 10),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),

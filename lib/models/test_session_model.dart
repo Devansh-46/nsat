@@ -74,7 +74,6 @@ class TestSessionModel {
     answers.forEach((questionIndex, answer) {
       if (questionIndex >= questions.length) return;
       final q = questions[questionIndex];
-      // Short answer questions are ungraded — skip them
       if (q.isShortAnswer) return;
       if (q.isMultipleChoice && answer is int) {
         if (q.correctAnswerIndex == answer) count++;
@@ -89,7 +88,6 @@ class TestSessionModel {
     answers.forEach((questionIndex, answer) {
       if (questionIndex >= questions.length) return;
       final q = questions[questionIndex];
-      // Short answer questions are ungraded — skip them
       if (q.isShortAnswer) return;
       if (q.isMultipleChoice && answer is int) {
         if (q.correctAnswerIndex != answer) count++;
@@ -102,7 +100,13 @@ class TestSessionModel {
   int get gradedQuestionCount =>
       questions.where((q) => q.isMultipleChoice).length;
 
-  int get skippedCount => _serverSkipped ?? (gradedQuestionCount - correctCount - wrongCount);
+  /// FIXES Issue #17: skippedCount is clamped to [0, gradedQuestionCount]
+  /// to prevent negative values when short-answer questions affect the count.
+  int get skippedCount {
+    if (_serverSkipped != null) return _serverSkipped!;
+    return (gradedQuestionCount - correctCount - wrongCount)
+        .clamp(0, gradedQuestionCount);
+  }
 
   double get correctMarks => correctCount * marksPerQuestion;
   double get negativeMarks => wrongCount * negativeMarksPerWrong;
@@ -112,7 +116,6 @@ class TestSessionModel {
   String get formattedNetScore => netScore.toStringAsFixed(2);
   String get formattedMaxScore => maxScore.toStringAsFixed(2);
 
-  /// Select an answer — int for MCQ, String for short answer.
   void selectAnswer(int questionIndex, dynamic answer) {
     answers[questionIndex] = answer;
   }

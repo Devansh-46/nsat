@@ -10,11 +10,6 @@ import '../services/test_service.dart';
 import '../services/app_logger.dart';
 
 /// Drives the test-taking flow, backed entirely by Firestore.
-///
-/// REWIRE NOTE: this provider no longer depends on UserModel or the mock
-/// DataStore. `startTest` takes DATA_MODEL.md identifiers directly —
-/// applicationNo, studentName, course — which AuthProvider already holds
-/// after the fee gate. The old ACCSOFT-era path is gone.
 class TestProvider extends ChangeNotifier {
   static const _tag = 'TestProvider';
   final _log = AppLogger.instance;
@@ -30,19 +25,15 @@ class TestProvider extends ChangeNotifier {
   String? _error;
   Timer? _timer;
 
-  /// Set when startTest is blocked because the student already finished.
+  /// FIXES #7/#8: Single submission guard — set to true the moment
+  /// submitTest() begins, preventing any duplicate call (timer-fired or
+  /// user-tapped) from entering the scoring path.
+  bool _submissionInProgress = false;
+
   bool _alreadyCompleted = false;
-
-  /// Set when an earlier unfinished attempt was found for this student.
   bool _hasResumableAttempt = false;
-
-  /// The result document ID, available after a successful submission.
   String? _savedResultId;
-
-  /// Whether the current test is configured to show results to students.
   bool _showResults = true;
-
-  /// Request ID for the current test session lifecycle.
   String? _sessionRequestId;
 
   TestSessionModel? get currentSession => _currentSession;
@@ -52,12 +43,8 @@ class TestProvider extends ChangeNotifier {
   bool get alreadyCompleted => _alreadyCompleted;
   bool get hasResumableAttempt => _hasResumableAttempt;
   String? get savedResultId => _savedResultId;
-
-  /// True when the test allows students to see their score breakdown.
   bool get showResults => _showResults;
 
-  /// Loads the published test for a course. [course] is the canonical
-  /// course key (e.g. "btech").
   Future<void> fetchAvailableTest(String course) async {
     _setLoading(true);
     _log.debug(_tag, 'Fetching available test for course=$course');
@@ -77,11 +64,6 @@ class TestProvider extends ChangeNotifier {
     _setLoading(false);
   }
 
-  /// Starts the test for a student, identified by DATA_MODEL.md fields.
-  ///
-  /// Claims the one-attempt lock transactionally BEFORE loading questions,
-  /// so a blocked or resumable student never sees the paper. Returns true
-  /// only when a fresh session was created.
   Future<bool> startTest({
     required String applicationNo,
     required String studentName,
@@ -99,7 +81,6 @@ class TestProvider extends ChangeNotifier {
     _hasResumableAttempt = false;
 
     try {
-      // 1. Claim the attempt lock first (transactional).
       final attempt = await _attemptService.startAttempt(
         applicationNo: applicationNo,
         testId: _availableTest!.id,
@@ -113,8 +94,6 @@ class TestProvider extends ChangeNotifier {
           _setLoading(false);
           return false;
         case StartAttemptOutcome.resumable:
-          // An earlier attempt never finished. Phase 1 surfaces this to
-          // the UI rather than silently letting them re-sit.
           _hasResumableAttempt = true;
           _log.info(_tag, 'Resumable attempt found for $applicationNo',
               requestId: _sessionRequestId, persist: true);
@@ -129,10 +108,9 @@ class TestProvider extends ChangeNotifier {
         case StartAttemptOutcome.started:
           _log.info(_tag, 'Attempt lock claimed for $applicationNo',
               requestId: _sessionRequestId);
-          break; // lock claimed — continue
+          break;
       }
 
-      // 2. Load questions for the course.
       final List<QuestionModel> questions =
           await _questionService.fetchQuestionsForCourse(
         course,
@@ -147,7 +125,6 @@ class TestProvider extends ChangeNotifier {
         return false;
       }
 
-      // 3. Build the session.
       _currentSession = TestSessionModel(
         studentId: applicationNo,
         studentName: studentName,
@@ -158,6 +135,9 @@ class TestProvider extends ChangeNotifier {
         negativeMarksPerWrong: _availableTest!.effectiveNegativeMarks,
         questions: questions,
       );
+
+      // Reset submission guard for the new session
+      _submissionInProgress = false;
 
       _log.info(_tag,
           'Test session created: ${questions.length} questions, '
@@ -179,17 +159,21 @@ class TestProvider extends ChangeNotifier {
   void _startTimer() {
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (_currentSession != null && !_currentSession!.isSubmitted) {
-        if (_currentSession!.timeRemainingSeconds > 0) {
-          _currentSession!.timeRemainingSeconds--;
-          notifyListeners();
-        } else {
-          _log.info(_tag, 'Timer expired — auto-submitting test',
-              requestId: _sessionRequestId, persist: true);
-          submitTest(); // auto-submit on timeout
-        }
-      } else {
+      // FIXES #42: Null-check session inside callback before use
+      final session = _currentSession;
+      if (session == null || session.isSubmitted) {
         timer.cancel();
+        return;
+      }
+
+      if (session.timeRemainingSeconds > 0) {
+        session.timeRemainingSeconds--;
+        notifyListeners();
+      } else {
+        timer.cancel(); // Cancel timer BEFORE calling submitTest
+        _log.info(_tag, 'Timer expired — auto-submitting test',
+            requestId: _sessionRequestId, persist: true);
+        submitTest(); // auto-submit on timeout
       }
     });
   }
@@ -208,12 +192,23 @@ class TestProvider extends ChangeNotifier {
     }
   }
 
-  /// Submits the test: scores server-side via Cloud Function, which also
-  /// writes the result doc and flips the attempt lock.
+  /// Submits the test via the scoreSubmission Cloud Function.
+  ///
+  /// FIXES #7/#8: The _submissionInProgress guard is checked and set
+  /// atomically at the very top of this method, before any async work.
+  /// This prevents both timer-fired and user-tapped duplicate submissions.
   Future<void> submitTest() async {
+    // CRITICAL GUARD: must be first, before any other checks
+    if (_submissionInProgress) {
+      _log.debug(_tag, 'submitTest called but submission already in progress — ignoring');
+      return;
+    }
     if (_currentSession == null || _currentSession!.isSubmitted) return;
 
-    _timer?.cancel();
+    // Set the guard immediately — synchronously before any await
+    _submissionInProgress = true;
+    _timer?.cancel(); // FIXES #8: cancel timer as soon as submission starts
+
     _setLoading(true);
 
     _log.info(_tag,
@@ -225,8 +220,6 @@ class TestProvider extends ChangeNotifier {
       final session = _currentSession!;
       session.submit();
 
-      // Server-side scoring — the Cloud Function reads questions,
-      // scores, writes the result, and flips the attempt lock.
       final score = await _scoringService.scoreSubmission(
         applicationNo: session.studentId,
         studentName: session.studentName,
@@ -237,7 +230,10 @@ class TestProvider extends ChangeNotifier {
       _savedResultId = score.resultId;
       _showResults = score.showResults;
 
-      // Update session with server-returned scores for the result screen.
+      // FIXES #9: Remove client-side markCompleted call — the Cloud Function
+      // (scoreSubmission) already flips attempt status to 'completed' server-side.
+      // No redundant client call needed.
+
       session.setServerScores(
         correctCount: score.correctCount,
         wrongCount: score.wrongCount,
@@ -258,6 +254,8 @@ class TestProvider extends ChangeNotifier {
           error: e, stackTrace: st, requestId: _sessionRequestId);
       _error = 'Your test was scored, but saving the result failed. '
           'Please tell an invigilator.';
+      // Reset guard on failure so user can retry
+      _submissionInProgress = false;
       _setLoading(false);
     }
   }
@@ -272,6 +270,7 @@ class TestProvider extends ChangeNotifier {
     _savedResultId = null;
     _showResults = true;
     _sessionRequestId = null;
+    _submissionInProgress = false;
     notifyListeners();
   }
 

@@ -3,16 +3,6 @@
 /// This data is fetched LIVE at login — only for students whose fee is
 /// approved — and held in memory for that session only. It is never
 /// stored in Firestore.
-///
-/// Mirrors the API 2 response `data.details` object:
-///   { name, mobile, lead_stage, email, course, lead_id }
-///
-/// NOTE: `course` from NPF is a DISPLAY string (e.g. "BBA",
-/// "B.Tech / Engineering"). Before it is used as a Firestore join key it
-/// must be mapped to the canonical key (e.g. "btech") — the same map as
-/// seed_firestore.py's COURSE_KEY_MAP. The mapping is done by whatever
-/// produces this model (the Cloud Function in Phase 2; the dev stub on
-/// Spark), so `courseKey` here is already canonical.
 class LeadDetailsModel {
   final String leadId;
   final String name;
@@ -32,10 +22,6 @@ class LeadDetailsModel {
     required this.mobile,
   });
 
-  /// Builds the model from the raw NPF API 2 `data.details` map.
-  ///
-  /// [courseKey] is passed in already-mapped, because the raw response
-  /// holds the display name, not the key.
   factory LeadDetailsModel.fromApiDetails(
     Map<String, dynamic> details, {
     required String courseKey,
@@ -50,9 +36,23 @@ class LeadDetailsModel {
   }
 
   /// The email shown masked for confirmation, e.g. "bh****@yopmail.com".
+  ///
+  /// FIXES Issue #14: The previous logic used `at <= 2` which left
+  /// short emails like "ab@x.com" fully unmasked. Fixed to:
+  /// - If the local part is 1 char, return as-is (can't mask further).
+  /// - Always show at most 1 character before the mask.
+  /// - Guarantee at least "*@domain" is shown.
   String get maskedEmail {
     final at = email.indexOf('@');
-    if (at <= 2) return email;
-    return '${email.substring(0, 2)}****${email.substring(at)}';
+    // No @ found or malformed
+    if (at < 0) return '****';
+    // Local part is empty or single char — can't meaningfully mask
+    if (at <= 1) return email;
+
+    // Show only the first character, mask the rest of the local part
+    final shown = email.substring(0, 1);
+    final domain = email.substring(at);
+    final maskLength = at - 1; // chars to mask
+    return '$shown${'*' * maskLength}$domain';
   }
 }

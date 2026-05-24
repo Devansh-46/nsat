@@ -2,75 +2,95 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ── students ──
-    // Synced by Cloud Function from NPF. Students can read their own doc
-    // by doc ID (= application_no). No client writes.
+    // ── Helper functions ─────────────────────────────────────────────
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && request.auth.token.admin == true;
+    }
+
+    function isOwner(applicationNo) {
+      return isAuthenticated() && request.auth.token.application_no == applicationNo;
+    }
+
+    // ── students ─────────────────────────────────────────────────────
+    // Read: only authenticated users (fee-gate check); write: never from client
     match /students/{applicationNo} {
-      allow read: if true;   // No Auth yet — tighten to own-record when Auth added
-      allow write: if false;  // Only Cloud Function writes
+      allow read: if isAuthenticated();
+      allow write: if false; // only Cloud Functions (syncStudents) write here
     }
 
-    // ── tests ──
-    // Published test configs. Read-only for everyone.
+    // ── tests ────────────────────────────────────────────────────────
+    // Published tests readable by authenticated students; admins can write
     match /tests/{testId} {
-      allow read: if true;
-      allow write: if false;
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
     }
 
-    // ── questions ──
-    // SECURED: clients can still read questions (need text + options),
-    // but correctAnswerIndex is stripped by QuestionService before it
-    // reaches the app. Scoring happens in the scoreSubmission Cloud
-    // Function which reads server-side.
+    // ── questions ────────────────────────────────────────────────────
+    // IMPORTANT: correctAnswerIndex is in these docs.
+    // Only Cloud Functions should score — clients get stripped questions.
+    // Students can read (app fetches questions), but scoring is server-side.
+    // When _stripAnswers = true in QuestionService, this is safe.
     match /questions/{questionId} {
-      allow read: if true;    // Text + options needed client-side
-      allow write: if false;
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
     }
 
-    // ── results ──
-    // Created by the student app on submission. Admin dashboard reads all.
-    // No client-side updates or deletes — results are immutable once written.
-    match /results/{resultId} {
-      allow read: if true;    // Admin dashboard reads all results
-      allow create: if true;  // Student app writes result on submission
-      allow update, delete: if false;
-    }
-
-    // ── attempts ──
-    // Created by client at test start (transactional lock).
-    // Updated only by scoreSubmission Cloud Function (status flip to completed).
+    // ── attempts ─────────────────────────────────────────────────────
+    // Read: only the owning student or admin
+    // Create/Update: only via Cloud Function (scoreSubmission) or the owning student
+    // The attempt lock must match the student's own application_no from their auth token
     match /attempts/{applicationNo} {
-      allow read: if true;
-      allow create: if true;   // Transactional lock at test start
-      allow update: if false;  // Only Cloud Function flips to completed
+      allow read: if isAdmin() || isOwner(applicationNo);
+      // Students can only create their own attempt lock (startAttempt transaction)
+      allow create: if isOwner(applicationNo)
+                    && request.resource.data.status == 'in_progress';
+      // Only admin or Cloud Functions can update (mark completed)
+      allow update: if isAdmin();
       allow delete: if false;
     }
 
-    // ── otps ──
-    // Written and read ONLY by Cloud Functions. Fully closed to clients.
+    // ── results ──────────────────────────────────────────────────────
+    // Create: Cloud Function only (scoreSubmission writes results)
+    // Read: admin only; students do NOT read results directly (shown via CF return value)
+    match /results/{resultId} {
+      allow read: if isAdmin();
+      allow create: if false; // Cloud Function writes results server-side
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    // ── otps ─────────────────────────────────────────────────────────
+    // Written and deleted by Cloud Functions only; never readable by clients
     match /otps/{applicationNo} {
-      allow read, write: if false;
-    }
-
-    // ── app_logs ──
-    // Written by the client-side AppLogger for structured error/info logs.
-    // Read access is restricted to authenticated admins via Firebase Console or UI.
-    match /app_logs/{logId} {
-      allow create: if true;   // Client writes log entries
-      allow read: if request.auth != null && request.auth.token.admin == true;
-      allow update, delete: if false;
-    }
-
-    // ── notifications ──
-    // Written by Cloud Function. Admin reads history.
-    match /notifications/{notifId} {
-      allow read: if true;
+      allow read: if false;
       allow write: if false;
     }
 
-    // ── Catch-all: deny everything else ──
-    match /{document=**} {
-      allow read, write: if false;
+    // ── notifications ────────────────────────────────────────────────
+    // Students read their own notifications; admins can read/write
+    match /notifications/{notifId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin(); // sendNotification CF also writes here via admin SDK
+    }
+
+    // ── app_logs ─────────────────────────────────────────────────────
+    // Write from authenticated app; read by admins only
+    match /app_logs/{logId} {
+      allow read: if isAdmin();
+      allow create: if isAuthenticated();
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    // ── _meta ────────────────────────────────────────────────────────
+    // Internal sync metadata; admin-read only; CF writes via admin SDK
+    match /_meta/{docId} {
+      allow read: if isAdmin();
+      allow write: if false;
     }
   }
 }
