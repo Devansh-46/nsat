@@ -16,6 +16,34 @@ class ResultService {
     return docRef.id;
   }
 
+  /// Get results filtered by course. Pass null or ['*'] for all courses.
+  Future<List<ResultModel>> getResultsByCourses(List<String>? courses) async {
+    if (courses == null || courses.isEmpty || courses.contains('*')) {
+      return getAllResults();
+    }
+    final snapshot = await _db
+        .collection(_collection)
+        .where('course', whereIn: courses)
+        .orderBy('submittedAt', descending: true)
+        .get();
+    return snapshot.docs
+        .map((doc) => ResultModel.fromFirestore(doc))
+        .toList();
+  }
+
+  /// Get result count filtered by course.
+  Future<int> getResultsCountByCourses(List<String>? courses) async {
+    if (courses == null || courses.isEmpty || courses.contains('*')) {
+      return resultsCount();
+    }
+    final countQuery = await _db
+        .collection(_collection)
+        .where('course', whereIn: courses)
+        .count()
+        .get();
+    return countQuery.count ?? 0;
+  }
+
   Future<List<ResultModel>> getAllResults() async {
     final snapshot = await _db
         .collection(_collection)

@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/user_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'data_store.dart';
@@ -11,6 +12,7 @@ class AuthService {
   final DataStore _dataStore = DataStore();
   final firebase_auth.FirebaseAuth _firebaseAuth =
       firebase_auth.FirebaseAuth.instance;
+  final FirebaseFirestore _db = FirebaseFirestore.instance;
 
   Future<UserModel> studentLogin(String accsoftId) async {
     final reqId = AppLogger.generateRequestId();
@@ -48,6 +50,7 @@ class AuthService {
 
       final tokenResult = await credential.user!.getIdTokenResult(true);
       final isAdmin = tokenResult.claims?['admin'] == true;
+      final isSuperAdmin = tokenResult.claims?['superAdmin'] == true;
 
       if (!isAdmin) {
         _log.error(_tag, 'Non-admin user attempted admin login: $email', requestId: reqId);
@@ -55,12 +58,21 @@ class AuthService {
         throw Exception('Unauthorized: Admin access only');
       }
 
-      _log.info(_tag, 'Admin login success: $email', requestId: reqId, persist: true);
+      // Check forcePasswordChange from Firestore (not claims — avoids token caching issues)
+      bool forcePasswordChange = false;
+      final adminDoc = await _db.collection('admins').doc(email.toLowerCase()).get();
+      if (adminDoc.exists) {
+        forcePasswordChange = (adminDoc.data()?['forcePasswordChange'] as bool?) ?? false;
+      }
+
+      _log.info(_tag, 'Admin login success: $email (superAdmin: $isSuperAdmin, forceChange: $forcePasswordChange)', requestId: reqId, persist: true);
       return UserModel(
         id: credential.user!.uid,
         accsoftId: 'admin',
         name: 'NIU Administrator',
         role: 'admin',
+        isSuperAdmin: isSuperAdmin,
+        forcePasswordChange: forcePasswordChange,
       );
     } on firebase_auth.FirebaseAuthException catch (e) {
       _log.error(_tag, 'Admin login failed: ${e.code}', error: e, requestId: reqId);

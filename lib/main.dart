@@ -27,6 +27,9 @@ import 'screens/admin/admin_dashboard_screen.dart';
 import 'screens/admin/push_notification_screen.dart';
 import 'screens/admin/results_dashboard_screen.dart';
 import 'screens/admin/admin_logs_screen.dart';
+import 'screens/admin/manage_admins_screen.dart';
+import 'screens/admin/course_access_screen.dart';
+import 'screens/admin/change_password_screen.dart';
 import 'widgets/splash_screen.dart';
 
 final _log = AppLogger.instance;
@@ -98,6 +101,9 @@ class NiuSatApp extends StatelessWidget {
         AppRoutes.pushNotification: (_) => const PushNotificationScreen(),
         AppRoutes.resultsDashboard: (_) => const ResultsDashboardScreen(),
         AppRoutes.adminLogs: (_) => const AdminLogsScreen(),
+        AppRoutes.manageAdmins: (_) => const ManageAdminsScreen(),
+        AppRoutes.courseAccess: (_) => const CourseAccessScreen(),
+        AppRoutes.changePassword: (_) => const ChangePasswordScreen(),
       },
     );
   }

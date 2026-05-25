@@ -35,7 +35,11 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
     final ok = await provider.adminLogin(
         _emailController.text, _passwordController.text);
     if (ok && mounted) {
-      Navigator.pushReplacementNamed(context, AppRoutes.adminDashboard);
+      if (provider.forcePasswordChange) {
+        Navigator.pushReplacementNamed(context, AppRoutes.changePassword);
+      } else {
+        Navigator.pushReplacementNamed(context, AppRoutes.adminDashboard);
+      }
     }
   }
 

@@ -8,15 +8,20 @@ class UserModel {
   final double feeAmount;
   final bool hasAttempted;
 
+  final bool isSuperAdmin;
+  final bool forcePasswordChange;
+
   UserModel({
     required this.id,
     required this.accsoftId,
     required this.name,
-    required this.role,
+    required this.role, // 'student' or 'admin'
     this.course,
     this.feePaid = false,
     this.feeAmount = 1100.0,
     this.hasAttempted = false,
+    this.isSuperAdmin = false,
+    this.forcePasswordChange = false,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -29,6 +34,8 @@ class UserModel {
       feePaid: json['feePaid'] ?? false,
       feeAmount: (json['feeAmount'] ?? 1100.0).toDouble(),
       hasAttempted: json['hasAttempted'] ?? false,
+      isSuperAdmin: json['isSuperAdmin'] ?? false,
+      forcePasswordChange: json['forcePasswordChange'] ?? false,
     );
   }
 
@@ -42,6 +49,8 @@ class UserModel {
       'feePaid': feePaid,
       'feeAmount': feeAmount,
       'hasAttempted': hasAttempted,
+      'isSuperAdmin': isSuperAdmin,
+      'forcePasswordChange': forcePasswordChange,
     };
   }
 
@@ -54,6 +63,8 @@ class UserModel {
     bool? feePaid,
     double? feeAmount,
     bool? hasAttempted,
+    bool? isSuperAdmin,
+    bool? forcePasswordChange,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -64,6 +75,8 @@ class UserModel {
       feePaid: feePaid ?? this.feePaid,
       feeAmount: feeAmount ?? this.feeAmount,
       hasAttempted: hasAttempted ?? this.hasAttempted,
+      isSuperAdmin: isSuperAdmin ?? this.isSuperAdmin,
+      forcePasswordChange: forcePasswordChange ?? this.forcePasswordChange,
     );
   }
 

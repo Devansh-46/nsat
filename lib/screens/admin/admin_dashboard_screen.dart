@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
-import '../../services/remote_config_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_theme.dart';
 import '../../routes/app_routes.dart';
@@ -59,6 +57,37 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   ),
                 ),
                 const SizedBox(height: 22),
+
+                // Course access banner for non-super-admins
+                if (!auth.isSuperAdmin && admin.myCourses.isNotEmpty &&
+                    !admin.myCourses.contains('*')) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: AppColors.forestTint,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                          color: AppColors.forest.withValues(alpha: 0.2)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.school_outlined,
+                            size: 16, color: AppColors.forest),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Access: ${admin.myCourses.map((c) => _courseDisplayLabels[c] ?? c).join(", ")}',
+                            style: AppTheme.body(
+                                size: 12, color: AppColors.forest),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
 
                 // Stats
                 if (admin.isLoading && stats == null)
@@ -126,8 +155,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         context, AppRoutes.pushNotification);
                   },
                 ),
-                if (RemoteConfigService.instance.isSuperAdmin(
-                    FirebaseAuth.instance.currentUser?.email ?? '')) ...[
+                if (auth.isSuperAdmin) ...[
                   const SizedBox(height: 10),
                   _ActionCard(
                     icon: Icons.bug_report_outlined,
@@ -136,6 +164,30 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     title: 'System Logs',
                     subtitle: 'View errors & events',
                     onTap: () => Navigator.pushNamed(context, AppRoutes.adminLogs),
+                  ),
+                  const SizedBox(height: 10),
+                  _ActionCard(
+                    icon: Icons.admin_panel_settings_outlined,
+                    tint: AppColors.forestTint,
+                    iconColor: AppColors.forest,
+                    title: 'Manage admins',
+                    subtitle: 'Add or remove admin users',
+                    onTap: () {
+                      admin.clearMessages();
+                      Navigator.pushNamed(context, AppRoutes.manageAdmins);
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                  _ActionCard(
+                    icon: Icons.school_outlined,
+                    tint: AppColors.goldTint,
+                    iconColor: const Color(0xFF8A6516),
+                    title: 'Course access',
+                    subtitle: 'Assign course-wise result access',
+                    onTap: () {
+                      admin.clearMessages();
+                      Navigator.pushNamed(context, AppRoutes.courseAccess);
+                    },
                   ),
                 ],
                 const SizedBox(height: 28),
@@ -256,3 +308,21 @@ class _ActionCard extends StatelessWidget {
     );
   }
 }
+
+const _courseDisplayLabels = {
+  'soahs_ug': 'SOAHS UG',
+  'soahs_pg': 'SOAHS PG',
+  'son': 'Nursing',
+  'set_ug': 'Engineering UG',
+  'set_pg': 'Engineering PG',
+  'sbm_ug': 'Business UG',
+  'sbm_pg': 'Business PG',
+  'solla_ug': 'Law UG',
+  'solla_pg': 'Law PG',
+  'sjmc': 'Journalism',
+  'sos_ug': 'Science UG',
+  'sos_pg': 'Science PG',
+  'sola': 'Liberal Arts',
+  'soe': 'Education',
+  'sop': 'Pharmacy',
+};

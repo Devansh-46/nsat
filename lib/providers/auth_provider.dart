@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import '../models/user_model.dart';
 import '../models/student_model.dart';
@@ -48,6 +50,16 @@ class AuthProvider extends ChangeNotifier {
   bool get isAuthenticated => _currentUser != null;
   bool get isAdmin => _currentUser?.role == 'admin';
 
+  bool get isSuperAdmin {
+    return _isSuperAdmin;
+  }
+
+  /// Set during admin login flow
+  bool _isSuperAdmin = false;
+  bool _forcePasswordChange = false;
+
+  bool get forcePasswordChange => _forcePasswordChange;
+
   StudentModel? get verifiedStudent => _verifiedStudent;
   FeeGateOutcome? get lastFeeGateOutcome => _lastFeeGateOutcome;
   LeadDetailsModel? get leadDetails => _leadDetails;
@@ -60,6 +72,8 @@ class AuthProvider extends ChangeNotifier {
 
     if (_currentUser != null) {
       _log.setUserId(_currentUser!.accsoftId);
+      _isSuperAdmin = _currentUser!.isSuperAdmin;
+      _forcePasswordChange = _currentUser!.forcePasswordChange;
       _log.info(_tag, 'Auth restored for ${_currentUser!.accsoftId} (role: ${_currentUser!.role})');
     }
 
@@ -196,6 +210,8 @@ class AuthProvider extends ChangeNotifier {
     try {
       final user = await _authService.adminLogin(email, password);
       _currentUser = user;
+      _isSuperAdmin = user.isSuperAdmin;
+      _forcePasswordChange = user.forcePasswordChange;
       _log.setUserId('admin');
       await _authService.saveUserSession(user);
       _setLoading(false);
@@ -207,11 +223,61 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  /// Change password and clear the forcePasswordChange flag in Firestore.
+  Future<bool> changePassword(String newPassword) async {
+    _setLoading(true);
+    try {
+      final user = firebase_auth.FirebaseAuth.instance.currentUser;
+      if (user == null) throw Exception('Not signed in');
+
+      await user.updatePassword(newPassword);
+
+      // Clear forcePasswordChange in Firestore
+      try {
+        final email = user.email?.toLowerCase();
+        if (email != null) {
+          await FirebaseFirestore.instance
+              .collection('admins')
+              .doc(email)
+              .update({'forcePasswordChange': false});
+        }
+      } catch (_) {
+        // Non-critical: Firestore update failure shouldn't block login
+      }
+
+      // Also try to clear via CF (for claim-based checks)
+      try {
+        final callable = FirebaseFunctions.instanceFor(region: 'asia-south1')
+            .httpsCallable('clearForcePasswordChange');
+        await callable.call();
+      } catch (_) {}
+
+      _forcePasswordChange = false;
+      if (_currentUser != null) {
+        _currentUser = _currentUser!.copyWith(forcePasswordChange: false);
+      }
+
+      // Force token refresh so claims are up to date
+      await user.getIdToken(true);
+
+      _log.info(_tag, 'Password changed & flags cleared', persist: true);
+      _setLoading(false);
+      return true;
+    } catch (e) {
+      _error = e.toString().replaceAll('Exception: ', '');
+      _log.error(_tag, 'Failed to change password', error: e);
+      _setLoading(false);
+      return false;
+    }
+  }
+
   Future<void> logout() async {
     _log.info(_tag, 'User logout: ${_currentUser?.accsoftId}', persist: true);
     _log.clearUserId();
     await _authService.clearSession();
     _currentUser = null;
+    _isSuperAdmin = false;
+    _forcePasswordChange = false;
     _verifiedStudent = null;
     _lastFeeGateOutcome = null;
     _leadDetails = null;

@@ -3,25 +3,24 @@ import '../models/result_model.dart';
 import '../models/notification_model.dart';
 import '../models/app_log_model.dart';
 import '../services/admin_service.dart';
+import '../services/admin_management_service.dart';
 import '../services/notification_service.dart';
 import '../services/app_logger.dart';
 
-/// Admin-side state.
-///
-/// Results and dashboard stats are backed by real Firestore data.
-/// Notifications remain on the mock NotificationService until the
-/// Blaze/FCM Cloud Function is built — that screen is unchanged.
 class AdminProvider extends ChangeNotifier {
   static const _tag = 'AdminProvider';
   final _log = AppLogger.instance;
 
   final AdminService _adminService = AdminService();
+  final AdminManagementService _adminMgmtService = AdminManagementService();
   final NotificationService _notificationService = NotificationService();
 
   Map<String, int>? _dashboardStats;
   List<ResultModel> _allResults = [];
   List<NotificationModel> _notifications = [];
   List<AppLogModel> _logs = [];
+  List<Map<String, dynamic>> _admins = [];
+  List<String> _myCourses = ['*'];
 
   bool _isLoading = false;
   String? _error;
@@ -30,6 +29,8 @@ class AdminProvider extends ChangeNotifier {
   Map<String, int>? get dashboardStats => _dashboardStats;
   List<ResultModel> get allResults => _allResults;
   List<NotificationModel> get notifications => _notifications;
+  List<Map<String, dynamic>> get admins => _admins;
+  List<String> get myCourses => _myCourses;
   List<AppLogModel> get logs => _logs;
   bool get isLoading => _isLoading;
   String? get error => _error;
@@ -38,7 +39,8 @@ class AdminProvider extends ChangeNotifier {
   Future<void> fetchDashboardStats() async {
     _setLoading(true);
     try {
-      _dashboardStats = await _adminService.getDashboardStats();
+      _myCourses = await _adminService.getMyAllowedCourses();
+      _dashboardStats = await _adminService.getDashboardStats(_myCourses);
     } catch (e, st) {
       _log.error(_tag, 'Failed to load dashboard stats', error: e, stackTrace: st);
       _error = 'Failed to load stats';
@@ -49,8 +51,12 @@ class AdminProvider extends ChangeNotifier {
   Future<void> fetchAllResults() async {
     _setLoading(true);
     try {
-      _allResults = await _adminService.getAllResults();
-      _log.debug(_tag, 'Loaded ${_allResults.length} results for dashboard');
+      // Ensure we have courses loaded
+      if (_myCourses.isEmpty) {
+        _myCourses = await _adminService.getMyAllowedCourses();
+      }
+      _allResults = await _adminService.getAllResults(_myCourses);
+      _log.debug(_tag, 'Loaded ${_allResults.length} results for courses: ${_myCourses.join(", ")}');
     } catch (e, st) {
       _log.error(_tag, 'Failed to load results', error: e, stackTrace: st);
       _error = 'Failed to load results';
@@ -69,7 +75,71 @@ class AdminProvider extends ChangeNotifier {
     _setLoading(false);
   }
 
-  // --- Notifications: real FCM via Cloud Function ---
+  // --- Admin management ---
+
+  Future<void> fetchAdmins() async {
+    _setLoading(true);
+    try {
+      _admins = await _adminMgmtService.listAdmins();
+    } catch (e, st) {
+      _log.error(_tag, 'Failed to load admins', error: e, stackTrace: st);
+      _error = e.toString().replaceFirst('Exception: ', '');
+    }
+    _setLoading(false);
+  }
+
+  Future<bool> addAdmin(String email) async {
+    _setLoading(true);
+    try {
+      final role = await _adminMgmtService.addAdmin(email);
+      _successMessage = 'Added $email as ${role == 'superAdmin' ? 'super admin' : 'admin'}';
+      _log.info(_tag, 'Admin added: $email (role: $role)', persist: true);
+      await fetchAdmins();
+      _setLoading(false);
+      return true;
+    } catch (e, st) {
+      _log.error(_tag, 'Failed to add admin: $email', error: e, stackTrace: st);
+      _error = e.toString().replaceFirst('Exception: ', '');
+      _setLoading(false);
+      return false;
+    }
+  }
+
+  Future<bool> removeAdmin(String email) async {
+    _setLoading(true);
+    try {
+      await _adminMgmtService.removeAdmin(email);
+      _successMessage = 'Removed admin: $email';
+      _log.info(_tag, 'Admin removed: $email', persist: true);
+      await fetchAdmins();
+      _setLoading(false);
+      return true;
+    } catch (e, st) {
+      _log.error(_tag, 'Failed to remove admin: $email', error: e, stackTrace: st);
+      _error = e.toString().replaceFirst('Exception: ', '');
+      _setLoading(false);
+      return false;
+    }
+  }
+
+  Future<bool> updateAdminCourses(String email, List<String> allowedCourses) async {
+    _setLoading(true);
+    try {
+      await _adminMgmtService.updateAdminCourses(email, allowedCourses);
+      _successMessage = 'Course access updated for $email';
+      _log.info(_tag, 'Course access updated: $email → ${allowedCourses.join(", ")}', persist: true);
+      await fetchAdmins();
+      _setLoading(false);
+      return true;
+    } catch (e, st) {
+      _log.error(_tag, 'Failed to update courses: $email', error: e, stackTrace: st);
+      _error = e.toString().replaceFirst('Exception: ', '');
+      _setLoading(false);
+      return false;
+    }
+  }
+
+  // --- Notifications ---
 
   Future<bool> sendNotification(
       String title, String body, String target, bool scheduleLater) async {
@@ -97,7 +167,6 @@ class AdminProvider extends ChangeNotifier {
       notifyListeners();
     } catch (e, st) {
       _log.error(_tag, 'Failed to load notification history', error: e, stackTrace: st);
-      // Silently fail history load.
     }
   }
 

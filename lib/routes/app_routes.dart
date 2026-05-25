@@ -12,5 +12,8 @@ class AppRoutes {
   static const String pushNotification = '/push-notification';
   static const String resultsDashboard = '/results-dashboard';
   static const String adminLogs = '/admin-logs';
+  static const String manageAdmins = '/manage-admins';
+  static const String courseAccess = '/course-access';
+  static const String changePassword = '/change-password';
   static const String emailVerification = '/email-verification';
 }

@@ -77,6 +77,14 @@ service cloud.firestore {
       allow write: if isAdmin(); // sendNotification CF also writes here via admin SDK
     }
 
+    // ── admins ─────────────────────────────────────────────────────────
+    // Regular admin list. Superadmins (from .env) manage this collection.
+    // Read: any authenticated admin. Write: superadmins only (enforced by CF).
+    match /admins/{email} {
+      allow read: if isAdmin();
+      allow write: if false; // Cloud Functions only (superadmin check is server-side)
+    }
+
     // ── app_logs ─────────────────────────────────────────────────────
     // Write from authenticated app; read by admins only
     match /app_logs/{logId} {
