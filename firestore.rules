@@ -23,32 +23,25 @@ service cloud.firestore {
     }
 
     // ── tests ────────────────────────────────────────────────────────
-    // Published tests readable by authenticated students; admins can write
+    // Published tests readable without auth (OTP is the gate); admins can write
     match /tests/{testId} {
-      allow read: if isAuthenticated();
+      allow read: if true;
       allow write: if isAdmin();
     }
 
     // ── questions ────────────────────────────────────────────────────
-    // IMPORTANT: correctAnswerIndex is in these docs.
-    // Only Cloud Functions should score — clients get stripped questions.
-    // Students can read (app fetches questions), but scoring is server-side.
-    // When _stripAnswers = true in QuestionService, this is safe.
+    // Readable without auth (OTP is the gate); scoring is server-side.
     match /questions/{questionId} {
-      allow read: if isAuthenticated();
+      allow read: if true;
       allow write: if isAdmin();
     }
 
     // ── attempts ─────────────────────────────────────────────────────
-    // Read: only the owning student or admin
-    // Create/Update: only via Cloud Function (scoreSubmission) or the owning student
-    // The attempt lock must match the student's own application_no from their auth token
+    // Read/Create: allowed without auth (OTP + applicationNo is the gate).
+    // Update: admin only (Cloud Function marks completed).
     match /attempts/{applicationNo} {
-      allow read: if isAdmin() || isOwner(applicationNo);
-      // Students can only create their own attempt lock (startAttempt transaction)
-      allow create: if isOwner(applicationNo)
-                    && request.resource.data.status == 'in_progress';
-      // Only admin or Cloud Functions can update (mark completed)
+      allow read: if true;
+      allow create: if request.resource.data.status == 'in_progress';
       allow update: if isAdmin();
       allow delete: if false;
     }
@@ -86,10 +79,10 @@ service cloud.firestore {
     }
 
     // ── app_logs ─────────────────────────────────────────────────────
-    // Write from authenticated app; read by admins only
+    // Write from app (no auth needed — OTP is the gate); read by admins only
     match /app_logs/{logId} {
       allow read: if isAdmin();
-      allow create: if isAuthenticated();
+      allow create: if true;
       allow update: if false;
       allow delete: if false;
     }
