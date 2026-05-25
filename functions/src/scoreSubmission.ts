@@ -7,15 +7,6 @@ import * as admin from "firebase-admin";
  * Takes the student's answers and the testId, reads questions and test
  * config from Firestore, scores it, writes the result doc, and flips
  * the attempt lock — all in one call.
- *
- * FIXES:
- * - Issue #10: Questions are now fetched by testId via sub-collection or
- *   testId field, AND sorted by a consistent `sequence` field so that
- *   answers[i] always corresponds to questions[i].
- * - Issue #12: Questions are filtered by both course AND testId to prevent
- *   cross-test question overlap.
- * - Issue #7/#8: CF checks for existing result before writing to prevent
- *   duplicate submissions.
  */
 export const scoreSubmission = onCall(
   { region: "asia-south1" },
@@ -34,7 +25,7 @@ export const scoreSubmission = onCall(
       );
     }
 
-    // 2. Load test config
+    // 1. Load test config
     const testDoc = await db.collection("tests").doc(testId).get();
     if (!testDoc.exists) {
       throw new HttpsError("not-found", "Test not found");
@@ -46,30 +37,16 @@ export const scoreSubmission = onCall(
     const negativeMarksPerWrong =
       negativeMarking ? ((test.negativeMarksPerWrong ?? 0) as number) : 0;
 
-    // 3. Load questions filtered by BOTH course AND testId
-    // This fixes:
-    //   - Issue #10: consistent ordering via sequence field (sorted in memory)
-    //   - Issue #12: testId scoping prevents cross-test question bleed
-    let questionsSnap = await db
+    // 2. Load questions by course only (no composite index required).
+    // Sorted in memory by sequence field so answers[i] always maps to questions[i].
+    // NOTE: Once questions have a testId field AND the composite index
+    // (course ASC, testId ASC, sequence ASC) is created in Firestore,
+    // add .where("testId", "==", testId) back to scope per-test.
+    const questionsSnap = await db
       .collection("questions")
       .where("course", "==", course)
-      .where("testId", "==", testId)
       .limit(test.questionCount as number)
       .get();
-
-    // Fallback: if questions don't have testId field (legacy question bank),
-    // fall back to course-only query (no orderBy — avoids missing-index error)
-    if (questionsSnap.empty) {
-      console.warn(
-        `No questions found with testId=${testId} for course=${course}. ` +
-        `Falling back to course-only query. Add testId field to questions for correctness.`
-      );
-      questionsSnap = await db
-        .collection("questions")
-        .where("course", "==", course)
-        .limit(test.questionCount as number)
-        .get();
-    }
 
     if (questionsSnap.empty) {
       throw new HttpsError("not-found", "No questions found for this test");
@@ -81,6 +58,7 @@ export const scoreSubmission = onCall(
       const seqB = (b.data().sequence as number) ?? 9999;
       return seqA - seqB;
     });
+
     let correct = 0;
     let wrong = 0;
     let gradedCount = 0;
@@ -117,13 +95,13 @@ export const scoreSubmission = onCall(
     const netScore = correctMarks - negMarks;
     const maxScore = gradedCount * marksPerQuestion;
 
-    // 4. Write result and flip attempt lock atomically
-    // Use a deterministic doc ID so retries don't create duplicate results
+    // 3. Write result and flip attempt lock atomically.
+    // Deterministic doc ID prevents duplicate results on retry.
     const resultId = `${applicationNo}_${testId}`;
     const resultRef = db.collection("results").doc(resultId);
     const attemptRef = db.collection("attempts").doc(applicationNo);
 
-    // Check again just before writing (double-guard)
+    // Double-guard: return existing result if already scored
     const existingResult = await resultRef.get();
     if (existingResult.exists) {
       const d = existingResult.data()!;
