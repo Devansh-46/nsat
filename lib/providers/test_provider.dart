@@ -43,15 +43,6 @@ class TestProvider extends ChangeNotifier {
   bool get alreadyCompleted => _alreadyCompleted;
   bool get hasResumableAttempt => _hasResumableAttempt;
   String? get savedResultId => _savedResultId;
-  bool _showResults = true;
-
-  TestSessionModel? get currentSession => _currentSession;
-  TestModel? get availableTest => _availableTest;
-  bool get isLoading => _isLoading;
-  String? get error => _error;
-  bool get alreadyCompleted => _alreadyCompleted;
-  bool get hasResumableAttempt => _hasResumableAttempt;
-  String? get savedResultId => _savedResultId;
   bool get showResults => _availableTest?.showResults ?? _showResults;
 
   Future<void> fetchAvailableTest(String course) async {
