@@ -216,7 +216,6 @@ class TestProvider extends ChangeNotifier {
         requestId: _sessionRequestId, persist: true);
 
     final session = _currentSession!;
-    session.submit();
 
     try {
       final score = await _scoringService.scoreSubmission(
@@ -225,6 +224,8 @@ class TestProvider extends ChangeNotifier {
         testId: _availableTest!.id,
         answers: session.answers,
       );
+
+      session.submit();
 
       _savedResultId = score.resultId;
       _showResults = score.showResults;
@@ -245,8 +246,6 @@ class TestProvider extends ChangeNotifier {
       _log.error(_tag,
           'Test submission failed for ${session.studentId}',
           error: e, stackTrace: st, requestId: _sessionRequestId);
-      // Mark as NOT submitted so user can retry
-      session.isSubmitted = false;
       _submissionInProgress = false;
       _timer = null;
       rethrow;

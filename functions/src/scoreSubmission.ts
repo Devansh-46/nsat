@@ -34,29 +34,6 @@ export const scoreSubmission = onCall(
       );
     }
 
-    // 1. Check for existing result (prevents duplicates from race conditions)
-    const existingResults = await db
-      .collection("results")
-      .where("application_no", "==", applicationNo)
-      .where("testId", "==", testId)
-      .limit(1)
-      .get();
-
-    if (!existingResults.empty) {
-      // Already scored — return the existing result idempotently
-      const existing = existingResults.docs[0].data();
-      console.log(`Duplicate scoreSubmission for ${applicationNo} — returning existing result`);
-      return {
-        resultId: existingResults.docs[0].id,
-        correctCount: existing.correctCount ?? 0,
-        wrongCount: existing.wrongCount ?? 0,
-        skippedCount: existing.skippedCount ?? 0,
-        netScore: existing.netScore ?? 0,
-        maxScore: existing.maxScore ?? 0,
-        showResults: existing.showResults ?? true,
-      };
-    }
-
     // 2. Load test config
     const testDoc = await db.collection("tests").doc(testId).get();
     if (!testDoc.exists) {
@@ -69,21 +46,19 @@ export const scoreSubmission = onCall(
     const negativeMarksPerWrong =
       negativeMarking ? ((test.negativeMarksPerWrong ?? 0) as number) : 0;
 
-    // 3. Load questions filtered by BOTH course AND testId, sorted by sequence
+    // 3. Load questions filtered by BOTH course AND testId
     // This fixes:
-    //   - Issue #10: consistent ordering via sequence field
+    //   - Issue #10: consistent ordering via sequence field (sorted in memory)
     //   - Issue #12: testId scoping prevents cross-test question bleed
-    let questionsQuery = db
+    let questionsSnap = await db
       .collection("questions")
       .where("course", "==", course)
       .where("testId", "==", testId)
-      .orderBy("sequence", "asc")
-      .limit(test.questionCount as number);
-
-    let questionsSnap = await questionsQuery.get();
+      .limit(test.questionCount as number)
+      .get();
 
     // Fallback: if questions don't have testId field (legacy question bank),
-    // fall back to course-only query with sequence ordering
+    // fall back to course-only query (no orderBy — avoids missing-index error)
     if (questionsSnap.empty) {
       console.warn(
         `No questions found with testId=${testId} for course=${course}. ` +
@@ -92,7 +67,6 @@ export const scoreSubmission = onCall(
       questionsSnap = await db
         .collection("questions")
         .where("course", "==", course)
-        .orderBy("sequence", "asc")
         .limit(test.questionCount as number)
         .get();
     }
@@ -101,7 +75,12 @@ export const scoreSubmission = onCall(
       throw new HttpsError("not-found", "No questions found for this test");
     }
 
-    const questions = questionsSnap.docs;
+    // Sort in memory by sequence field (safe even if field is absent)
+    const questions = questionsSnap.docs.sort((a, b) => {
+      const seqA = (a.data().sequence as number) ?? 9999;
+      const seqB = (b.data().sequence as number) ?? 9999;
+      return seqA - seqB;
+    });
     let correct = 0;
     let wrong = 0;
     let gradedCount = 0;
@@ -139,8 +118,26 @@ export const scoreSubmission = onCall(
     const maxScore = gradedCount * marksPerQuestion;
 
     // 4. Write result and flip attempt lock atomically
-    const resultRef = db.collection("results").doc();
+    // Use a deterministic doc ID so retries don't create duplicate results
+    const resultId = `${applicationNo}_${testId}`;
+    const resultRef = db.collection("results").doc(resultId);
     const attemptRef = db.collection("attempts").doc(applicationNo);
+
+    // Check again just before writing (double-guard)
+    const existingResult = await resultRef.get();
+    if (existingResult.exists) {
+      const d = existingResult.data()!;
+      console.log(`Duplicate scoreSubmission for ${applicationNo} — returning existing result`);
+      return {
+        resultId,
+        correctCount: d.correctCount ?? 0,
+        wrongCount: d.wrongCount ?? 0,
+        skippedCount: d.skippedCount ?? 0,
+        netScore: d.netScore ?? 0,
+        maxScore: d.maxScore ?? 0,
+        showResults: d.showResults ?? true,
+      };
+    }
 
     const resultData: Record<string, unknown> = {
       application_no: applicationNo,
@@ -172,7 +169,7 @@ export const scoreSubmission = onCall(
     );
 
     return {
-      resultId: resultRef.id,
+      resultId,
       correctCount: correct,
       wrongCount: wrong,
       skippedCount: skipped,
