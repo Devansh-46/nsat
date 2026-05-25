@@ -171,10 +171,11 @@ class TestProvider extends ChangeNotifier {
         session.timeRemainingSeconds--;
         notifyListeners();
       } else {
-        timer.cancel(); // Cancel timer BEFORE calling submitTest
+        timer.cancel();
         _log.info(_tag, 'Timer expired — auto-submitting test',
             requestId: _sessionRequestId, persist: true);
-        submitTest(); // auto-submit on timeout
+        submitTest();
+        notifyListeners();
       }
     });
   }

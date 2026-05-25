@@ -56,7 +56,6 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
           totalQuestions: session.totalQuestions,
         );
       }
-      Navigator.pushReplacementNamed(context, AppRoutes.result);
     }
   }
 
