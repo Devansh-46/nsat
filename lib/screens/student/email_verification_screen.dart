@@ -142,6 +142,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
       await callable.call({
         'application_no': student.applicationNo,
         'code': code,
+        'channel': 'email',
       });
 
       if (!mounted) return;
@@ -248,6 +249,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
       await callable.call({
         'application_no': student.applicationNo,
         'code': code,
+        'channel': 'whatsapp',
       });
 
       if (!mounted) return;
