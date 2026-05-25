@@ -163,7 +163,7 @@ export const scoreSubmission = onCall(
     // Batch write: result doc + attempt status flip
     const batch = db.batch();
     batch.set(resultRef, resultData);
-    batch.update(attemptRef, { status: "completed" });
+    batch.set(attemptRef, { status: "completed" }, { merge: true });
     await batch.commit();
 
     console.log(

@@ -43,6 +43,15 @@ class TestProvider extends ChangeNotifier {
   bool get alreadyCompleted => _alreadyCompleted;
   bool get hasResumableAttempt => _hasResumableAttempt;
   String? get savedResultId => _savedResultId;
+  bool _showResults = true;
+
+  TestSessionModel? get currentSession => _currentSession;
+  TestModel? get availableTest => _availableTest;
+  bool get isLoading => _isLoading;
+  String? get error => _error;
+  bool get alreadyCompleted => _alreadyCompleted;
+  bool get hasResumableAttempt => _hasResumableAttempt;
+  String? get savedResultId => _savedResultId;
   bool get showResults => _availableTest?.showResults ?? _showResults;
 
   Future<void> fetchAvailableTest(String course) async {
@@ -54,7 +63,8 @@ class TestProvider extends ChangeNotifier {
         _log.info(_tag, 'No published test found for course=$course', persist: true);
         _error = 'No published test is available for this course.';
       } else {
-        _log.debug(_tag, 'Found test: ${_availableTest!.id} (${_availableTest!.title})');
+        _showResults = _availableTest!.showResults;
+        _log.debug(_tag, 'Found test: ${_availableTest!.id} (${_availableTest!.title}), showResults=$_showResults');
       }
     } catch (e, st) {
       _log.error(_tag, 'Failed to fetch test for course=$course',
@@ -198,17 +208,14 @@ class TestProvider extends ChangeNotifier {
   /// atomically at the very top of this method, before any async work.
   /// This prevents both timer-fired and user-tapped duplicate submissions.
   Future<void> submitTest() async {
-    // CRITICAL GUARD: must be first, before any other checks
     if (_submissionInProgress) {
       _log.debug(_tag, 'submitTest called but submission already in progress — ignoring');
       return;
     }
     if (_currentSession == null || _currentSession!.isSubmitted) return;
 
-    // Set the guard immediately — synchronously before any await
     _submissionInProgress = true;
-    _timer?.cancel(); // FIXES #8: cancel timer as soon as submission starts
-
+    _timer?.cancel();
     _setLoading(true);
 
     _log.info(_tag,
@@ -216,10 +223,10 @@ class TestProvider extends ChangeNotifier {
         '(answered: ${_currentSession!.answeredCount}/${_currentSession!.totalQuestions})',
         requestId: _sessionRequestId, persist: true);
 
-    try {
-      final session = _currentSession!;
-      session.submit();
+    final session = _currentSession!;
+    session.submit();
 
+    try {
       final score = await _scoringService.scoreSubmission(
         applicationNo: session.studentId,
         studentName: session.studentName,
@@ -229,10 +236,6 @@ class TestProvider extends ChangeNotifier {
 
       _savedResultId = score.resultId;
       _showResults = score.showResults;
-
-      // FIXES #9: Remove client-side markCompleted call — the Cloud Function
-      // (scoreSubmission) already flips attempt status to 'completed' server-side.
-      // No redundant client call needed.
 
       session.setServerScores(
         correctCount: score.correctCount,
@@ -246,18 +249,18 @@ class TestProvider extends ChangeNotifier {
           'Test submitted successfully for ${session.studentId}: '
           '${score.netScore}/${score.maxScore}',
           requestId: _sessionRequestId, persist: true);
-
-      _setLoading(false);
     } catch (e, st) {
       _log.error(_tag,
-          'Test submission failed for ${_currentSession!.studentId}',
+          'Test submission failed for ${session.studentId}',
           error: e, stackTrace: st, requestId: _sessionRequestId);
-      _error = 'Your test was scored, but saving the result failed. '
-          'Please tell an invigilator.';
-      // Reset guard on failure so user can retry
+      // Mark as NOT submitted so user can retry
+      session.isSubmitted = false;
       _submissionInProgress = false;
-      _setLoading(false);
+      _timer = null;
+      rethrow;
     }
+
+    _setLoading(false);
   }
 
   void clearSession() {

@@ -32,7 +32,19 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
   void _submitTest() async {
     final provider = context.read<TestProvider>();
     final auth = context.read<AuthProvider>();
-    await provider.submitTest();
+    try {
+      await provider.submitTest();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(provider.error ?? 'Test submission failed. Please try again.'),
+            backgroundColor: AppColors.clay,
+          ),
+        );
+      }
+      return;
+    }
     if (mounted) {
       final session = provider.currentSession;
       final student = auth.verifiedStudent;
