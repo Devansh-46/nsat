@@ -16,9 +16,9 @@ service cloud.firestore {
     }
 
     // ── students ─────────────────────────────────────────────────────
-    // Read: only authenticated users (fee-gate check); write: never from client
+    // Read: allowed without auth for the fee-gate login step; write: never from client
     match /students/{applicationNo} {
-      allow read: if isAuthenticated();
+      allow read: if true;
       allow write: if false; // only Cloud Functions (syncStudents) write here
     }
 
