@@ -66,50 +66,44 @@ class AttemptService {
     final docRef = _db.collection(_collection).doc(applicationNo);
 
     try {
-      final result = await _db.runTransaction<StartAttemptResult>((txn) async {
-        final snapshot = await txn.get(docRef);
+      final snapshot = await docRef.get();
 
-        if (snapshot.exists) {
-          final existing = AttemptModel.fromFirestore(snapshot);
-          if (existing.isCompleted) {
-            _log.info(_tag, 'Student $applicationNo already completed test',
-                requestId: reqId, persist: true);
-            return StartAttemptResult(
-              StartAttemptOutcome.alreadyCompleted,
-              attempt: existing,
-            );
-          }
-          // An in_progress doc already exists — do not overwrite it,
-          // so the original attemptedAt / testId are preserved.
-          _log.info(_tag, 'Resumable attempt found for $applicationNo',
+      if (snapshot.exists) {
+        final existing = AttemptModel.fromFirestore(snapshot);
+        if (existing.isCompleted) {
+          _log.info(_tag, 'Student $applicationNo already completed test',
               requestId: reqId, persist: true);
           return StartAttemptResult(
-            StartAttemptOutcome.resumable,
+            StartAttemptOutcome.alreadyCompleted,
             attempt: existing,
           );
         }
-
-        // No attempt yet — claim the lock.
-        txn.set(docRef, {
-          'status': AttemptModel.statusToString(AttemptStatus.inProgress),
-          'attemptedAt': FieldValue.serverTimestamp(),
-          'testId': testId,
-        });
-
-        _log.info(_tag, 'Attempt lock claimed for $applicationNo',
+        _log.info(_tag, 'Resumable attempt found for $applicationNo',
             requestId: reqId, persist: true);
         return StartAttemptResult(
-          StartAttemptOutcome.started,
-          attempt: AttemptModel(
-            applicationNo: applicationNo,
-            status: AttemptStatus.inProgress,
-            testId: testId,
-            attemptedAt: DateTime.now(),
-          ),
+          StartAttemptOutcome.resumable,
+          attempt: existing,
         );
+      }
+
+      // No attempt yet — claim the lock
+      await docRef.set({
+        'status': AttemptModel.statusToString(AttemptStatus.inProgress),
+        'attemptedAt': FieldValue.serverTimestamp(),
+        'testId': testId,
       });
 
-      return result;
+      _log.info(_tag, 'Attempt lock claimed for $applicationNo',
+          requestId: reqId, persist: true);
+      return StartAttemptResult(
+        StartAttemptOutcome.started,
+        attempt: AttemptModel(
+          applicationNo: applicationNo,
+          status: AttemptStatus.inProgress,
+          testId: testId,
+          attemptedAt: DateTime.now(),
+        ),
+      );
     } catch (e, st) {
       _log.error(_tag, 'Failed to claim attempt lock for $applicationNo',
           error: e, stackTrace: st, requestId: reqId);
