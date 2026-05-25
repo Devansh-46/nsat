@@ -10,10 +10,6 @@ import {
 // OTP validity: 10 minutes
 const OTP_EXPIRY_MS = 10 * 60 * 1000;
 
-// FIXES Issue #32: Use channel-specific sub-documents to prevent
-// cross-channel OTP overwriting and attempt counter bypass.
-// otps/{applicationNo}/channels/email
-// otps/{applicationNo}/channels/whatsapp
 const OTP_COLLECTION = "otps";
 const CHANNELS_SUBCOLLECTION = "channels";
 
@@ -33,13 +29,6 @@ function getChannelRef(db: admin.firestore.Firestore, applicationNo: string, cha
     .doc(channel);
 }
 
-/**
- * sendOtp — generates a 6-digit code, hashes it into
- * `otps/{applicationNo}/channels/email`, and emails the plain code.
- *
- * FIXES Issue #15: Added cooldown check — refuses resend if last send
- * was less than 60 seconds ago.
- */
 export const sendOtp = onCall(
   { region: "asia-south1" },
   async (request) => {
@@ -57,7 +46,6 @@ export const sendOtp = onCall(
 
     const channelRef = getChannelRef(db, applicationNo, "email");
 
-    // Cooldown check: prevent spam resends (60 second cooldown)
     const existing = await channelRef.get();
     if (existing.exists) {
       const data = existing.data()!;
@@ -75,7 +63,6 @@ export const sendOtp = onCall(
     const hashed = hashOtp(code);
     const expiresAt = Date.now() + OTP_EXPIRY_MS;
 
-    // Write hashed OTP to channel-specific doc
     await channelRef.set({
       hashedCode: hashed,
       expiresAt,
@@ -85,7 +72,6 @@ export const sendOtp = onCall(
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
-    // Send email
     try {
       const transporter = nodemailer.createTransport({
         host: SMTP_HOST,
@@ -124,20 +110,12 @@ export const sendOtp = onCall(
   }
 );
 
-/**
- * verifyOtp — checks the submitted code against the hashed one.
- * Now requires a `channel` parameter to look up the correct sub-doc.
- *
- * FIXES Issue #16: Each channel (email/whatsapp) has its own OTP doc,
- * so verifying email code won't consume/fail due to whatsapp OTP overwrite.
- */
 export const verifyOtp = onCall(
   { region: "asia-south1" },
   async (request) => {
     const db = admin.firestore();
     const applicationNo = request.data?.application_no as string | undefined;
     const code = request.data?.code as string | undefined;
-    // REQUIRED now: caller must specify which channel they're verifying
     const channel = (request.data?.channel as string | undefined) ?? "email";
 
     if (!applicationNo || !code) {
@@ -157,7 +135,6 @@ export const verifyOtp = onCall(
     const data = doc.data()!;
     const attempts = (data.attempts ?? 0) as number;
 
-    // Too many attempts (per channel)
     if (attempts >= 5) {
       await channelRef.delete();
       throw new HttpsError(
@@ -166,7 +143,6 @@ export const verifyOtp = onCall(
       );
     }
 
-    // Expired
     if (Date.now() > (data.expiresAt as number)) {
       await channelRef.delete();
       throw new HttpsError(
@@ -175,7 +151,6 @@ export const verifyOtp = onCall(
       );
     }
 
-    // Check
     const hashed = hashOtp(code);
     if (hashed !== data.hashedCode) {
       await channelRef.update({
@@ -188,21 +163,12 @@ export const verifyOtp = onCall(
       );
     }
 
-    // Valid — delete the channel OTP doc
     await channelRef.delete();
     console.log(`OTP verified for ${applicationNo} (channel: ${channel})`);
     return { verified: true };
   }
 );
 
-/**
- * sendWhatsAppOtp — Twilio WhatsApp OTP delivery.
- *
- * FIXES:
- * - Issue #16: Writes to channel-specific doc so email OTP is never overwritten.
- * - Issue #15: 60-second cooldown check.
- * - Issue #36: AbortController timeout on NPF/Twilio API calls.
- */
 export const sendWhatsAppOtp = onCall(
   { region: "asia-south1" },
   async (request) => {
@@ -227,7 +193,6 @@ export const sendWhatsAppOtp = onCall(
 
     const channelRef = getChannelRef(db, applicationNo, "whatsapp");
 
-    // Cooldown check
     const existing = await channelRef.get();
     if (existing.exists) {
       const data = existing.data()!;
@@ -245,7 +210,6 @@ export const sendWhatsAppOtp = onCall(
     const hashed = hashOtp(code);
     const expiresAt = Date.now() + OTP_EXPIRY_MS;
 
-    // Write to whatsapp-specific channel doc — email OTP is untouched
     await channelRef.set({
       hashedCode: hashed,
       expiresAt,
@@ -269,9 +233,8 @@ export const sendWhatsAppOtp = onCall(
         `— Noida International University`,
     });
 
-    // FIXES Issue #36: Add timeout via AbortController
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10_000); // 10s timeout
+    const timeout = setTimeout(() => controller.abort(), 10_000);
 
     try {
       const response = await fetch(twilioUrl, {

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:firebase_auth/firebase_auth.dart' as fb_auth;
+import 'package:flutter/foundation.dart';
 
 import '../../theme/app_colors.dart';
 import '../../theme/app_theme.dart';
@@ -271,7 +273,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
 
   // ── Both verified → proceed ──
 
-  void _onFullyVerified() {
+  void _onFullyVerified() async {
     if (!mounted) return;
     final auth = context.read<app.AuthProvider>();
     final student = auth.verifiedStudent;
@@ -279,6 +281,13 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
       AnalyticsService.instance
           .logOtpVerified(applicationNo: student.applicationNo);
     }
+    // Sign in anonymously so Firestore rules and Cloud Functions work
+    try {
+      await fb_auth.FirebaseAuth.instance.signInAnonymously();
+    } catch (e) {
+      debugPrint('Anonymous sign-in failed: $e');
+    }
+    if (!mounted) return;
     setState(() {
       _stage = _VerifyStage.done;
     });

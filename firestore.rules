@@ -23,25 +23,27 @@ service cloud.firestore {
     }
 
     // ── tests ────────────────────────────────────────────────────────
-    // Published tests readable without auth (OTP is the gate); admins can write
+    // Published tests readable by authenticated students; admins can write
     match /tests/{testId} {
-      allow read: if true;
+      allow read: if isAuthenticated();
       allow write: if isAdmin();
     }
 
     // ── questions ────────────────────────────────────────────────────
-    // Readable without auth (OTP is the gate); scoring is server-side.
+    // Readable by authenticated students; scoring is server-side.
     match /questions/{questionId} {
-      allow read: if true;
+      allow read: if isAuthenticated();
       allow write: if isAdmin();
     }
 
     // ── attempts ─────────────────────────────────────────────────────
-    // Read/Create: allowed without auth (OTP + applicationNo is the gate).
-    // Update: admin only (Cloud Function marks completed).
+    // Read: authenticated users (anonymous sign-in after OTP is the gate)
+    // Create: authenticated, must match own applicationNo from doc ID
+    // Update: admin only (Cloud Function marks completed)
     match /attempts/{applicationNo} {
-      allow read: if true;
-      allow create: if request.resource.data.status == 'in_progress';
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated()
+                    && request.resource.data.status == 'in_progress';
       allow update: if isAdmin();
       allow delete: if false;
     }
@@ -79,10 +81,10 @@ service cloud.firestore {
     }
 
     // ── app_logs ─────────────────────────────────────────────────────
-    // Write from app (no auth needed — OTP is the gate); read by admins only
+    // Write from authenticated app; read by admins only
     match /app_logs/{logId} {
       allow read: if isAdmin();
-      allow create: if true;
+      allow create: if isAuthenticated();
       allow update: if false;
       allow delete: if false;
     }
