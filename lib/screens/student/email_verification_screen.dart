@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb_auth;
-import 'package:flutter/foundation.dart';
 
 import '../../theme/app_colors.dart';
 import '../../theme/app_theme.dart';
@@ -45,7 +44,6 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
   String? _maskedEmail;
   String? _maskedPhone;
   String? _fullPhone;
-
 
   @override
   void initState() {
@@ -183,11 +181,11 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
     final auth = context.read<app.AuthProvider>();
     final student = auth.verifiedStudent;
     if (student == null) {
-       setState(() {
-         _busy = false;
-         _error = 'Session expired. Please start over.';
-       });
-       return;
+      setState(() {
+        _busy = false;
+        _error = 'Session expired. Please start over.';
+      });
+      return;
     }
 
     try {
