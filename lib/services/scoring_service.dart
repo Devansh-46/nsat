@@ -56,7 +56,6 @@ class ScoringService {
       final callable = FirebaseFunctions.instanceFor(region: 'asia-south1')
           .httpsCallable('scoreSubmission');
 
-      // Convert int keys to string keys, preserve answer type (int or String)
       final stringAnswers = <String, dynamic>{};
       answers.forEach((k, v) => stringAnswers[k.toString()] = v);
 
@@ -68,14 +67,17 @@ class ScoringService {
       });
 
       final data = result.data;
+      if (data == null) {
+        throw Exception('scoreSubmission returned null data');
+      }
       final scoreResult = ScoreResult(
         resultId: data['resultId'] as String?,
-        correctCount: (data['correctCount'] ?? 0) as int,
-        wrongCount: (data['wrongCount'] ?? 0) as int,
-        skippedCount: (data['skippedCount'] ?? 0) as int,
-        netScore: (data['netScore'] ?? 0.0).toDouble(),
-        maxScore: (data['maxScore'] ?? 0.0).toDouble(),
-        showResults: data['showResults'] ?? true,
+        correctCount: (data['correctCount'] ?? 0).toInt(),
+        wrongCount: (data['wrongCount'] ?? 0).toInt(),
+        skippedCount: (data['skippedCount'] ?? 0).toInt(),
+        netScore: (data['netScore'] ?? 0).toDouble(),
+        maxScore: (data['maxScore'] ?? 0).toDouble(),
+        showResults: data['showResults'] == true,
       );
 
       _log.info(_tag,
@@ -84,8 +86,12 @@ class ScoringService {
           requestId: reqId, persist: true);
 
       return scoreResult;
+    } on FirebaseFunctionsException catch (e) {
+      _log.error(_tag, 'scoreSubmission Cloud Function error for $applicationNo: ${e.code} ${e.message}',
+          error: e, requestId: reqId);
+      rethrow;
     } catch (e, st) {
-      _log.error(_tag, 'scoreSubmission Cloud Function failed for $applicationNo',
+      _log.error(_tag, 'scoreSubmission failed for $applicationNo: $e',
           error: e, stackTrace: st, requestId: reqId);
       rethrow;
     }

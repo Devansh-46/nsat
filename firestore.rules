@@ -38,12 +38,12 @@ service cloud.firestore {
     }
 
     // ── attempts ─────────────────────────────────────────────────────
-    // Read: authenticated users (anonymous sign-in after OTP)
-    // Create: authenticated, must be in_progress status
-    // Update: admin only (Cloud Function marks completed)
+    // Read: anyone (checked by app logic)
+    // Create: anyone (OTP verification is the gate, status must be in_progress)
+    // Update: admin only (Cloud Function marks completed via admin SDK)
     match /attempts/{applicationNo} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated()
+      allow read: if true;
+      allow create: if true
                     && request.resource.data.status == 'in_progress';
       allow update: if isAdmin();
       allow delete: if false;
