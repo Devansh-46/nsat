@@ -158,6 +158,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 if (auth.isSuperAdmin) ...[
                   const SizedBox(height: 10),
                   _ActionCard(
+                    icon: Icons.tune_outlined,
+                    tint: AppColors.goldTint,
+                    iconColor: const Color(0xFF8A6516),
+                    title: 'Manage tests',
+                    subtitle: 'Toggle publish, view & edit results',
+                    onTap: () => Navigator.pushNamed(
+                        context, AppRoutes.testSettings),
+                  ),
+                  const SizedBox(height: 10),
+                  _ActionCard(
                     icon: Icons.bug_report_outlined,
                     tint: Colors.red.withValues(alpha: 0.1),
                     iconColor: Colors.red,

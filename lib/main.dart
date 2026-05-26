@@ -30,6 +30,7 @@ import 'screens/admin/admin_logs_screen.dart';
 import 'screens/admin/manage_admins_screen.dart';
 import 'screens/admin/course_access_screen.dart';
 import 'screens/admin/change_password_screen.dart';
+import 'screens/admin/test_settings_screen.dart';
 import 'widgets/splash_screen.dart';
 
 final _log = AppLogger.instance;
@@ -104,6 +105,7 @@ class NiuSatApp extends StatelessWidget {
         AppRoutes.manageAdmins: (_) => const ManageAdminsScreen(),
         AppRoutes.courseAccess: (_) => const CourseAccessScreen(),
         AppRoutes.changePassword: (_) => const ChangePasswordScreen(),
+        AppRoutes.testSettings: (_) => const TestSettingsScreen(),
       },
     );
   }

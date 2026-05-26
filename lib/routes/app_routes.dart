@@ -16,4 +16,5 @@ class AppRoutes {
   static const String courseAccess = '/course-access';
   static const String changePassword = '/change-password';
   static const String emailVerification = '/email-verification';
+  static const String testSettings = '/test-settings';
 }

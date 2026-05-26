@@ -17,6 +17,14 @@ class TestModel {
   /// Defaults to `true` for backward compatibility.
   final bool showResults;
 
+  /// Whether admins can edit results for this test from the dashboard.
+  /// Defaults to `false` for backward compatibility.
+  final bool allowEditResults;
+
+  /// Whether admins can view results for this test from the dashboard.
+  /// Defaults to `true` for backward compatibility.
+  final bool allowViewResults;
+
   TestModel({
     required this.id,
     required this.title,
@@ -28,6 +36,8 @@ class TestModel {
     required this.negativeMarksPerWrong,
     required this.isPublished,
     this.showResults = true,
+    this.allowEditResults = false,
+    this.allowViewResults = true,
   });
 
   double get effectiveNegativeMarks =>
@@ -46,6 +56,8 @@ class TestModel {
       negativeMarksPerWrong: (data['negativeMarksPerWrong'] ?? 0.0).toDouble(),
       isPublished: data['isPublished'] ?? false,
       showResults: data['showResults'] ?? true,
+      allowEditResults: data['allowEditResults'] ?? false,
+      allowViewResults: data['allowViewResults'] ?? true,
     );
   }
 
@@ -59,5 +71,7 @@ class TestModel {
         'negativeMarksPerWrong': negativeMarksPerWrong,
         'isPublished': isPublished,
         'showResults': showResults,
+        'allowEditResults': allowEditResults,
+        'allowViewResults': allowViewResults,
       };
 }
