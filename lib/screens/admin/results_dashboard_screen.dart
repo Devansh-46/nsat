@@ -5,9 +5,11 @@ import '../../theme/app_theme.dart';
 import '../../providers/admin_provider.dart';
 import '../../services/results_exporter.dart';
 import '../../widgets/glass_card.dart';
+import 'result_detail_screen.dart';
 
 /// Admin results dashboard — Verdant Daylight reskin.
 /// Real Firestore results via AdminProvider.
+/// Tap a row to open the full report card.
 class ResultsDashboardScreen extends StatefulWidget {
   const ResultsDashboardScreen({super.key});
 
@@ -223,6 +225,25 @@ class _ResultsDashboardScreenState extends State<ResultsDashboardScreen> {
                             const SizedBox(height: 14),
                           ],
 
+                          // Tap hint
+                          if (filtered.isNotEmpty) ...[
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.touch_app_outlined,
+                                      size: 13, color: AppColors.ink4),
+                                  const SizedBox(width: 5),
+                                  Text(
+                                    'Tap a row to view the full report card',
+                                    style: AppTheme.body(
+                                        size: 11.5, color: AppColors.ink4),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+
                           // Results list
                           if (filtered.isEmpty)
                             GlassCard(
@@ -249,11 +270,17 @@ class _ResultsDashboardScreenState extends State<ResultsDashboardScreen> {
                                       i < filtered.length;
                                       i++) ...[
                                     _ResultRow(
-                                      name: filtered[i].studentName,
-                                      niuId: filtered[i].applicationNo,
-                                      course: filtered[i].course,
-                                      net: filtered[i].netScore,
-                                      max: filtered[i].maxScore,
+                                      result: filtered[i],
+                                      onTap: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) =>
+                                                ResultDetailScreen(
+                                                    result: filtered[i]),
+                                          ),
+                                        );
+                                      },
                                     ),
                                     if (i < filtered.length - 1)
                                       Container(
@@ -301,62 +328,83 @@ class _MiniStat extends StatelessWidget {
 }
 
 class _ResultRow extends StatelessWidget {
-  final String name;
-  final String niuId;
-  final String course;
-  final double net;
-  final double max;
+  final dynamic result; // ResultModel
+  final VoidCallback onTap;
 
-  const _ResultRow({
-    required this.name,
-    required this.niuId,
-    required this.course,
-    required this.net,
-    required this.max,
-  });
+  const _ResultRow({required this.result, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name.isEmpty ? '(no name)' : name,
-                  style: AppTheme.body(
-                    size: 13.5,
-                    color: AppColors.ink,
-                    weight: FontWeight.w600,
+    final hasShortAnswers = (result.shortAnswerResponses as Map).isNotEmpty;
+
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    (result.studentName as String).isEmpty
+                        ? '(no name)'
+                        : result.studentName as String,
+                    style: AppTheme.body(
+                      size: 13.5,
+                      color: AppColors.ink,
+                      weight: FontWeight.w600,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  '$niuId  ·  ${course.toUpperCase()}',
-                  style: AppTheme.mono(size: 10.5, color: AppColors.ink4),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
+                  const SizedBox(height: 2),
+                  Row(
+                    children: [
+                      Text(
+                        '${result.applicationNo}  ·  ${(result.course as String).toUpperCase()}',
+                        style: AppTheme.mono(size: 10.5, color: AppColors.ink4),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (hasShortAnswers) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 5, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.forestTint,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            'SA',
+                            style: AppTheme.mono(
+                                size: 9, color: AppColors.forest),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(width: 10),
-          Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: AppColors.forestTint,
-              borderRadius: BorderRadius.circular(8),
+            const SizedBox(width: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppColors.forestTint,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                '${(result.netScore as double).toStringAsFixed(2)} / ${(result.maxScore as double).toStringAsFixed(0)}',
+                style: AppTheme.mono(size: 11, color: AppColors.forest),
+              ),
             ),
-            child: Text(
-              '${net.toStringAsFixed(2)} / ${max.toStringAsFixed(0)}',
-              style: AppTheme.mono(size: 11, color: AppColors.forest),
-            ),
-          ),
-        ],
+            const SizedBox(width: 8),
+            const Icon(Icons.chevron_right, size: 16, color: AppColors.ink4),
+          ],
+        ),
       ),
     );
   }
