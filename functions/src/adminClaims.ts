@@ -3,48 +3,29 @@ import * as nodemailer from "nodemailer";
 
 import { onCall, HttpsError, CallableRequest } from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
-import { SUPERADMIN_EMAILS, ALLOWED_ADMIN_EMAILS } from "./admin_claims_config";
+import { ROOT_SUPERADMIN_EMAIL } from "./admin_claims_config";
 import { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, OTP_FROM_NAME } from "./config";
 
 const db = admin.firestore();
 
-/**
- * Checks if the caller is authorized to manage admins.
- * Only superadmins (from .env) can add/remove admins.
- */
+const ADMINS_COLLECTION = "admins";
+const SUPERADMINS_COLLECTION = "superadmins";
+
 function assertSuperadmin(request: CallableRequest): void {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "Authentication required");
   }
   if (request.auth.token.superAdmin !== true) {
-    throw new HttpsError(
-      "permission-denied",
-      "Super admin access required"
-    );
+    throw new HttpsError("permission-denied", "Super admin access required");
   }
 }
 
-/**
- * Checks if an email is in the superadmin allowlist from .env.
- */
-function isSuperadminEmail(email: string): boolean {
-  return SUPERADMIN_EMAILS.includes(email) || ALLOWED_ADMIN_EMAILS.includes(email);
+async function isSuperadminEmail(email: string): Promise<boolean> {
+  if (email === ROOT_SUPERADMIN_EMAIL) return true;
+  const doc = await db.collection(SUPERADMINS_COLLECTION).doc(email).get();
+  return doc.exists;
 }
 
-/**
- * Firestore collection for regular admins.
- * Document ID = email (lowercase). Fields: { email, addedBy, addedAt }.
- */
-const ADMINS_COLLECTION = "admins";
-
-/**
- * setAdminClaim — grants admin access to a user.
- *
- * If the email is in the .env superadmin allowlist, they get { admin: true, superAdmin: true }.
- * Otherwise, the email is added to the Firestore `admins` collection and they get { admin: true }.
- *
- * Only existing superadmins can call this.
- */
 export const setAdminClaim = onCall(
   { region: "asia-south1" },
   async (request) => {
@@ -56,14 +37,12 @@ export const setAdminClaim = onCall(
     }
 
     try {
-      // Try to get existing user, or create a new one
       let user: admin.auth.UserRecord;
       let tempPassword: string | null = null;
       try {
         user = await admin.auth().getUserByEmail(email);
       } catch (_) {
-        // User doesn't exist — create them with a short temp password
-        tempPassword = crypto.randomBytes(4).toString("hex"); // 8 chars
+        tempPassword = crypto.randomBytes(4).toString("hex");
         user = await admin.auth().createUser({
           email,
           password: tempPassword,
@@ -73,14 +52,15 @@ export const setAdminClaim = onCall(
         console.log(`Created new Auth user: ${email} (UID: ${user.uid})`);
       }
 
-      const role = isSuperadminEmail(email) ? "superAdmin" : "admin";
+      const isSuper = await isSuperadminEmail(email);
+      const role = isSuper ? "superAdmin" : "admin";
 
-      if (role === "superAdmin") {
+      if (isSuper) {
         await admin.auth().setCustomUserClaims(user.uid, {
           admin: true,
           superAdmin: true,
         });
-        console.log(`Superadmin claim set for ${email} (via .env allowlist)`);
+        console.log(`Superadmin claim set for ${email}`);
       } else {
         const adminDoc = {
           email,
@@ -98,7 +78,6 @@ export const setAdminClaim = onCall(
         console.log(`Admin claim set for ${email} (via Firestore)`);
       }
 
-      // Send credentials email if user was just created
       if (tempPassword) {
         try {
           const transporter = nodemailer.createTransport({
@@ -144,7 +123,6 @@ export const setAdminClaim = onCall(
 
           console.log(`Credentials email sent to ${email}`);
         } catch (smtpError) {
-          // Don't fail the whole operation if email fails — the user is still created
           console.error(`Failed to send credentials email to ${email}:`, smtpError);
         }
       }
@@ -157,10 +135,72 @@ export const setAdminClaim = onCall(
   }
 );
 
-/**
- * removeAdminClaim — revokes admin access from a user.
- * Only superadmins can call this.
- */
+export const promoteSuperadmin = onCall(
+  { region: "asia-south1" },
+  async (request) => {
+    assertSuperadmin(request);
+
+    const email = (request.data?.email as string | undefined)?.trim().toLowerCase();
+    if (!email) {
+      throw new HttpsError("invalid-argument", "email is required");
+    }
+    if (email === ROOT_SUPERADMIN_EMAIL) {
+      throw new HttpsError("permission-denied", "Root superadmin cannot be modified");
+    }
+
+    const adminDoc = await db.collection(ADMINS_COLLECTION).doc(email).get();
+    if (!adminDoc.exists) {
+      throw new HttpsError("failed-precondition", "User must be an admin first");
+    }
+
+    const user = await admin.auth().getUserByEmail(email);
+
+    await db.collection(SUPERADMINS_COLLECTION).doc(email).set({
+      email,
+      addedBy: request.auth!.token.email ?? request.auth!.uid,
+      addedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    await admin.auth().setCustomUserClaims(user.uid, {
+      admin: true,
+      superAdmin: true,
+    });
+
+    console.log(`Promoted ${email} to superadmin by ${request.auth!.token.email}`);
+    return { success: true };
+  }
+);
+
+export const demoteSuperadmin = onCall(
+  { region: "asia-south1" },
+  async (request) => {
+    assertSuperadmin(request);
+
+    const email = (request.data?.email as string | undefined)?.trim().toLowerCase();
+    if (!email) {
+      throw new HttpsError("invalid-argument", "email is required");
+    }
+    if (email === ROOT_SUPERADMIN_EMAIL) {
+      throw new HttpsError("permission-denied", "Cannot demote the root superadmin");
+    }
+    if (email === (request.auth!.token.email as string | undefined)?.toLowerCase()) {
+      throw new HttpsError("permission-denied", "Cannot demote yourself");
+    }
+
+    const user = await admin.auth().getUserByEmail(email);
+
+    await db.collection(SUPERADMINS_COLLECTION).doc(email).delete();
+
+    await admin.auth().setCustomUserClaims(user.uid, {
+      admin: true,
+      superAdmin: false,
+    });
+
+    console.log(`Demoted ${email} from superadmin by ${request.auth!.token.email}`);
+    return { success: true };
+  }
+);
+
 export const removeAdminClaim = onCall(
   { region: "asia-south1" },
   async (request) => {
@@ -174,14 +214,13 @@ export const removeAdminClaim = onCall(
     try {
       const user = await admin.auth().getUserByEmail(email);
 
-      // Remove admin claim
       await admin.auth().setCustomUserClaims(user.uid, {
         admin: false,
         superAdmin: false,
       });
 
-      // Remove from Firestore admins collection if present
       await db.collection(ADMINS_COLLECTION).doc(email).delete();
+      await db.collection(SUPERADMINS_COLLECTION).doc(email).delete();
 
       console.log(`Admin claim removed for ${email}`);
       return { success: true, uid: user.uid };
@@ -195,11 +234,6 @@ export const removeAdminClaim = onCall(
   }
 );
 
-
-/**
- * clearForcePasswordChange — called after the user changes their password.
- * Clears the flag in Firestore so next login allows direct dashboard access.
- */
 export const clearForcePasswordChange = onCall(
   { region: "asia-south1" },
   async (request) => {
@@ -223,11 +257,6 @@ export const clearForcePasswordChange = onCall(
   }
 );
 
-/**
- * updateAdminCourses — updates the allowed courses for a regular admin.
- * Only superadmins can call this.
- * Pass allowedCourses: ["*"] to grant access to all courses.
- */
 export const updateAdminCourses = onCall(
   { region: "asia-south1" },
   async (request) => {
@@ -243,8 +272,7 @@ export const updateAdminCourses = onCall(
       throw new HttpsError("invalid-argument", "allowedCourses array is required");
     }
 
-    // Don't allow modifying superadmins via this endpoint
-    if (isSuperadminEmail(email)) {
+    if (await isSuperadminEmail(email)) {
       throw new HttpsError("permission-denied", "Cannot modify superadmin course access");
     }
 
@@ -266,11 +294,6 @@ export const updateAdminCourses = onCall(
   }
 );
 
-/**
- * listAdmins — returns all regular admins from Firestore.
- * Also returns superadmins from .env (marked as role: "superAdmin").
- * Each admin includes their allowedCourses array.
- */
 export const listAdmins = onCall(
   { region: "asia-south1" },
   async (request) => {
@@ -287,20 +310,36 @@ export const listAdmins = onCall(
       forcePasswordChange?: boolean;
     }> = [];
 
-    // Superadmins from .env — they get ["*"] (all courses)
-    for (const email of [...SUPERADMIN_EMAILS, ...ALLOWED_ADMIN_EMAILS]) {
-      admins.push({ email, role: "superAdmin", addedBy: "env", allowedCourses: ["*"] });
+    if (ROOT_SUPERADMIN_EMAIL) {
+      admins.push({
+        email: ROOT_SUPERADMIN_EMAIL,
+        role: "superAdmin",
+        addedBy: "root",
+        allowedCourses: ["*"],
+      });
     }
 
-    // Regular admins from Firestore
+    const superSnap = await db.collection(SUPERADMINS_COLLECTION).get();
+    for (const doc of superSnap.docs) {
+      if (admins.some((a) => a.email === doc.id)) continue;
+      const data = doc.data();
+      admins.push({
+        email: doc.id,
+        role: "superAdmin",
+        addedBy: data.addedBy ?? "unknown",
+        addedAt: data.addedAt?.toDate?.()?.toISOString() ?? "",
+        allowedCourses: ["*"],
+      });
+    }
+
     const snapshot = await db
       .collection(ADMINS_COLLECTION)
       .orderBy("addedAt", "desc")
       .get();
 
     for (const doc of snapshot.docs) {
-      const data = doc.data();
       if (admins.some((a) => a.email === doc.id)) continue;
+      const data = doc.data();
       admins.push({
         email: doc.id,
         role: "admin",

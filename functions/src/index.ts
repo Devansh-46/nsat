@@ -7,4 +7,4 @@ export { fetchLeadDetails } from "./fetchLeadDetails";
 export { sendOtp, verifyOtp, sendWhatsAppOtp } from "./otp";
 export { scoreSubmission } from "./scoreSubmission";
 export { sendNotification } from "./sendNotification";
-export { setAdminClaim, removeAdminClaim, listAdmins, clearForcePasswordChange, updateAdminCourses } from "./adminClaims";
+export { setAdminClaim, removeAdminClaim, listAdmins, clearForcePasswordChange, updateAdminCourses, promoteSuperadmin, demoteSuperadmin } from "./adminClaims";

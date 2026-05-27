@@ -139,6 +139,40 @@ class AdminProvider extends ChangeNotifier {
     }
   }
 
+  Future<bool> promoteSuperadmin(String email) async {
+    _setLoading(true);
+    try {
+      await _adminMgmtService.promoteSuperadmin(email);
+      _successMessage = 'Promoted $email to super admin';
+      _log.info(_tag, 'Promoted to superadmin: $email', persist: true);
+      await fetchAdmins();
+      _setLoading(false);
+      return true;
+    } catch (e, st) {
+      _log.error(_tag, 'Failed to promote superadmin: $email', error: e, stackTrace: st);
+      _error = e.toString().replaceFirst('Exception: ', '');
+      _setLoading(false);
+      return false;
+    }
+  }
+
+  Future<bool> demoteSuperadmin(String email) async {
+    _setLoading(true);
+    try {
+      await _adminMgmtService.demoteSuperadmin(email);
+      _successMessage = 'Demoted $email to admin';
+      _log.info(_tag, 'Demoted from superadmin: $email', persist: true);
+      await fetchAdmins();
+      _setLoading(false);
+      return true;
+    } catch (e, st) {
+      _log.error(_tag, 'Failed to demote superadmin: $email', error: e, stackTrace: st);
+      _error = e.toString().replaceFirst('Exception: ', '');
+      _setLoading(false);
+      return false;
+    }
+  }
+
   // --- Notifications ---
 
   Future<bool> sendNotification(

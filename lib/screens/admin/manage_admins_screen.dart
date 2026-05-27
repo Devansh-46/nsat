@@ -44,7 +44,6 @@ class _ManageAdminsScreenState extends State<ManageAdminsScreen> {
     if (ok && mounted) {
       _emailController.clear();
       setState(() => _emailValid = false);
-      // Show dialog informing about email
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: AppColors.forest,
@@ -86,6 +85,62 @@ class _ManageAdminsScreenState extends State<ManageAdminsScreen> {
     }
   }
 
+  Future<void> _promoteSuperadmin(String email) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.ivory,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: Text('Promote to super admin?', style: AppTheme.displaySm(size: 18)),
+        content: Text(
+          '$email will gain full system access — manage admins, tests, logs, and all courses.',
+          style: AppTheme.body(size: 13.5, color: AppColors.ink3),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('Cancel', style: AppTheme.body(size: 14, color: AppColors.ink4)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text('Promote', style: AppTheme.body(size: 14, color: AppColors.forest, weight: FontWeight.w600)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && mounted) {
+      await context.read<AdminProvider>().promoteSuperadmin(email);
+    }
+  }
+
+  Future<void> _demoteSuperadmin(String email) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.ivory,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: Text('Demote to admin?', style: AppTheme.displaySm(size: 18)),
+        content: Text(
+          '$email will lose super admin privileges. They will remain a regular admin with limited course access.',
+          style: AppTheme.body(size: 13.5, color: AppColors.ink3),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('Cancel', style: AppTheme.body(size: 14, color: AppColors.ink4)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text('Demote', style: AppTheme.body(size: 14, color: AppColors.clay, weight: FontWeight.w600)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && mounted) {
+      await context.read<AdminProvider>().demoteSuperadmin(email);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final admin = context.watch<AdminProvider>();
@@ -124,7 +179,7 @@ class _ManageAdminsScreenState extends State<ManageAdminsScreen> {
               ),
               const SizedBox(height: 6),
               Text(
-                'Grant or revoke admin access. Emails in the superadmin allowlist get full control.',
+                'Grant or revoke admin access. Super admins can manage other admins and access everything.',
                 style: AppTheme.body(size: 12.5, color: AppColors.ink4),
               ),
               const SizedBox(height: 24),
@@ -198,8 +253,7 @@ class _ManageAdminsScreenState extends State<ManageAdminsScreen> {
                 body: 'When you add a new admin, an email with their login URL, email, '
                     'and temporary password is sent to them automatically. '
                     'They can sign in immediately and change their password. '
-                    'Emails in SUPERADMIN_EMAILS become super admins; others become '
-                    'regular admins with limited access.',
+                    'Use the shield button to promote admins to super admin.',
               ),
               const SizedBox(height: 24),
 
@@ -233,6 +287,7 @@ class _ManageAdminsScreenState extends State<ManageAdminsScreen> {
                   final role = a['role'] as String? ?? 'admin';
                   final isSuper = role == 'superAdmin';
                   final isSelf = email == currentEmail;
+                  final isRoot = (a['addedBy'] as String? ?? '') == 'root';
 
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 8),
@@ -277,13 +332,26 @@ class _ManageAdminsScreenState extends State<ManageAdminsScreen> {
                               ],
                             ),
                           ),
-                          if (!isSelf)
+                          if (!isSelf) ...[
+                            if (!isSuper)
+                              IconButton(
+                                onPressed: () => _promoteSuperadmin(email),
+                                icon: const Icon(Icons.shield, size: 18, color: AppColors.forest),
+                                tooltip: 'Promote to super admin',
+                              ),
+                            if (isSuper && !isRoot)
+                              IconButton(
+                                onPressed: () => _demoteSuperadmin(email),
+                                icon: const Icon(Icons.shield_outlined, size: 18, color: AppColors.ink4),
+                                tooltip: 'Demote to admin',
+                              ),
                             IconButton(
                               onPressed: () => _removeAdmin(email),
                               icon: const Icon(Icons.remove_circle_outline,
                                   size: 20, color: AppColors.clay),
                               tooltip: 'Remove admin',
-                            )
+                            ),
+                          ]
                           else
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),

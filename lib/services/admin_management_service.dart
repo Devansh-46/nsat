@@ -74,6 +74,46 @@ class AdminManagementService {
     }
   }
 
+  /// Promote an existing admin to superadmin.
+  Future<void> promoteSuperadmin(String email) async {
+    final reqId = AppLogger.generateRequestId();
+    _log.info(_tag, 'Promoting to superadmin: $email', requestId: reqId, persist: true);
+
+    try {
+      final callable = FirebaseFunctions.instanceFor(region: 'asia-south1')
+          .httpsCallable('promoteSuperadmin');
+      await callable.call({'email': email});
+      _log.info(_tag, 'Promoted to superadmin: $email', requestId: reqId, persist: true);
+    } on FirebaseFunctionsException catch (e) {
+      _log.error(_tag, 'Failed to promote superadmin: $email — ${e.code}: ${e.message}',
+          error: e, requestId: reqId);
+      throw Exception(_mapCfError(e));
+    } catch (e, st) {
+      _log.error(_tag, 'Failed to promote superadmin: $email', error: e, stackTrace: st, requestId: reqId);
+      throw Exception('Failed to promote to superadmin. Please try again.');
+    }
+  }
+
+  /// Demote a superadmin back to regular admin.
+  Future<void> demoteSuperadmin(String email) async {
+    final reqId = AppLogger.generateRequestId();
+    _log.info(_tag, 'Demoting from superadmin: $email', requestId: reqId, persist: true);
+
+    try {
+      final callable = FirebaseFunctions.instanceFor(region: 'asia-south1')
+          .httpsCallable('demoteSuperadmin');
+      await callable.call({'email': email});
+      _log.info(_tag, 'Demoted from superadmin: $email', requestId: reqId, persist: true);
+    } on FirebaseFunctionsException catch (e) {
+      _log.error(_tag, 'Failed to demote superadmin: $email — ${e.code}: ${e.message}',
+          error: e, requestId: reqId);
+      throw Exception(_mapCfError(e));
+    } catch (e, st) {
+      _log.error(_tag, 'Failed to demote superadmin: $email', error: e, stackTrace: st, requestId: reqId);
+      throw Exception('Failed to demote from superadmin. Please try again.');
+    }
+  }
+
   /// Update the allowed courses for an admin.
   Future<void> updateAdminCourses(String email, List<String> allowedCourses) async {
     final reqId = AppLogger.generateRequestId();
