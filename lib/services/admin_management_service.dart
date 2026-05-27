@@ -17,7 +17,7 @@ class AdminManagementService {
       final callable = FirebaseFunctions.instanceFor(region: 'asia-south1')
           .httpsCallable('setAdminClaim');
       final result = await callable.call({'email': email});
-      final data = result.data as Map<String, dynamic>;
+      final data = Map<String, dynamic>.from(result.data as Map);
       final role = data['role'] as String? ?? 'admin';
       _log.info(_tag, 'Admin added: $email (role: $role)', requestId: reqId, persist: true);
       return role;
@@ -60,8 +60,9 @@ class AdminManagementService {
       final callable = FirebaseFunctions.instanceFor(region: 'asia-south1')
           .httpsCallable('listAdmins');
       final result = await callable.call();
-      final data = result.data as Map<String, dynamic>;
-      final admins = (data['admins'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+      final data = Map<String, dynamic>.from(result.data as Map);
+      final adminsRaw = data['admins'] as List?;
+      final admins = adminsRaw?.map((e) => Map<String, dynamic>.from(e as Map)).toList() ?? [];
       _log.info(_tag, 'Listed ${admins.length} admins', requestId: reqId);
       return admins;
     } on FirebaseFunctionsException catch (e) {
