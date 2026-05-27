@@ -101,6 +101,8 @@ class AuthService {
     await prefs.setBool('feePaid', user.feePaid);
     await prefs.setDouble('feeAmount', user.feeAmount);
     await prefs.setBool('hasAttempted', user.hasAttempted);
+    await prefs.setBool('isSuperAdmin', user.isSuperAdmin);
+    await prefs.setBool('forcePasswordChange', user.forcePasswordChange);
   }
 
   Future<UserModel?> getSavedSession() async {
@@ -121,6 +123,8 @@ class AuthService {
         feePaid: prefs.getBool('feePaid') ?? false,
         feeAmount: prefs.getDouble('feeAmount') ?? 1100.0,
         hasAttempted: prefs.getBool('hasAttempted') ?? false,
+        isSuperAdmin: prefs.getBool('isSuperAdmin') ?? false,
+        forcePasswordChange: prefs.getBool('forcePasswordChange') ?? false,
       );
     }
     _log.debug(_tag, 'No saved session found');
