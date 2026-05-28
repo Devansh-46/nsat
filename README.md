@@ -7,9 +7,9 @@
 [![Flutter](https://img.shields.io/badge/Flutter-3.41-02569B?logo=flutter&logoColor=white)](https://flutter.dev)
 [![Firebase](https://img.shields.io/badge/Firebase-Blaze-FFCA28?logo=firebase&logoColor=black)](https://firebase.google.com)
 [![Platform](https://img.shields.io/badge/Platform-Android%20%7C%20Web%20%7C%20iOS-blueviolet)]()
-[![Functions](https://img.shields.io/badge/Cloud%20Functions-14%20deployed-4285F4?logo=googlecloud&logoColor=white)]()
+[![Functions](https://img.shields.io/badge/Cloud%20Functions-16%20deployed-4285F4?logo=googlecloud&logoColor=white)]()
 [![NPF Sync](https://img.shields.io/badge/NPF%20Sync-Live-brightgreen)]()
-[![Status](https://img.shields.io/badge/Status-Pre--Launch-brightgreen)]()
+[![Status](https://img.shields.io/badge/Status-Live-brightgreen)]()
 
 </div>
 
@@ -65,6 +65,12 @@ Built once in **Flutter**, runs on **Android, Web, and iOS** from a single codeb
 | 📜 **Privacy Policy** | GDPR/Play Store compliant privacy policy hosted at `/privacy`. |
 | 🏫 **Course-Scoped Access** | Admins can be restricted to view results only for specific courses. |
 | 🔐 **Force Password Change** | Superadmins can force newly created admins to change password on first login. |
+| 🛡️ **Auto-Submit Safety Net** | Scheduled Cloud Function (`autoSubmitExpired`) runs every 2 minutes — catches students whose app crashed or lost network, scores their saved answers, and marks the attempt completed. Results flagged with `autoSubmitted: true` for admin review. |
+| 🔐 **Firebase App Check** | Protects all callable Cloud Functions from unauthorized access. Play Integrity (Android), App Attest (iOS), reCAPTCHA Enterprise (Web). Currently in monitoring mode (`consumeAppCheckToken`); hard enforcement post-launch. |
+| 🚫 **Screenshot Blocking** | Android `FLAG_SECURE` blocks screenshots and screen recording app-wide. Web disables right-click, Ctrl+C/A/S/U, F12, and PrintScreen. CSS `user-select: none` prevents text selection. |
+| 📋 **Clipboard Lockdown** | `NoPasteFormatter` rejects paste operations in all text fields (short-answer and NiuField). `enableInteractiveSelection: false` disables long-press copy/paste menus. `SelectionContainer.disabled` wraps the live test screen to prevent question text selection on web. |
+| 🖥️ **Device Fingerprinting** | Captures device metadata (brand, model, OS, screen size, browser agent) at test start. Stored in `device_fingerprints/{applicationNo}` for post-exam auditing. Supports Android, iOS, and Web via `device_info_plus`. |
+| 💾 **Answer Sync (Crash Recovery)** | Client periodically saves answers to `saved_answers/{applicationNo}` every 30 seconds. Combined with `autoSubmitExpired`, this recovers partial work from app crashes, network loss, or phone death. |
 
 ---
 
@@ -122,7 +128,7 @@ Built once in **Flutter**, runs on **Android, Web, and iOS** from a single codeb
 
 ## ☁️ Cloud Functions
 
-All 14 functions deployed in `asia-south1`.
+All 16 functions deployed in `asia-south1`.
 
 | Function | Type | Purpose |
 |---|---|---|
@@ -140,6 +146,8 @@ All 14 functions deployed in `asia-south1`.
 | `updateAdminCourses` | Callable | Assigns course-scoped result access to an admin |
 | `promoteSuperadmin` | Callable | Grants superadmin custom claim + adds to `superadmins` collection |
 | `demoteSuperadmin` | Callable | Removes superadmin claim + deletes from `superadmins` collection |
+| `autoSubmitExpired` | Scheduled (every 2 min) | Safety net — finds expired `in_progress` attempts, reads saved answers from `saved_answers/{applicationNo}`, scores them server-side, writes results with `autoSubmitted: true`, and flips attempt status to `completed`. Includes 2-minute grace period to avoid racing with client-side submit. |
+| (App Check enforcement) | Per-function config | `consumeAppCheckToken: true` added to all callable functions — logs App Check token presence without blocking. Switch to `enforceAppCheck: true` post-launch. |
 
 > **WhatsApp OTP** uses Twilio's WhatsApp API via a Cloud Function (`sendWhatsAppOtp`). Email and WhatsApp OTPs use channel-specific sub-documents (`otps/{applicationNo}/channels/{email|whatsapp}`) to prevent overwrite conflicts.
 
@@ -178,6 +186,8 @@ ROOT_SUPERADMIN_EMAIL=...       # Root superadmin (cannot be demoted)
 | `superadmins` | Superadmin registry | `email` | Cloud Function |
 | `app_logs` | Structured error/info logs from client app | Auto | Client app |
 | `_meta` | Sync metadata (last successful sync timestamp) | `npfSync` | Cloud Function |
+| `saved_answers` | Periodic answer backup during test (crash recovery) | `application_no` | Client |
+| `device_fingerprints` | Device metadata captured at test start (audit trail) | `application_no` | Client |
 
 ---
 
@@ -204,8 +214,9 @@ nsat/
 │   │   ├── auth_provider.dart       #   Student login flow + admin auth
 │   │   ├── test_provider.dart       #   Test lifecycle (load → answer → submit → score)
 │   │   └── admin_provider.dart      #   Dashboard stats, results, admin management
-│   ├── services/                    # 20 services
+│   ├── services/                    # 21 services
 │   │   ├── admin_management_service.dart  #   Cloud Function calls for admin CRUD
+│   │   ├── device_fingerprint_service.dart  #   Device metadata capture for audit
 │   │   ├── admin_service.dart             #   Dashboard stats + results fetch
 │   │   ├── analytics_service.dart         #   Firebase Analytics event logging
 │   │   ├── app_logger.dart                #   Centralized structured logger
@@ -225,6 +236,8 @@ nsat/
 │   │   ├── test_service.dart              #   Published test queries
 │   │   ├── web_download.dart              #   Web-specific CSV download (dart:js_interop)
 │   │   └── web_download_stub.dart         #   Stub for non-web platforms
+│   ├── utils/
+│   │   └── clipboard_guard.dart     #   NoPasteFormatter — blocks paste in text fields
 │   ├── screens/
 │   │   ├── student/                 # 7 student screens
 │   │   │   ├── role_selection_screen.dart      #   Entry point: Student or Admin
@@ -265,7 +278,7 @@ nsat/
 │       └── app_routes.dart          #   17 named routes
 ├── functions/                        # TypeScript Cloud Functions
 │   ├── src/
-│   │   ├── index.ts                 #   Exports all 14 functions
+│   │   ├── index.ts                 #   Exports all 16 functions
 │   │   ├── config.ts                #   NPF/SMTP/Twilio config + course-key mapping (273 lines)
 │   │   ├── admin_claims_config.ts   #   Root superadmin email
 │   │   ├── syncStudents.ts          #   Scheduled NPF sync with pagination
@@ -273,6 +286,7 @@ nsat/
 │   │   ├── otp.ts                   #   sendOtp + verifyOtp + sendWhatsAppOtp (channel-aware)
 │   │   ├── scoreSubmission.ts       #   Server-side scoring + result write
 │   │   ├── sendNotification.ts      #   FCM topic push
+│   │   ├── autoSubmitExpired.ts     #   Scheduled safety net for crashed/expired attempts
 │   │   └── adminClaims.ts           #   7 admin management functions
 │   ├── package.json
 │   └── tsconfig.json
@@ -289,7 +303,7 @@ nsat/
 │   ├── Data_model.md                #   Firestore data model specification
 │   └── implementation_plan.md       #   Structured logging implementation plan
 ├── firebase.json                    #   Hosting + Functions + Firestore config
-├── firestore.rules                  #   Security rules (11 collections)
+├── firestore.rules                  #   Security rules (14 collections)
 ├── seed_firestore.py                #   Question bank seeder (Excel → Firestore, MCQ + short-answer)
 ├── import_students_csv.py           #   Bulk CSV import for historical students (with dry-run)
 ├── setup_admin.py                   #   Bootstrap first Firebase admin user with custom claims
@@ -382,12 +396,16 @@ python setup_admin.py
 
 ## 🔒 Security
 
-- **Firestore rules** cover 11 collections with role-based access (authenticated, admin, superadmin, Cloud Function only)
+- **Firestore rules** cover 14 collections with role-based access (authenticated, admin, superadmin, Cloud Function only)
 - **OTP** codes are SHA-256 hashed before storage; 5-attempt limit + 10-min expiry
 - **Questions** collection: `correctAnswerIndex` stripped client-side; scoring is server-only
 - **Results** collection: write-locked to Cloud Functions; read-locked to admins
 - **Admin claims** managed through Cloud Functions with email allowlist + superadmin hierarchy
 - **Release build** uses ProGuard/R8 with minification and resource shrinking enabled
+- **App Check** monitors all callable Cloud Functions (Play Integrity / App Attest / reCAPTCHA Enterprise) — hard enforcement enabled post-launch
+- **FLAG_SECURE** (Android) blocks screenshots and screen recording app-wide
+- **Clipboard lockdown** — paste operations blocked in all text inputs; text selection disabled during live test
+- **Device fingerprinting** captures device metadata at test start for post-exam audit trail
 
 ---
 
@@ -431,8 +449,14 @@ python setup_admin.py
 ✅ Custom domain (nsat.niu.edu.in)<br>
 ✅ Animated splash screen<br>
 ✅ Code audit (45 issues tracked, critical ones resolved)<br>
-🔧 Google Play Store listing + AAB<br>
-🔧 End-to-end dry run
+✅ Auto-submit safety net (autoSubmitExpired — every 2 min)<br>
+✅ App Check (monitoring mode — Play Integrity / App Attest / reCAPTCHA)<br>
+✅ Screenshot blocking (Android FLAG_SECURE + web anti-copy)<br>
+✅ Clipboard lockdown (NoPasteFormatter + SelectionContainer.disabled)<br>
+✅ Device fingerprinting (device_info_plus → Firestore)<br>
+✅ Answer sync / crash recovery (30s periodic save)<br>
+✅ Google Play Store listing + release AAB submitted<br>
+✅ End-to-end dry run
 
 </td>
 <td valign="top">
@@ -443,7 +467,10 @@ python setup_admin.py
 📋 PDF scorecard download<br>
 📋 Network-loss retry on submit<br>
 📋 Admin grading UI for short-answer questions<br>
-🔧 App Check (protect Cloud Functions from abuse)<br>
+📋 App Check hard enforcement (switch from monitoring to blocking)<br>
+📋 Randomized question + option order per student<br>
+📋 Live proctor dashboard (real-time admin monitoring)<br>
+📋 Post-exam integrity report<br>
 📋 AI Proctoring — webcam-based monitoring, face detection, and suspicious behavior detection during tests
 
 </td>
@@ -460,12 +487,12 @@ python setup_admin.py
 | **Admin screens** — 10 (dashboard, results, logs, admin mgmt, test settings) | ✅ |
 | **Design system** — 12 widgets + 59 color tokens + 3 fonts | ✅ |
 | **Firebase Blaze + Firestore** (11 collections) | ✅ |
-| **Cloud Functions** — 14 deployed | ✅ |
+| **Cloud Functions** — 16 deployed | ✅ |
 | **NPF sync** — live, paginated | ✅ |
 | **Email OTP** — send + verify + 60s cooldown | ✅ |
 | **WhatsApp OTP** — Twilio + channel-specific storage | ✅ |
 | **Server-side scoring** | ✅ |
-| **Security rules** — tightened (11 collection rules) | ✅ |
+| **Security rules** — tightened (14 collection rules) | ✅ |
 | **Question bank** (MCQ + short-answer) | ✅ |
 | **FCM push notifications** | ✅ |
 | **Admin custom claims + superadmin hierarchy** | ✅ |
@@ -486,10 +513,18 @@ python setup_admin.py
 | **Web app** (Firebase Hosting) | ✅ |
 | **Custom domain** (nsat.niu.edu.in) | ✅ |
 | **Code audit** (45 issues, critical resolved) | ✅ |
-| Release AAB | 🔧 |
-| Google Play listing | 📋 |
+| **Auto-submit safety net** (autoSubmitExpired) | ✅ |
+| **App Check** — monitoring mode on all callable CFs | ✅ |
+| **Screenshot blocking** (Android FLAG_SECURE + web) | ✅ |
+| **Clipboard lockdown** (NoPasteFormatter + SelectionContainer) | ✅ |
+| **Device fingerprinting** (device_info_plus → Firestore) | ✅ |
+| **Answer sync** (crash recovery every 30s) | ✅ |
+| **Google Play listing + AAB** | ✅ |
+| **End-to-end dry run** | ✅ |
+| Release AAB | ✅ |
+| Google Play listing | ✅ |
 | iOS build | 🔧 |
-| App Check (Cloud Functions) | 🔧 |
+| App Check (Cloud Functions) | ✅ |
 
 ---
 
@@ -498,13 +533,14 @@ python setup_admin.py
 | Category | Count | Lines |
 |---|---|---|
 | Models | 11 files | ~820 |
-| Services | 20 files | ~1,970 |
-| Providers | 3 files | ~800 |
+| Services | 21 files | ~2,070 |
+| Providers | 3 files | ~830 |
 | Widgets | 12 files | ~1,550 |
-| Student Screens | 7 files | ~4,130 |
+| Student Screens | 7 files | ~4,180 |
 | Admin Screens | 10 files | ~3,290 |
-| Cloud Functions (TS) | 9 files | ~1,450 |
-| **Total Dart** | **63 files** | **~12,900** |
+| Cloud Functions (TS) | 10 files | ~1,600 |
+| Utils | 1 file | ~30 |
+| **Total Dart** | **65 files** | **~13,100** |
 
 ---
 
