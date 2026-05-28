@@ -35,6 +35,9 @@ class RemoteConfigService {
       'maintenance_message': 'NSAT is temporarily unavailable for scheduled maintenance. Please try again shortly.',
       'exam_date_display': '14 June 2026',
       'super_admin_emails': 'devansh.chaubey@niu.edu.in',
+      'min_version_code': 1,
+      'force_update_message': 'A new version of NSAT is available with important updates. Please update to continue.',
+      'play_store_url': 'https://play.google.com/store/apps/details?id=in.edu.niu.nsat',
     });
 
     await _rc.setConfigSettings(RemoteConfigSettings(
@@ -70,6 +73,15 @@ class RemoteConfigService {
 
   /// Returns the list of super admin emails allowed to view logs
   String get superAdminEmails => _rc.getString('super_admin_emails');
+
+  /// Minimum versionCode required. App below this must update.
+  int get minVersionCode => _rc.getInt('min_version_code');
+
+  /// Message shown on the force update screen.
+  String get forceUpdateMessage => _rc.getString('force_update_message');
+
+  /// Play Store URL for the update button.
+  String get playStoreUrl => _rc.getString('play_store_url');
   
   /// Helper to check if a specific email is a super admin
   bool isSuperAdmin(String email) {

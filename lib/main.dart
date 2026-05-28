@@ -32,6 +32,8 @@ import 'screens/admin/manage_admins_screen.dart';
 import 'screens/admin/course_access_screen.dart';
 import 'screens/admin/change_password_screen.dart';
 import 'screens/admin/test_settings_screen.dart';
+import 'screens/force_update_screen.dart';
+import 'utils/version_check.dart';
 import 'widgets/splash_screen.dart';
 
 final _log = AppLogger.instance;
@@ -133,6 +135,7 @@ class AppRoot extends StatefulWidget {
 class _AppRootState extends State<AppRoot> {
   bool _splashDone = false;
   bool _servicesReady = false;
+  bool _updateRequired = false;
 
   @override
   void initState() {
@@ -145,6 +148,13 @@ class _AppRootState extends State<AppRoot> {
       await RemoteConfigService.instance.init();
     } catch (e) {
       _log.error('Main', 'RemoteConfig init failed', error: e);
+    }
+
+    // Check if force update is needed
+    try {
+      _updateRequired = await VersionCheck.isUpdateRequired();
+    } catch (e) {
+      _log.error('Main', 'Version check failed', error: e);
     }
 
     try {
@@ -191,6 +201,14 @@ class _AppRootState extends State<AppRoot> {
         home: const Scaffold(
           body: Center(child: CircularProgressIndicator()),
         ),
+      );
+    }
+
+    if (_updateRequired) {
+      return MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.lightTheme,
+        home: const ForceUpdateScreen(),
       );
     }
 

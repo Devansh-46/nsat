@@ -413,8 +413,8 @@ python setup_admin.py
 
 <table>
 <tr>
-<th>Phase 1 — June 14 Launch</th>
-<th>Phase 2 — Post-Launch</th>
+<th>v1.0.0 — June 14 Launch</th>
+<th>v1.1.0 — Post-Approval Update</th>
 </tr>
 <tr>
 <td valign="top">
@@ -428,7 +428,7 @@ python setup_admin.py
 ✅ One-attempt lock (crash-safe)<br>
 ✅ Verdant Daylight UI (17 screens + responsive web split-layout)<br>
 ✅ Admin dashboard + CSV export<br>
-✅ Firestore security rules (11 collections)<br>
+✅ Firestore security rules (14 collections)<br>
 ✅ Android + Web<br>
 ✅ FCM push notifications (topic-based)<br>
 ✅ Short-answer questions with word count<br>
@@ -448,30 +448,58 @@ python setup_admin.py
 ✅ Privacy policy page<br>
 ✅ Custom domain (nsat.niu.edu.in)<br>
 ✅ Animated splash screen<br>
-✅ Code audit (45 issues tracked, critical ones resolved)<br>
+✅ Code audit (45 issues tracked, critical resolved)<br>
+✅ Google Play Store listing + release AAB<br>
+✅ End-to-end dry run
+
+</td>
+<td valign="top">
+
 ✅ Auto-submit safety net (autoSubmitExpired — every 2 min)<br>
 ✅ App Check (monitoring mode — Play Integrity / App Attest / reCAPTCHA)<br>
 ✅ Screenshot blocking (Android FLAG_SECURE + web anti-copy)<br>
 ✅ Clipboard lockdown (NoPasteFormatter + SelectionContainer.disabled)<br>
 ✅ Device fingerprinting (device_info_plus → Firestore)<br>
 ✅ Answer sync / crash recovery (30s periodic save)<br>
-✅ Google Play Store listing + release AAB submitted<br>
-✅ End-to-end dry run
+✅ Force update guard (Remote Config min_version_code)<br>
+✅ Updated privacy policy + README
+
+</td>
+</tr>
+</table>
+
+<table>
+<tr>
+<th>Phase 2 — June 14 to July 7</th>
+<th>Phase 3 — Post July</th>
+</tr>
+<tr>
+<td valign="top">
+
+📋 iOS release<br>
+📋 Exam countdown landing page<br>
+📋 Exam instructions screen<br>
+📋 Admin quick stats widget<br>
+📋 Session timeout (idle detection + auto-submit)<br>
+📋 Student feedback form<br>
+📋 Admin announcement banner (Remote Config)<br>
+📋 Offline answer queue (client-side retry on submit failure)<br>
+📋 Bulk notification templates<br>
+📋 Question image support (Firebase Storage)<br>
+📋 Automated exam scheduling (Cloud Function + schedules collection)<br>
+📋 Student leaderboard (per-test, admin-configurable)<br>
+📋 Webhook integration (POST results to external systems)<br>
+📋 Admin test/question CRUD<br>
+📋 NPF result write-back<br>
+📋 Admin grading UI for short-answer questions<br>
+📋 App Check hard enforcement<br>
+📋 Live proctor dashboard (real-time admin monitoring)
 
 </td>
 <td valign="top">
 
-🔧 iOS release (Firebase options not yet configured)<br>
-📋 Admin test/question CRUD<br>
-📋 NPF result write-back<br>
-📋 PDF scorecard download<br>
-📋 Network-loss retry on submit<br>
-📋 Admin grading UI for short-answer questions<br>
-📋 App Check hard enforcement (switch from monitoring to blocking)<br>
-📋 Randomized question + option order per student<br>
-📋 Live proctor dashboard (real-time admin monitoring)<br>
-📋 Post-exam integrity report<br>
-📋 AI Proctoring — webcam-based monitoring, face detection, and suspicious behavior detection during tests
+📋 AI proctoring — camera-based monitoring, face detection (ML Kit on-device)<br>
+📋 AI-powered short answer grading (Claude API integration)
 
 </td>
 </tr>
