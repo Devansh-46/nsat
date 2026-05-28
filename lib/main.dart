@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'firebase_options.dart';
 import 'services/remote_config_service.dart';
@@ -42,6 +43,17 @@ void main() {
     try {
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
+      );
+
+      // App Check — ensures requests come from the genuine NSAT app.
+      // Pre-exam: debug providers so local/CI builds pass while we soft-enforce
+      // (consumeAppCheckToken) on the backend. After the June 14 exam, switch to
+      // production providers (playIntegrity / appAttest) and fill in the real
+      // reCAPTCHA Enterprise site key below.
+      await FirebaseAppCheck.instance.activate(
+        androidProvider: AndroidProvider.debug,
+        appleProvider: AppleProvider.debug,
+        webProvider: ReCaptchaEnterpriseProvider('YOUR_RECAPTCHA_SITE_KEY'),
       );
     } catch (e) {
       _log.error('Main', 'Firebase init failed', error: e);

@@ -11,7 +11,7 @@ import { NPF_ACCESS_KEY, NPF_SECRET_KEY, NPF_BASE_URL, mapCourseKey }
  * NPF API fetch call so the Cloud Function doesn't hang indefinitely.
  */
 export const fetchLeadDetails = onCall(
-  { region: "asia-south1" },
+  { region: "asia-south1", consumeAppCheckToken: true },
   async (request) => {
     const leadId = request.data?.lead_id as string | undefined;
 

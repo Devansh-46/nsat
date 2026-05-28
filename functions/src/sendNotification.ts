@@ -8,7 +8,7 @@ import * as admin from "firebase-admin";
  * `admin` custom claim can invoke this function.
  */
 export const sendNotification = onCall(
-  { region: "asia-south1" },
+  { region: "asia-south1", consumeAppCheckToken: true },
   async (request) => {
     // SECURITY: require admin custom claim
     if (!request.auth) {

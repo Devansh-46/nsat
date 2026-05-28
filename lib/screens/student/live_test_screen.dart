@@ -8,6 +8,7 @@ import '../../providers/test_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/analytics_service.dart';
 import '../../widgets/web_split_layout.dart';
+import '../../utils/clipboard_guard.dart';
 
 /// Live test — one question per screen, progress bar, timer, palette.
 /// FIXES Issue #19: Back navigation is intercepted with PopScope to prevent
@@ -590,19 +591,21 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
     final rightPanel = _buildWebRightPanel(
         session, question, selected, provider, timeLow);
 
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, result) async {
-        if (didPop) return;
-        final shouldPop = await _onWillPop();
-        if (shouldPop && context.mounted) {
-          Navigator.of(context).pop();
-        }
-      },
-      child: WebSplitLayout(
-        leftChild: leftPanel,
-        rightChild: rightPanel,
-        mobileChild: mobileView,
+    return SelectionContainer.disabled(
+      child: PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, result) async {
+          if (didPop) return;
+          final shouldPop = await _onWillPop();
+          if (shouldPop && context.mounted) {
+            Navigator.of(context).pop();
+          }
+        },
+        child: WebSplitLayout(
+          leftChild: leftPanel,
+          rightChild: rightPanel,
+          mobileChild: mobileView,
+        ),
       ),
     );
   }
@@ -1018,6 +1021,8 @@ class _ShortAnswerFieldState extends State<_ShortAnswerField> {
           ),
           child: TextField(
             controller: _controller,
+            enableInteractiveSelection: false,
+            inputFormatters: [NoPasteFormatter()],
             onChanged: (value) {
               setState(() => _wordCount = _countWords(value));
               widget.onChanged(value);

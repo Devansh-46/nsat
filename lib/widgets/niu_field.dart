@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
 import 'eyebrow.dart';
+import '../utils/clipboard_guard.dart';
 
 /// The NSAT glass input field. Matches design spec §6.3.
 ///
@@ -141,7 +142,11 @@ class _NiuFieldState extends State<NiuField> {
               controller: widget.controller,
               focusNode: _focusNode,
               keyboardType: widget.keyboardType,
-              inputFormatters: widget.inputFormatters,
+              inputFormatters: [
+                ...?widget.inputFormatters,
+                NoPasteFormatter(),
+              ],
+              enableInteractiveSelection: false,
               onChanged: widget.onChanged,
               onSubmitted: widget.onSubmitted,
               obscureText: widget.obscureText,

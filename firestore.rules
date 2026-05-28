@@ -49,6 +49,16 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // ── saved_answers ────────────────────────────────────────────────
+    // Periodic answer backup for crash recovery.
+    // Write: anyone (students save during test, no Firebase Auth for students)
+    // Read: Cloud Functions only via admin SDK
+    // Delete: anyone (cleanup after submit) + Cloud Functions
+    match /saved_answers/{applicationNo} {
+      allow read: if false;
+      allow write: if true;
+    }
+
     // ── results ──────────────────────────────────────────────────────
     // Read: admin only (students never read results from Firestore;
     //       scores are returned via Cloud Function response)
@@ -98,6 +108,16 @@ service cloud.firestore {
       allow read: if isAdmin();
       allow create: if true;
       allow update: if false;
+      allow delete: if false;
+    }
+
+    // ── device_fingerprints ──────────────────────────────────────────
+    // Written by client at test start for audit trail.
+    // Read: admin only (post-exam review).
+    match /device_fingerprints/{applicationNo} {
+      allow read: if isAdmin();
+      allow create: if true;
+      allow update: if true;
       allow delete: if false;
     }
 

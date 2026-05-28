@@ -27,7 +27,7 @@ async function isSuperadminEmail(email: string): Promise<boolean> {
 }
 
 export const setAdminClaim = onCall(
-  { region: "asia-south1" },
+  { region: "asia-south1", consumeAppCheckToken: true },
   async (request) => {
     assertSuperadmin(request);
 
@@ -136,7 +136,7 @@ export const setAdminClaim = onCall(
 );
 
 export const promoteSuperadmin = onCall(
-  { region: "asia-south1" },
+  { region: "asia-south1", consumeAppCheckToken: true },
   async (request) => {
     assertSuperadmin(request);
 
@@ -172,7 +172,7 @@ export const promoteSuperadmin = onCall(
 );
 
 export const demoteSuperadmin = onCall(
-  { region: "asia-south1" },
+  { region: "asia-south1", consumeAppCheckToken: true },
   async (request) => {
     assertSuperadmin(request);
 
@@ -202,7 +202,7 @@ export const demoteSuperadmin = onCall(
 );
 
 export const removeAdminClaim = onCall(
-  { region: "asia-south1" },
+  { region: "asia-south1", consumeAppCheckToken: true },
   async (request) => {
     assertSuperadmin(request);
 
@@ -235,7 +235,7 @@ export const removeAdminClaim = onCall(
 );
 
 export const clearForcePasswordChange = onCall(
-  { region: "asia-south1" },
+  { region: "asia-south1", consumeAppCheckToken: true },
   async (request) => {
     if (!request.auth) {
       throw new HttpsError("unauthenticated", "Authentication required");
@@ -258,7 +258,7 @@ export const clearForcePasswordChange = onCall(
 );
 
 export const updateAdminCourses = onCall(
-  { region: "asia-south1" },
+  { region: "asia-south1", consumeAppCheckToken: true },
   async (request) => {
     assertSuperadmin(request);
 
@@ -295,7 +295,7 @@ export const updateAdminCourses = onCall(
 );
 
 export const listAdmins = onCall(
-  { region: "asia-south1" },
+  { region: "asia-south1", consumeAppCheckToken: true },
   async (request) => {
     if (!request.auth || !request.auth.token.admin) {
       throw new HttpsError("permission-denied", "Admin access required");

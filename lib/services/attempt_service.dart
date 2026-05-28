@@ -70,6 +70,7 @@ class AttemptService {
   Future<StartAttemptResult> startAttempt({
     required String applicationNo,
     required String testId,
+    String? studentName,
   }) async {
     final reqId = AppLogger.generateRequestId();
     _log.info(_tag, 'Claiming attempt lock for $applicationNo (test: $testId)',
@@ -109,6 +110,7 @@ class AttemptService {
           'status': AttemptModel.statusToString(AttemptStatus.inProgress),
           'attemptedAt': FieldValue.serverTimestamp(),
           'testId': testId,
+          if (studentName != null) 'studentName': studentName,
         });
 
         _log.info(_tag, 'Attempt lock claimed for $applicationNo',

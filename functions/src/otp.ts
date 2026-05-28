@@ -4,7 +4,8 @@ import * as crypto from "crypto";
 import * as nodemailer from "nodemailer";
 import {
   SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, OTP_FROM_NAME,
-  TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_WHATSAPP_FROM
+  TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_WHATSAPP_FROM,
+  REVIEW_BYPASS_ID, REVIEW_BYPASS_CODE
 } from "./config";
 
 // OTP validity: 10 minutes
@@ -30,7 +31,7 @@ function getChannelRef(db: admin.firestore.Firestore, applicationNo: string, cha
 }
 
 export const sendOtp = onCall(
-  { region: "asia-south1" },
+  { region: "asia-south1", consumeAppCheckToken: true },
   async (request) => {
     const db = admin.firestore();
     const applicationNo = request.data?.application_no as string | undefined;
@@ -42,6 +43,22 @@ export const sendOtp = onCall(
         "invalid-argument",
         "application_no and email are required"
       );
+    }
+
+    // ── Google Play review bypass ──
+    if (REVIEW_BYPASS_ID && applicationNo === REVIEW_BYPASS_ID) {
+      const channelRef = getChannelRef(db, applicationNo, "email");
+      const hashed = hashOtp(REVIEW_BYPASS_CODE);
+      await channelRef.set({
+        hashedCode: hashed,
+        expiresAt: Date.now() + OTP_EXPIRY_MS,
+        attempts: 0,
+        channel: "email",
+        createdAtMs: Date.now(),
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      console.log(`[REVIEW BYPASS] Email OTP set for ${applicationNo}, code: ${REVIEW_BYPASS_CODE}`);
+      return { success: true };
     }
 
     const channelRef = getChannelRef(db, applicationNo, "email");
@@ -111,7 +128,7 @@ export const sendOtp = onCall(
 );
 
 export const verifyOtp = onCall(
-  { region: "asia-south1" },
+  { region: "asia-south1", consumeAppCheckToken: true },
   async (request) => {
     const db = admin.firestore();
     const applicationNo = request.data?.application_no as string | undefined;
@@ -170,7 +187,7 @@ export const verifyOtp = onCall(
 );
 
 export const sendWhatsAppOtp = onCall(
-  { region: "asia-south1" },
+  { region: "asia-south1", consumeAppCheckToken: true },
   async (request) => {
     const db = admin.firestore();
     const applicationNo = request.data?.application_no as string | undefined;
@@ -179,6 +196,23 @@ export const sendWhatsAppOtp = onCall(
 
     if (!applicationNo || !rawPhone) {
       throw new HttpsError("invalid-argument", "application_no and phone are required");
+    }
+
+    // ── Google Play review bypass ──
+    if (REVIEW_BYPASS_ID && applicationNo === REVIEW_BYPASS_ID) {
+      const channelRef = getChannelRef(db, applicationNo, "whatsapp");
+      const hashed = hashOtp(REVIEW_BYPASS_CODE);
+      await channelRef.set({
+        hashedCode: hashed,
+        expiresAt: Date.now() + OTP_EXPIRY_MS,
+        attempts: 0,
+        channel: "whatsapp",
+        phone: rawPhone,
+        createdAtMs: Date.now(),
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      console.log(`[REVIEW BYPASS] WhatsApp OTP set for ${applicationNo}, code: ${REVIEW_BYPASS_CODE}`);
+      return { success: true };
     }
 
     if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN || !TWILIO_WHATSAPP_FROM) {

@@ -9,7 +9,7 @@ import * as admin from "firebase-admin";
  * the attempt lock — all in one call.
  */
 export const scoreSubmission = onCall(
-  { region: "asia-south1" },
+  { region: "asia-south1", consumeAppCheckToken: true },
   async (request) => {
     const db = admin.firestore();
     const applicationNo = request.data?.application_no as string | undefined;

@@ -27,13 +27,21 @@ export const SMTP_USER = process.env.SMTP_USER ?? "";
 export const SMTP_PASS = process.env.SMTP_PASS ?? "";
 export const OTP_FROM_NAME = process.env.OTP_FROM_NAME ?? "NSAT NIU";
 
+// ─── Google Play review bypass ─────────────────────────────────────
+// Set in functions/.env:
+//   REVIEW_BYPASS_ID=NIU-26-15350
+// When this ID is used, OTP functions skip real email/WhatsApp delivery
+// and accept the hardcoded code 123456. Remove after Play Store approval.
+export const REVIEW_BYPASS_ID = (process.env.REVIEW_BYPASS_ID ?? "").trim();
+export const REVIEW_BYPASS_CODE = "123456";
+
 // ─── Twilio WhatsApp ───────────────────────────────────────────────
 // Set in functions/.env:
 //   TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 //   TWILIO_AUTH_TOKEN=your_auth_token_here
 //   TWILIO_WHATSAPP_FROM=+14155238886   ← sandbox number (or prod number later)
-export const TWILIO_ACCOUNT_SID  = process.env.TWILIO_ACCOUNT_SID  ?? "";
-export const TWILIO_AUTH_TOKEN   = process.env.TWILIO_AUTH_TOKEN   ?? "";
+export const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID ?? "";
+export const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN ?? "";
 export const TWILIO_WHATSAPP_FROM = process.env.TWILIO_WHATSAPP_FROM ?? "";
 
 // ─── Course → School Paper mapping ─────────────────────────────────

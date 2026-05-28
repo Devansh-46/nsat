@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/test_session_model.dart';
 import '../models/test_model.dart';
 import '../models/question_model.dart';
@@ -8,6 +9,7 @@ import '../services/attempt_service.dart';
 import '../services/scoring_service.dart';
 import '../services/test_service.dart';
 import '../services/app_logger.dart';
+import '../services/device_fingerprint_service.dart';
 
 /// Drives the test-taking flow, backed entirely by Firestore.
 class TestProvider extends ChangeNotifier {
@@ -18,12 +20,15 @@ class TestProvider extends ChangeNotifier {
   final QuestionService _questionService = QuestionService();
   final AttemptService _attemptService = AttemptService();
   final ScoringService _scoringService = ScoringService();
+  final DeviceFingerprintService _fingerprintService =
+      DeviceFingerprintService();
 
   TestSessionModel? _currentSession;
   TestModel? _availableTest;
   bool _isLoading = false;
   String? _error;
   Timer? _timer;
+  Timer? _syncTimer;
 
   /// FIXES #7/#8: Single submission guard — set to true the moment
   /// submitTest() begins, preventing any duplicate call (timer-fired or
@@ -85,6 +90,7 @@ class TestProvider extends ChangeNotifier {
       final attempt = await _attemptService.startAttempt(
         applicationNo: applicationNo,
         testId: _availableTest!.id,
+        studentName: studentName,
       );
 
       switch (attempt.outcome) {
@@ -109,6 +115,8 @@ class TestProvider extends ChangeNotifier {
         case StartAttemptOutcome.started:
           _log.info(_tag, 'Attempt lock claimed for $applicationNo',
               requestId: _sessionRequestId);
+          // Capture device fingerprint (non-blocking, best-effort)
+          _fingerprintService.captureAndStore(applicationNo);
           break;
       }
 
@@ -146,6 +154,10 @@ class TestProvider extends ChangeNotifier {
           requestId: _sessionRequestId, persist: true);
 
       _startTimer();
+      _syncTimer?.cancel();
+      _syncTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+        _syncAnswersToFirestore();
+      });
       _setLoading(false);
       return true;
     } catch (e, st) {
@@ -178,6 +190,25 @@ class TestProvider extends ChangeNotifier {
         notifyListeners();
       }
     });
+  }
+
+  Future<void> _syncAnswersToFirestore() async {
+    final session = _currentSession;
+    if (session == null || session.isSubmitted) return;
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('saved_answers')
+          .doc(session.studentId)
+          .set({
+        'answers': session.answers.map((k, v) => MapEntry(k.toString(), v)),
+        'testId': _availableTest?.id,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    } catch (e) {
+      // Silent failure — this is a best-effort safety net
+      _log.debug(_tag, 'Answer sync failed (non-critical): $e');
+    }
   }
 
   void selectAnswer(int questionIndex, dynamic answer) {
@@ -217,6 +248,9 @@ class TestProvider extends ChangeNotifier {
 
     final session = _currentSession!;
 
+    // Final sync so the latest answers are saved even if the CF call fails.
+    await _syncAnswersToFirestore();
+
     try {
       final score = await _scoringService.scoreSubmission(
         applicationNo: session.studentId,
@@ -226,6 +260,15 @@ class TestProvider extends ChangeNotifier {
       );
 
       session.submit();
+
+      // Submission succeeded — stop syncing and drop the backup.
+      _syncTimer?.cancel();
+      try {
+        await FirebaseFirestore.instance
+            .collection('saved_answers')
+            .doc(session.studentId)
+            .delete();
+      } catch (_) {}
 
       _savedResultId = score.resultId;
       _showResults = score.showResults;
@@ -257,6 +300,7 @@ class TestProvider extends ChangeNotifier {
   void clearSession() {
     _log.debug(_tag, 'Test session cleared');
     _timer?.cancel();
+    _syncTimer?.cancel();
     _currentSession = null;
     _availableTest = null;
     _alreadyCompleted = false;
@@ -277,6 +321,7 @@ class TestProvider extends ChangeNotifier {
   @override
   void dispose() {
     _timer?.cancel();
+    _syncTimer?.cancel();
     super.dispose();
   }
 }

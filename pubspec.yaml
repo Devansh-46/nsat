@@ -1,7 +1,7 @@
 name: niu_sat_app
 description: NSAT - NIU Student Aptitude Test Portal
 publish_to: 'none'
-version: 1.0.0
+version: 1.0.3+7
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -21,8 +21,14 @@ dependencies:
   # --- Firebase core (required) ---
   firebase_core: ^3.6.0
 
+  # --- App Check: ensures requests come from the genuine NSAT app ---
+  firebase_app_check: ^0.3.1+5
+
   # --- Firestore: students, tests, questions, results, attempts, otps ---
   cloud_firestore: ^5.4.4
+
+  # --- Device fingerprinting for anti-cheat audit trail ---
+  device_info_plus: ^11.0.0
 
   # --- Firebase Auth: holds the verified session after email OTP ---
   firebase_auth: ^5.3.1
