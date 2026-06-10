@@ -4,7 +4,8 @@ import * as crypto from "crypto";
 import * as nodemailer from "nodemailer";
 import {
   SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, OTP_FROM_NAME,
-  TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_WHATSAPP_FROM,
+  MSG91_AUTHKEY, MSG91_INTEGRATED_NUM, MSG91_WA_TEMPLATE, MSG91_WA_LANG, MSG91_WA_NAMESPACE,
+  MSG91_SMS_TEMPLATE_ID,
   REVIEW_BYPASS_ID, REVIEW_BYPASS_CODE
 } from "./config";
 
@@ -46,6 +47,7 @@ export const sendOtp = onCall(
     }
 
     // ── Google Play review bypass ──
+    // REMOVE BEFORE June 14 exam
     if (REVIEW_BYPASS_ID && applicationNo === REVIEW_BYPASS_ID) {
       const channelRef = getChannelRef(db, applicationNo, "email");
       const hashed = hashOtp(REVIEW_BYPASS_CODE);
@@ -192,13 +194,13 @@ export const sendWhatsAppOtp = onCall(
     const db = admin.firestore();
     const applicationNo = request.data?.application_no as string | undefined;
     const rawPhone = request.data?.phone as string | undefined;
-    const studentName = request.data?.name as string | undefined;
 
     if (!applicationNo || !rawPhone) {
       throw new HttpsError("invalid-argument", "application_no and phone are required");
     }
 
     // ── Google Play review bypass ──
+    // REMOVE BEFORE June 14 exam
     if (REVIEW_BYPASS_ID && applicationNo === REVIEW_BYPASS_ID) {
       const channelRef = getChannelRef(db, applicationNo, "whatsapp");
       const hashed = hashOtp(REVIEW_BYPASS_CODE);
@@ -215,14 +217,15 @@ export const sendWhatsAppOtp = onCall(
       return { success: true };
     }
 
-    if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN || !TWILIO_WHATSAPP_FROM) {
-      console.error("[sendWhatsAppOtp] Twilio env vars not set");
+    if (!MSG91_AUTHKEY || !MSG91_INTEGRATED_NUM || !MSG91_WA_TEMPLATE) {
+      console.error("[sendWhatsAppOtp] MSG91 env vars not set");
       throw new HttpsError("failed-precondition", "WhatsApp service is not configured");
     }
 
-    let phone = rawPhone.trim();
-    if (!phone.startsWith("+")) {
-      phone = "+91" + phone;
+    // MSG91 requires country code with no leading '+' (e.g. "919560877237")
+    let phoneForMsg91 = rawPhone.trim().replace(/^\+/, "");
+    if (/^\d{10}$/.test(phoneForMsg91)) {
+      phoneForMsg91 = "91" + phoneForMsg91;
     }
 
     const channelRef = getChannelRef(db, applicationNo, "whatsapp");
@@ -249,60 +252,184 @@ export const sendWhatsAppOtp = onCall(
       expiresAt,
       attempts: 0,
       channel: "whatsapp",
-      phone,
+      phone: phoneForMsg91,
       createdAtMs: Date.now(),
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
-
-    const twilioUrl =
-      `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`;
-
-    const body = new URLSearchParams({
-      From: `whatsapp:${TWILIO_WHATSAPP_FROM}`,
-      To: `whatsapp:${phone}`,
-      Body:
-        `Dear ${studentName ?? "Student"},\n\n` +
-        `Your NSAT verification code is: *${code}*\n\n` +
-        `This code is valid for 10 minutes.\n\n` +
-        `— Noida International University`,
     });
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10_000);
 
     try {
-      const response = await fetch(twilioUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-          "Authorization": `Basic ${Buffer.from(
-            `${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`
-          ).toString("base64")}`,
+      const waUrl = "https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/";
+      const waBody = {
+        integrated_number: MSG91_INTEGRATED_NUM,
+        content_type: "template",
+        payload: {
+          messaging_product: "whatsapp",
+          type: "template",
+          template: {
+            name: MSG91_WA_TEMPLATE,
+            language: { code: MSG91_WA_LANG, policy: "deterministic" },
+            namespace: MSG91_WA_NAMESPACE,
+            to_and_components: [
+              {
+                to: [phoneForMsg91],
+                components: {
+                  body_1:   { type: "text", value: code },
+                  button_1: { subtype: "url", type: "text", value: code },
+                },
+              },
+            ],
+          },
         },
-        body: body.toString(),
-        signal: controller.signal,
+      };
+
+      const response = await fetch(waUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", authkey: MSG91_AUTHKEY },
+        body: JSON.stringify(waBody),
+        signal: controller.signal as unknown as AbortSignal,
       });
 
       clearTimeout(timeout);
       const json = await response.json() as Record<string, unknown>;
-      console.log("[sendWhatsAppOtp] Twilio response:", JSON.stringify(json));
+      console.log("[sendWhatsAppOtp] MSG91 response:", JSON.stringify(json));
 
-      if (!response.ok) {
-        throw new Error(`Twilio error ${json["code"]}: ${json["message"]}`);
+      if (!response.ok || json["type"] === "error") {
+        throw new Error(`MSG91 error: ${JSON.stringify(json)}`);
       }
 
       console.log(
-        `[sendWhatsAppOtp] WhatsApp OTP sent to ${phone} for ${applicationNo}, SID: ${json["sid"]}`
+        `[sendWhatsAppOtp] WhatsApp OTP sent to ${phoneForMsg91} for ${applicationNo}`
       );
       return { success: true };
     } catch (error) {
       clearTimeout(timeout);
       console.error("[sendWhatsAppOtp] Failed:", error);
-      await channelRef.delete();
       if ((error as Error).name === "AbortError") {
         throw new HttpsError("deadline-exceeded", "WhatsApp service timed out. Please try again.");
       }
       throw new HttpsError("internal", "Failed to send WhatsApp verification code");
+    }
+  }
+);
+
+// ─── SMS resend: user taps "Didn't receive? Resend via SMS" ────────
+export const resendOtpViaSms = onCall(
+  { region: "asia-south1", consumeAppCheckToken: true },
+  async (request) => {
+    const db = admin.firestore();
+    const applicationNo = request.data?.application_no as string | undefined;
+    const rawPhone = request.data?.phone as string | undefined;
+
+    if (!applicationNo || !rawPhone) {
+      throw new HttpsError("invalid-argument", "application_no and phone are required");
+    }
+
+    if (!MSG91_SMS_TEMPLATE_ID) {
+      console.error("[resendOtpViaSms] MSG91_SMS_TEMPLATE_ID not set");
+      throw new HttpsError("failed-precondition", "SMS service is not configured yet");
+    }
+    if (!MSG91_AUTHKEY) {
+      console.error("[resendOtpViaSms] MSG91_AUTHKEY not set");
+      throw new HttpsError("failed-precondition", "SMS service is not configured");
+    }
+
+    // Phone format: country code, no leading '+'
+    let phoneForMsg91 = rawPhone.trim().replace(/^\+/, "");
+    if (/^\d{10}$/.test(phoneForMsg91)) {
+      phoneForMsg91 = "91" + phoneForMsg91;
+    }
+
+    const channelRef = getChannelRef(db, applicationNo, "whatsapp");
+
+    // A WhatsApp OTP must have been sent first
+    const existing = await channelRef.get();
+    if (!existing.exists) {
+      throw new HttpsError(
+        "failed-precondition",
+        "No WhatsApp OTP found — please request a WhatsApp code first."
+      );
+    }
+
+    const data = existing.data()!;
+    const createdAt = data.createdAtMs as number | undefined;
+
+    // Minimum 15s since WhatsApp send to prevent abuse
+    if (createdAt && Date.now() - createdAt < 15_000) {
+      const secondsLeft = Math.ceil((15_000 - (Date.now() - createdAt)) / 1000);
+      throw new HttpsError(
+        "resource-exhausted",
+        `Please wait ${secondsLeft} seconds before requesting SMS.`
+      );
+    }
+
+    // Check if SMS was already sent for this OTP (prevent spam)
+    if (data.smsResentAt) {
+      const smsResentAt = data.smsResentAt as number;
+      if (Date.now() - smsResentAt < 60_000) {
+        const secondsLeft = Math.ceil((60_000 - (Date.now() - smsResentAt)) / 1000);
+        throw new HttpsError(
+          "resource-exhausted",
+          `SMS already sent. Please wait ${secondsLeft} seconds before requesting again.`
+        );
+      }
+    }
+
+    // Generate a fresh OTP (can't recover the hashed one)
+    const code = generateOtp();
+    const hashed = hashOtp(code);
+
+    // Overwrite the Firestore doc — same "whatsapp" channel key so verifyOtp still works
+    await channelRef.update({
+      hashedCode: hashed,
+      expiresAt: Date.now() + OTP_EXPIRY_MS,
+      attempts: 0,
+      smsResentAt: Date.now(),
+    });
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10_000);
+
+    try {
+      const smsUrl = "https://api.msg91.com/api/v5/flow/";
+      const smsBody = {
+        template_id: MSG91_SMS_TEMPLATE_ID,
+        recipients: [
+          {
+            mobiles: phoneForMsg91,
+            otp: code,
+          },
+        ],
+      };
+
+      const response = await fetch(smsUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", authkey: MSG91_AUTHKEY },
+        body: JSON.stringify(smsBody),
+        signal: controller.signal as unknown as AbortSignal,
+      });
+
+      clearTimeout(timeout);
+      const json = await response.json() as Record<string, unknown>;
+      console.log("[resendOtpViaSms] MSG91 SMS response:", JSON.stringify(json));
+
+      if (!response.ok || json["type"] === "error") {
+        throw new Error(`MSG91 SMS error: ${JSON.stringify(json)}`);
+      }
+
+      console.log(
+        `[resendOtpViaSms] SMS OTP sent to ${phoneForMsg91} for ${applicationNo}`
+      );
+      return { success: true };
+    } catch (error) {
+      clearTimeout(timeout);
+      console.error("[resendOtpViaSms] Failed:", error);
+      if ((error as Error).name === "AbortError") {
+        throw new HttpsError("deadline-exceeded", "SMS service timed out. Please try again.");
+      }
+      throw new HttpsError("internal", "Failed to send SMS verification code");
     }
   }
 );

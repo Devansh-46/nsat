@@ -28,10 +28,13 @@ export const SMTP_PASS = process.env.SMTP_PASS ?? "";
 export const OTP_FROM_NAME = process.env.OTP_FROM_NAME ?? "NSAT NIU";
 
 // ─── Google Play review bypass ─────────────────────────────────────
+// REMOVE BEFORE June 14 exam
 // Set in functions/.env:
 //   REVIEW_BYPASS_ID=NIU-26-15350
 // When this ID is used, OTP functions skip real email/WhatsApp delivery
-// and accept the hardcoded code 123456. Remove after Play Store approval.
+// and accept the hardcoded code 123456. fetchLeadDetails also routes this
+// ID to the dummy "review_demo" paper, and seed_review_student.py seeds the
+// students/NIU-26-15350 doc. Remove all of these together after approval.
 export const REVIEW_BYPASS_ID = (process.env.REVIEW_BYPASS_ID ?? "").trim();
 export const REVIEW_BYPASS_CODE = "123456";
 
@@ -43,6 +46,16 @@ export const REVIEW_BYPASS_CODE = "123456";
 export const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID ?? "";
 export const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN ?? "";
 export const TWILIO_WHATSAPP_FROM = process.env.TWILIO_WHATSAPP_FROM ?? "";
+export const TWILIO_OTP_TEMPLATE_SID = process.env.TWILIO_OTP_TEMPLATE_SID ?? "";
+
+// ─── MSG91 (WhatsApp + SMS OTP delivery) ──────────────────────────
+export const MSG91_AUTHKEY        = process.env.MSG91_AUTHKEY ?? "";
+export const MSG91_INTEGRATED_NUM = process.env.MSG91_INTEGRATED_NUM ?? "";
+export const MSG91_WA_TEMPLATE    = process.env.MSG91_WA_TEMPLATE ?? "";
+export const MSG91_WA_LANG        = process.env.MSG91_WA_LANG ?? "en";
+export const MSG91_WA_NAMESPACE   = process.env.MSG91_WA_NAMESPACE ?? "";
+// Phase 2 (after DLT approval):
+export const MSG91_SMS_TEMPLATE_ID = process.env.MSG91_SMS_TEMPLATE_ID ?? "";
 
 // ─── Course → School Paper mapping ─────────────────────────────────
 // NPF returns specific course/program names. Question papers are per SCHOOL.

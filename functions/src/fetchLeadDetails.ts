@@ -1,7 +1,7 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import fetch from "node-fetch";
 import AbortController from "abort-controller";
-import { NPF_ACCESS_KEY, NPF_SECRET_KEY, NPF_BASE_URL, mapCourseKey }
+import { NPF_ACCESS_KEY, NPF_SECRET_KEY, NPF_BASE_URL, mapCourseKey, REVIEW_BYPASS_ID }
   from "./config";
 
 /**
@@ -18,6 +18,20 @@ export const fetchLeadDetails = onCall(
     if (!leadId) {
       throw new HttpsError("invalid-argument", "lead_id is required");
     }
+
+    // REMOVE BEFORE June 14 exam
+    // Review bypass: route the Play/App reviewer to a dedicated dummy paper.
+    // Never hits NPF, never exposes the real exam. Remove with the OTP bypass.
+    if (REVIEW_BYPASS_ID && leadId === REVIEW_BYPASS_ID) {
+      return {
+        leadId,
+        name: "Play Store Reviewer",
+        courseKey: "review_demo",
+        email: "review@niu.edu.in",
+        mobile: "0000000000",
+      };
+    }
+
     if (!NPF_ACCESS_KEY || !NPF_SECRET_KEY) {
       throw new HttpsError(
         "failed-precondition",
