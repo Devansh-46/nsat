@@ -45,6 +45,13 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
   Timer? _emailTimer;
   Timer? _phoneTimer;
 
+  // ── SMS resend ("Didn't receive WhatsApp? Resend via SMS") ──
+  int _smsCooldown = 0;
+  Timer? _smsTimer;
+  Timer? _smsAvailableTimer;
+  bool _smsAvailable = false;
+  bool _smsBusy = false;
+
   @override
   void initState() {
     super.initState();
@@ -57,6 +64,8 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
     _phoneOtpController.dispose();
     _emailTimer?.cancel();
     _phoneTimer?.cancel();
+    _smsTimer?.cancel();
+    _smsAvailableTimer?.cancel();
     super.dispose();
   }
 
@@ -89,6 +98,31 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
         _phoneCooldown--;
         if (_phoneCooldown <= 0) t.cancel();
       });
+    });
+  }
+
+  void _startSmsCooldown() {
+    _smsTimer?.cancel();
+    setState(() => _smsCooldown = _cooldownSeconds);
+    _smsTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted) {
+        t.cancel();
+        return;
+      }
+      setState(() {
+        _smsCooldown--;
+        if (_smsCooldown <= 0) t.cancel();
+      });
+    });
+  }
+
+  /// Show the "Resend via SMS" option 30s after WhatsApp OTP was sent.
+  void _startSmsAvailableTimer() {
+    _smsAvailableTimer?.cancel();
+    setState(() => _smsAvailable = false);
+    _smsAvailableTimer = Timer(const Duration(seconds: 30), () {
+      if (!mounted) return;
+      setState(() => _smsAvailable = true);
     });
   }
 
@@ -267,6 +301,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
 
       if (!mounted) return;
       _startPhoneCooldown();
+      _startSmsAvailableTimer();
       setState(() {
         _stage = _VerifyStage.phoneOtp;
         _busy = false;
@@ -292,6 +327,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
           });
         }
       }
+      _startSmsAvailableTimer();
       setState(() {
         _busy = false;
         _error = waitMatch != null
@@ -301,10 +337,69 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
       });
     } catch (e) {
       if (!mounted) return;
+      _startSmsAvailableTimer();
       setState(() {
         _busy = false;
         _error = 'Failed to send WhatsApp code. Check your connection.';
         _stage = _VerifyStage.phoneOtp;
+      });
+    }
+  }
+
+  // ── Resend OTP via SMS ──
+
+  Future<void> _resendSms() async {
+    if (_smsCooldown > 0 || _smsBusy) return;
+
+    final auth = context.read<app.AuthProvider>();
+    final student = auth.verifiedStudent;
+    if (student == null || _fullPhone == null) return;
+
+    setState(() {
+      _smsBusy = true;
+      _error = null;
+    });
+
+    try {
+      final callable = FirebaseFunctions.instanceFor(region: 'asia-south1')
+          .httpsCallable('resendOtpViaSms');
+      await callable.call({
+        'application_no': student.applicationNo,
+        'phone': _fullPhone,
+      });
+
+      if (!mounted) return;
+      _startSmsCooldown();
+      setState(() => _smsBusy = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('OTP sent via SMS'),
+            backgroundColor: AppColors.forest,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    } on FirebaseFunctionsException catch (e) {
+      if (!mounted) return;
+      final msg = e.message ?? '';
+      if (msg.contains('not configured')) {
+        setState(() {
+          _smsBusy = false;
+          _error = 'SMS is not available yet. Please retry on WhatsApp.';
+          _smsAvailable = false;
+        });
+      } else {
+        setState(() {
+          _smsBusy = false;
+          _error = e.message ?? 'Failed to send SMS.';
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _smsBusy = false;
+        _error = 'Failed to send SMS. Check your connection.';
       });
     }
   }
@@ -720,6 +815,24 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
             cooldown: _phoneCooldown,
             onTap: _startPhoneOtp,
           ),
+          // ── "Didn't receive? Resend via SMS" (appears after 30s) ──
+          if (_smsAvailable) ...[
+            const SizedBox(height: 8),
+            _smsBusy
+                ? const SizedBox(
+                    height: 20,
+                    child: Center(
+                        child: SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: AppColors.ink4))))
+                : _resendRow(
+                    label: 'Didn\'t receive? Resend via SMS',
+                    cooldown: _smsCooldown,
+                    onTap: _resendSms,
+                  ),
+          ],
           const SizedBox(height: 20),
           _busy
               ? const SizedBox(
