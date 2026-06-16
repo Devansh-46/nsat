@@ -60,11 +60,13 @@ class TestProvider extends ChangeNotifier {
     try {
       _availableTest = await _testService.getPublishedTestForCourse(course);
       if (_availableTest == null) {
-        _log.info(_tag, 'No published test found for course=$course', persist: true);
+        _log.info(_tag, 'No published test found for course=$course',
+            persist: true);
         _error = 'No published test is available for this course.';
       } else {
         _showResults = _availableTest!.showResults;
-        _log.debug(_tag, 'Found test: ${_availableTest!.id} (${_availableTest!.title}), showResults=$_showResults');
+        _log.debug(_tag,
+            'Found test: ${_availableTest!.id} (${_availableTest!.title}), showResults=$_showResults');
       }
     } catch (e, st) {
       _log.error(_tag, 'Failed to fetch test for course=$course',
@@ -112,7 +114,8 @@ class TestProvider extends ChangeNotifier {
           return false;
         case StartAttemptOutcome.error:
           _error = attempt.errorMessage;
-          _log.error(_tag, 'Attempt lock failed for $applicationNo: ${attempt.errorMessage}',
+          _log.error(_tag,
+              'Attempt lock failed for $applicationNo: ${attempt.errorMessage}',
               requestId: _sessionRequestId);
           _setLoading(false);
           return false;
@@ -154,10 +157,12 @@ class TestProvider extends ChangeNotifier {
       _submissionInProgress = false;
       _currentQuestionIndex = 0;
 
-      _log.info(_tag,
+      _log.info(
+          _tag,
           'Test session created: ${questions.length} questions, '
           '${_availableTest!.durationMinutes} min',
-          requestId: _sessionRequestId, persist: true);
+          requestId: _sessionRequestId,
+          persist: true);
 
       _startTimer();
       _syncTimer?.cancel();
@@ -203,7 +208,8 @@ class TestProvider extends ChangeNotifier {
           session.questionTimeRemaining--;
         } else {
           // Time's up for this question — lock it and auto-advance
-          _log.debug(_tag, 'Per-question timer expired for Q${_currentQuestionIndex + 1}');
+          _log.debug(_tag,
+              'Per-question timer expired for Q${_currentQuestionIndex + 1}');
           _lockAndAdvance();
         }
       }
@@ -337,7 +343,8 @@ class TestProvider extends ChangeNotifier {
   /// This prevents both timer-fired and user-tapped duplicate submissions.
   Future<void> submitTest() async {
     if (_submissionInProgress) {
-      _log.debug(_tag, 'submitTest called but submission already in progress — ignoring');
+      _log.debug(_tag,
+          'submitTest called but submission already in progress — ignoring');
       return;
     }
     if (_currentSession == null || _currentSession!.isSubmitted) return;
@@ -346,10 +353,12 @@ class TestProvider extends ChangeNotifier {
     _timer?.cancel();
     _setLoading(true);
 
-    _log.info(_tag,
+    _log.info(
+        _tag,
         'Submitting test for ${_currentSession!.studentId} '
         '(answered: ${_currentSession!.answeredCount}/${_currentSession!.totalQuestions})',
-        requestId: _sessionRequestId, persist: true);
+        requestId: _sessionRequestId,
+        persist: true);
 
     final session = _currentSession!;
 
@@ -386,13 +395,14 @@ class TestProvider extends ChangeNotifier {
         maxScore: score.maxScore,
       );
 
-      _log.info(_tag,
+      _log.info(
+          _tag,
           'Test submitted successfully for ${session.studentId}: '
           '${score.netScore}/${score.maxScore}',
-          requestId: _sessionRequestId, persist: true);
+          requestId: _sessionRequestId,
+          persist: true);
     } catch (e, st) {
-      _log.error(_tag,
-          'Test submission failed for ${session.studentId}',
+      _log.error(_tag, 'Test submission failed for ${session.studentId}',
           error: e, stackTrace: st, requestId: _sessionRequestId);
       _submissionInProgress = false;
       _timer = null;

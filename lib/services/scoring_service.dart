@@ -67,9 +67,6 @@ class ScoringService {
       });
 
       final data = result.data;
-      if (data == null) {
-        throw Exception('scoreSubmission returned null data');
-      }
       final scoreResult = ScoreResult(
         resultId: data['resultId'] as String?,
         correctCount: (data['correctCount'] ?? 0).toInt(),

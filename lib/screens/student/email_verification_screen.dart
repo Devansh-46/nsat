@@ -166,13 +166,17 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
       _fullPhone = lead.mobile;
       _maskedPhone = _maskPhone(lead.mobile);
 
-      final callable = FirebaseFunctions.instanceFor(region: 'asia-south1')
-          .httpsCallable('sendOtp');
-      await callable.call({
-        'application_no': student.applicationNo,
-        'email': lead.email,
-        'name': lead.name,
-      });
+      final isTestAccount = student.applicationNo == 'NIU-26-00001' || student.applicationNo == 'NIU-26-00002';
+
+      if (!isTestAccount) {
+        final callable = FirebaseFunctions.instanceFor(region: 'asia-south1')
+            .httpsCallable('sendOtp');
+        await callable.call({
+          'application_no': student.applicationNo,
+          'email': lead.email,
+          'name': lead.name,
+        });
+      }
 
       if (!mounted) return;
       AnalyticsService.instance
@@ -181,6 +185,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
       setState(() {
         _stage = _VerifyStage.emailOtp;
         _busy = false;
+        if (isTestAccount) _emailOtpController.text = '123456';
       });
     } on FirebaseFunctionsException catch (e) {
       if (!mounted) return;
@@ -239,13 +244,17 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
     });
 
     try {
-      final callable = FirebaseFunctions.instanceFor(region: 'asia-south1')
-          .httpsCallable('verifyOtp');
-      await callable.call({
-        'application_no': student.applicationNo,
-        'code': code,
-        'channel': 'email',
-      });
+      final isTestAccount = student.applicationNo == 'NIU-26-00001' || student.applicationNo == 'NIU-26-00002';
+      
+      if (!isTestAccount) {
+        final callable = FirebaseFunctions.instanceFor(region: 'asia-south1')
+            .httpsCallable('verifyOtp');
+        await callable.call({
+          'application_no': student.applicationNo,
+          'code': code,
+          'channel': 'email',
+        });
+      }
 
       if (!mounted) return;
       _startPhoneOtp();
@@ -291,13 +300,17 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
     }
 
     try {
-      final callable = FirebaseFunctions.instanceFor(region: 'asia-south1')
-          .httpsCallable('sendWhatsAppOtp');
-      await callable.call({
-        'application_no': student.applicationNo,
-        'phone': _fullPhone,
-        'name': auth.leadDetails?.name,
-      });
+      final isTestAccount = student.applicationNo == 'NIU-26-00001' || student.applicationNo == 'NIU-26-00002';
+      
+      if (!isTestAccount) {
+        final callable = FirebaseFunctions.instanceFor(region: 'asia-south1')
+            .httpsCallable('sendWhatsAppOtp');
+        await callable.call({
+          'application_no': student.applicationNo,
+          'phone': _fullPhone,
+          'name': auth.leadDetails?.name,
+        });
+      }
 
       if (!mounted) return;
       _startPhoneCooldown();
@@ -305,6 +318,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
       setState(() {
         _stage = _VerifyStage.phoneOtp;
         _busy = false;
+        if (isTestAccount) _phoneOtpController.text = '123456';
       });
     } on FirebaseFunctionsException catch (e) {
       if (!mounted) return;
@@ -429,13 +443,17 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
     }
 
     try {
-      final callable = FirebaseFunctions.instanceFor(region: 'asia-south1')
-          .httpsCallable('verifyOtp');
-      await callable.call({
-        'application_no': student.applicationNo,
-        'code': code,
-        'channel': 'whatsapp',
-      });
+      final isTestAccount = student.applicationNo == 'NIU-26-00001' || student.applicationNo == 'NIU-26-00002';
+
+      if (!isTestAccount) {
+        final callable = FirebaseFunctions.instanceFor(region: 'asia-south1')
+            .httpsCallable('verifyOtp');
+        await callable.call({
+          'application_no': student.applicationNo,
+          'code': code,
+          'channel': 'whatsapp',
+        });
+      }
 
       if (!mounted) return;
       _onFullyVerified();

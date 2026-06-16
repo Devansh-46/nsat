@@ -94,6 +94,19 @@ class AuthProvider extends ChangeNotifier {
     _setLoading(true);
     _leadDetails = null; // clear any stale detail from a previous attempt
 
+    // Bypass check for test accounts
+    if (niuId == 'NIU-26-00001' || niuId == 'NIU-26-00002') {
+      _verifiedStudent = StudentModel(
+        applicationNo: niuId,
+        paymentStatus: 'Payment Approved',
+        leadId: 'test-lead-$niuId',
+      );
+      _lastFeeGateOutcome = FeeGateOutcome.approved;
+      _log.info(_tag, 'Bypass account detected: $niuId — fee gate skipped', requestId: reqId, persist: true);
+      _setLoading(false);
+      return FeeGateOutcome.approved;
+    }
+
     final result = await _studentService.getStudentByNiuId(niuId);
 
     FeeGateOutcome outcome;
@@ -145,6 +158,22 @@ class AuthProvider extends ChangeNotifier {
         requestId: reqId, persist: true);
 
     _setLoading(true);
+
+    // Bypass check for test accounts
+    final isTestAccount = _verifiedStudent!.applicationNo == 'NIU-26-00001' || 
+                          _verifiedStudent!.applicationNo == 'NIU-26-00002';
+    if (isTestAccount) {
+      _leadDetails = LeadDetailsModel(
+        leadId: _verifiedStudent!.leadId,
+        name: 'Test Student',
+        courseKey: 'BTECH',
+        email: 'test@example.com',
+        mobile: '9999999999',
+      );
+      _log.info(_tag, 'Test account details loaded: ${_leadDetails!.name}', requestId: reqId);
+      _setLoading(false);
+      return true;
+    }
 
     try {
       final callable = FirebaseFunctions.instanceFor(region: 'asia-south1')
