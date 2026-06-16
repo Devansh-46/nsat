@@ -64,7 +64,8 @@ export const MSG91_SMS_TEMPLATE_ID = process.env.MSG91_SMS_TEMPLATE_ID ?? "";
 // Paper keys (used in questions.course and tests.course):
 //   soahs_ug   = School of Allied Health & Care Sciences (UG)
 //   soahs_pg   = School of Allied Health & Care Sciences (PG)
-//   son        = School of Nursing
+//   son_bsc    = School of Nursing — B.Sc Nursing paper
+//   son_gnm    = School of Nursing — GNM (and ANM) paper
 //   set_ug     = School of Engineering & Technology (UG)
 //   set_pg     = School of Engineering & Technology (PG)
 //   sbm_ug     = School of Business Management (UG)
@@ -109,13 +110,13 @@ export const COURSE_KEY_MAP: Record<string, string> = {
   "MPH": "soahs_pg",
   "PGDEMS": "soahs_pg",
 
-  // ── SON: School of Nursing ──
-  "GNM": "son",
-  "B.Sc Nursing": "son",
-  "B.Sc-N": "son",
-  "B.Sc. Nursing": "son",
-  "B.Sc (Nursing)": "son",
-  "ANM": "son",
+  // ── SON: School of Nursing (split into B.Sc Nursing + GNM papers) ──
+  "GNM": "son_gnm",
+  "ANM": "son_gnm",            // diploma-level → routed to GNM paper — SEE DECISION below
+  "B.Sc Nursing": "son_bsc",
+  "B.Sc-N": "son_bsc",
+  "B.Sc. Nursing": "son_bsc",
+  "B.Sc (Nursing)": "son_bsc",
 
   // ── SET UG: School of Engineering & Technology (Undergraduate) ──
   "B.Tech": "set_ug",

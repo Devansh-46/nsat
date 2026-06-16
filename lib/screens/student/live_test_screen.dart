@@ -21,7 +21,6 @@ class LiveTestScreen extends StatefulWidget {
 }
 
 class _LiveTestScreenState extends State<LiveTestScreen> {
-  int _currentIndex = 0;
 
   String _formatTime(int seconds) {
     if (seconds < 0) seconds = 0;
@@ -62,6 +61,7 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
 
   void _openPalette(TestProvider provider) {
     final session = provider.currentSession!;
+    final currentIndex = provider.currentQuestionIndex;
     showModalBottomSheet(
       context: context,
       backgroundColor: AppColors.ivory,
@@ -86,42 +86,52 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
               runSpacing: 8,
               children: List.generate(session.totalQuestions, (i) {
                 final answered = session.answers.containsKey(i);
-                final current = i == _currentIndex;
+                final current = i == currentIndex;
+                final locked = session.isLocked(i);
                 return GestureDetector(
-                  onTap: () {
-                    setState(() => _currentIndex = i);
-                    Navigator.pop(ctx);
-                  },
+                  onTap: locked
+                      ? null
+                      : () {
+                          provider.goToQuestion(i);
+                          Navigator.pop(ctx);
+                        },
                   child: Container(
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                      color: current
-                          ? AppColors.forest
-                          : answered
-                              ? AppColors.forestTint
-                              : AppColors.bone,
+                      color: locked
+                          ? AppColors.ink5.withValues(alpha: 0.3)
+                          : current
+                              ? AppColors.forest
+                              : answered
+                                  ? AppColors.forestTint
+                                  : AppColors.bone,
                       border: Border.all(
-                        color: current
-                            ? AppColors.forest
-                            : answered
-                                ? AppColors.forest.withValues(alpha: 0.3)
-                                : AppColors.line,
+                        color: locked
+                            ? AppColors.ink5.withValues(alpha: 0.2)
+                            : current
+                                ? AppColors.forest
+                                : answered
+                                    ? AppColors.forest.withValues(alpha: 0.3)
+                                    : AppColors.line,
                       ),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     alignment: Alignment.center,
-                    child: Text(
-                      '${i + 1}',
-                      style: AppTheme.mono(
-                        size: 12,
-                        color: current
-                            ? Colors.white
-                            : answered
-                                ? AppColors.forest
-                                : AppColors.ink4,
-                      ),
-                    ),
+                    child: locked
+                        ? Icon(Icons.lock,
+                            size: 14, color: AppColors.ink4.withValues(alpha: 0.5))
+                        : Text(
+                            '${i + 1}',
+                            style: AppTheme.mono(
+                              size: 12,
+                              color: current
+                                  ? Colors.white
+                                  : answered
+                                      ? AppColors.forest
+                                      : AppColors.ink4,
+                            ),
+                          ),
                   ),
                 );
               }),
@@ -250,10 +260,13 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
       });
     }
 
-    final question = session.questions[_currentIndex];
-    final selected = session.answers[_currentIndex];
-    final progress = (_currentIndex + 1) / session.totalQuestions;
+    final currentIdx = provider.currentQuestionIndex;
+    final question = session.questions[currentIdx];
+    final selected = session.answers[currentIdx];
+    final progress = (currentIdx + 1) / session.totalQuestions;
     final timeLow = session.timeRemainingSeconds <= 300;
+    final hasQuestionTimer = session.hasPerQuestionTimer(currentIdx);
+    final questionTimeLow = hasQuestionTimer && session.questionTimeRemaining <= 5;
 
     // FIXES Issue #19: Wrap with PopScope to intercept back navigation
     final mobileView = PopScope(
@@ -304,43 +317,83 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
                             overflow: TextOverflow.ellipsis,
                           ),
                           Text(
-                            'Question ${_currentIndex + 1} '
+                            'Question ${currentIdx + 1} '
                             'of ${session.totalQuestions}',
                             style: AppTheme.displaySm(size: 15),
                           ),
                         ],
                       ),
                     ),
-                    // Timer
+                    // Per-question timer (prominent, MCQ only)
+                    if (hasQuestionTimer) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 7),
+                        decoration: BoxDecoration(
+                          color: questionTimeLow
+                              ? AppColors.clay.withValues(alpha: 0.1)
+                              : AppColors.forestTint,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: questionTimeLow
+                                ? AppColors.clay.withValues(alpha: 0.3)
+                                : AppColors.forest.withValues(alpha: 0.2),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.hourglass_bottom,
+                              size: 14,
+                              color: questionTimeLow
+                                  ? AppColors.clay
+                                  : AppColors.forest,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              '${session.questionTimeRemaining}s',
+                              style: AppTheme.mono(
+                                size: 13,
+                                color: questionTimeLow
+                                    ? AppColors.clay
+                                    : AppColors.forest,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                    ],
+                    // Global timer (secondary)
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 7),
+                          horizontal: 10, vertical: 7),
                       decoration: BoxDecoration(
-                        color: timeLow ? AppColors.goldTint : AppColors.forestTint,
+                        color: timeLow ? AppColors.goldTint : AppColors.bone,
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
                           color: timeLow
                               ? AppColors.gold.withValues(alpha: 0.3)
-                              : AppColors.forest.withValues(alpha: 0.2),
+                              : AppColors.line,
                         ),
                       ),
                       child: Row(
                         children: [
                           Icon(
                             Icons.timer_outlined,
-                            size: 14,
+                            size: 12,
                             color: timeLow
                                 ? const Color(0xFF8A6516)
-                                : AppColors.forest,
+                                : AppColors.ink4,
                           ),
-                          const SizedBox(width: 5),
+                          const SizedBox(width: 4),
                           Text(
                             _formatTime(session.timeRemainingSeconds),
                             style: AppTheme.mono(
-                              size: 13,
+                              size: 11,
                               color: timeLow
                                   ? const Color(0xFF8A6516)
-                                  : AppColors.forest,
+                                  : AppColors.ink4,
                             ),
                           ),
                         ],
@@ -416,8 +469,8 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
                           minWords: question.minWords > 0 ? question.minWords : 100,
                           maxWords: question.maxWords > 0 ? question.maxWords : 150,
                           onChanged: (value) =>
-                              provider.selectAnswer(_currentIndex, value),
-                          onClear: () => provider.clearAnswer(_currentIndex),
+                              provider.selectAnswer(currentIdx, value),
+                          onClear: () => provider.clearAnswer(currentIdx),
                         )
                       else ...[
                         ...List.generate(question.options.length, (i) {
@@ -425,7 +478,7 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
                           final letter = String.fromCharCode(65 + i);
                           return GestureDetector(
                             onTap: () =>
-                                provider.selectAnswer(_currentIndex, i),
+                                provider.selectAnswer(currentIdx, i),
                             child: Container(
                               margin: const EdgeInsets.only(bottom: 10),
                               padding: const EdgeInsets.symmetric(
@@ -510,7 +563,7 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
                             alignment: Alignment.centerLeft,
                             child: TextButton(
                               onPressed: () =>
-                                  provider.clearAnswer(_currentIndex),
+                                  provider.clearAnswer(currentIdx),
                               style: TextButton.styleFrom(
                                 padding: EdgeInsets.zero,
                                 minimumSize: const Size(0, 32),
@@ -541,33 +594,16 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
                 ),
                 child: Column(
                   children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: NiuButton(
-                            label: 'Previous',
-                            variant: NiuButtonVariant.outline,
-                            onTap: _currentIndex > 0
-                                ? () => setState(() => _currentIndex--)
-                                : null,
+                    currentIdx < session.totalQuestions - 1
+                        ? NiuButton(
+                            label: 'Next',
+                            onTap: () => provider.advanceQuestion(),
+                          )
+                        : NiuButton(
+                            label: 'Submit test',
+                            variant: NiuButtonVariant.gold,
+                            onTap: () => _confirmSubmit(provider),
                           ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: _currentIndex < session.totalQuestions - 1
-                              ? NiuButton(
-                                  label: 'Next',
-                                  onTap: () =>
-                                      setState(() => _currentIndex++),
-                                )
-                              : NiuButton(
-                                  label: 'Submit test',
-                                  variant: NiuButtonVariant.gold,
-                                  onTap: () => _confirmSubmit(provider),
-                                ),
-                        ),
-                      ],
-                    ),
                     if (provider.isLoading) ...[
                       const SizedBox(height: 10),
                       LinearProgressIndicator(
@@ -587,9 +623,11 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
     );
 
     // Web layout uses the same PopScope wrapper
-    final leftPanel = _buildWebLeftPanel(session, progress, timeLow);
+    final leftPanel = _buildWebLeftPanel(
+        session, progress, timeLow, hasQuestionTimer, questionTimeLow, provider);
     final rightPanel = _buildWebRightPanel(
-        session, question, selected, provider, timeLow);
+        session, question, selected, provider, timeLow,
+        hasQuestionTimer, questionTimeLow);
 
     return SelectionContainer.disabled(
       child: PopScope(
@@ -610,7 +648,9 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
     );
   }
 
-  Widget _buildWebLeftPanel(session, double progress, bool timeLow) {
+  Widget _buildWebLeftPanel(session, double progress, bool timeLow,
+      bool hasQuestionTimer, bool questionTimeLow, TestProvider provider) {
+    final currentIdx = provider.currentQuestionIndex;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -676,6 +716,43 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
             ],
           ),
         ),
+        // Per-question timer (web)
+        if (hasQuestionTimer) ...[
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: questionTimeLow
+                  ? AppColors.clay.withValues(alpha: 0.15)
+                  : AppColors.ivory.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: questionTimeLow
+                    ? AppColors.clay.withValues(alpha: 0.4)
+                    : AppColors.ivory.withValues(alpha: 0.2),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.hourglass_bottom,
+                    size: 18,
+                    color: questionTimeLow
+                        ? AppColors.clay
+                        : AppColors.ivory),
+                const SizedBox(width: 8),
+                Text(
+                  '${session.questionTimeRemaining}s per question',
+                  style: AppTheme.mono(
+                      size: 16,
+                      color: questionTimeLow
+                          ? AppColors.clay
+                          : AppColors.ivory),
+                ),
+              ],
+            ),
+          ),
+        ],
         const SizedBox(height: 32),
         Text(
           '${session.answeredCount} of ${session.totalQuestions} answered',
@@ -700,35 +777,46 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
               runSpacing: 8,
               children: List.generate(session.totalQuestions, (i) {
                 final answered = session.answers.containsKey(i);
-                final current = i == _currentIndex;
+                final current = i == currentIdx;
+                final locked = session.isLocked(i);
                 return GestureDetector(
-                  onTap: () => setState(() => _currentIndex = i),
+                  onTap: locked
+                      ? null
+                      : () => provider.goToQuestion(i),
                   child: Container(
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                      color: current
-                          ? AppColors.ivory
-                          : answered
-                              ? AppColors.ivory.withValues(alpha: 0.2)
-                              : Colors.transparent,
+                      color: locked
+                          ? AppColors.ivory.withValues(alpha: 0.05)
+                          : current
+                              ? AppColors.ivory
+                              : answered
+                                  ? AppColors.ivory.withValues(alpha: 0.2)
+                                  : Colors.transparent,
                       border: Border.all(
-                        color: current
-                            ? AppColors.ivory
-                            : answered
-                                ? AppColors.ivory.withValues(alpha: 0.5)
-                                : AppColors.ivory.withValues(alpha: 0.2),
+                        color: locked
+                            ? AppColors.ivory.withValues(alpha: 0.1)
+                            : current
+                                ? AppColors.ivory
+                                : answered
+                                    ? AppColors.ivory.withValues(alpha: 0.5)
+                                    : AppColors.ivory.withValues(alpha: 0.2),
                       ),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     alignment: Alignment.center,
-                    child: Text(
-                      '${i + 1}',
-                      style: AppTheme.mono(
-                        size: 12,
-                        color: current ? AppColors.bgBase : AppColors.ivory,
-                      ),
-                    ),
+                    child: locked
+                        ? Icon(Icons.lock,
+                            size: 14,
+                            color: AppColors.ivory.withValues(alpha: 0.3))
+                        : Text(
+                            '${i + 1}',
+                            style: AppTheme.mono(
+                              size: 12,
+                              color: current ? AppColors.bgBase : AppColors.ivory,
+                            ),
+                          ),
                   ),
                 );
               }),
@@ -739,17 +827,63 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
     );
   }
 
-  Widget _buildWebRightPanel(session, question, selected, TestProvider provider, bool timeLow) {
+  Widget _buildWebRightPanel(session, question, selected, TestProvider provider,
+      bool timeLow, bool hasQuestionTimer, bool questionTimeLow) {
+    final currentIdx = provider.currentQuestionIndex;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(session.categoryName,
-            style: AppTheme.eyebrow(color: AppColors.ink4),
-            overflow: TextOverflow.ellipsis),
-        const SizedBox(height: 4),
-        Text(
-          'Question ${_currentIndex + 1} of ${session.totalQuestions}',
-          style: AppTheme.display(size: 28),
+        Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(session.categoryName,
+                      style: AppTheme.eyebrow(color: AppColors.ink4),
+                      overflow: TextOverflow.ellipsis),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Question ${currentIdx + 1} of ${session.totalQuestions}',
+                    style: AppTheme.display(size: 28),
+                  ),
+                ],
+              ),
+            ),
+            if (hasQuestionTimer)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: questionTimeLow
+                      ? AppColors.clay.withValues(alpha: 0.1)
+                      : AppColors.forestTint,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: questionTimeLow
+                        ? AppColors.clay.withValues(alpha: 0.3)
+                        : AppColors.forest.withValues(alpha: 0.2),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.hourglass_bottom,
+                      size: 16,
+                      color: questionTimeLow ? AppColors.clay : AppColors.forest,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      '${session.questionTimeRemaining}s',
+                      style: AppTheme.mono(
+                        size: 18,
+                        color: questionTimeLow ? AppColors.clay : AppColors.forest,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
         ),
         const SizedBox(height: 24),
         Expanded(
@@ -767,15 +901,15 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
                     minWords: question.minWords > 0 ? question.minWords : 100,
                     maxWords: question.maxWords > 0 ? question.maxWords : 150,
                     onChanged: (value) =>
-                        provider.selectAnswer(_currentIndex, value),
-                    onClear: () => provider.clearAnswer(_currentIndex),
+                        provider.selectAnswer(currentIdx, value),
+                    onClear: () => provider.clearAnswer(currentIdx),
                   )
                 else ...[
                   ...List.generate(question.options.length, (i) {
                     final isSelected = selected is int && i == selected;
                     final letter = String.fromCharCode(65 + i);
                     return GestureDetector(
-                      onTap: () => provider.selectAnswer(_currentIndex, i),
+                      onTap: () => provider.selectAnswer(currentIdx, i),
                       child: Container(
                         margin: const EdgeInsets.only(bottom: 12),
                         padding: const EdgeInsets.symmetric(
@@ -857,7 +991,7 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
                     Align(
                       alignment: Alignment.centerLeft,
                       child: TextButton(
-                        onPressed: () => provider.clearAnswer(_currentIndex),
+                        onPressed: () => provider.clearAnswer(currentIdx),
                         style: TextButton.styleFrom(
                             padding: EdgeInsets.zero,
                             minimumSize: const Size(0, 32)),
@@ -879,32 +1013,16 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
               BoxDecoration(border: Border(top: BorderSide(color: AppColors.line2))),
           child: Column(
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: NiuButton(
-                      label: 'Previous',
-                      variant: NiuButtonVariant.outline,
-                      onTap: _currentIndex > 0
-                          ? () => setState(() => _currentIndex--)
-                          : null,
+              currentIdx < session.totalQuestions - 1
+                  ? NiuButton(
+                      label: 'Next',
+                      onTap: () => provider.advanceQuestion(),
+                    )
+                  : NiuButton(
+                      label: 'Submit test',
+                      variant: NiuButtonVariant.gold,
+                      onTap: () => _confirmSubmit(provider),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _currentIndex < session.totalQuestions - 1
-                        ? NiuButton(
-                            label: 'Next',
-                            onTap: () => setState(() => _currentIndex++),
-                          )
-                        : NiuButton(
-                            label: 'Submit test',
-                            variant: NiuButtonVariant.gold,
-                            onTap: () => _confirmSubmit(provider),
-                          ),
-                  ),
-                ],
-              ),
               if (provider.isLoading) ...[
                 const SizedBox(height: 12),
                 LinearProgressIndicator(

@@ -41,6 +41,9 @@ class TestProvider extends ChangeNotifier {
   bool _showResults = true;
   String? _sessionRequestId;
 
+  /// Current question index — managed by the provider for auto-advance.
+  int _currentQuestionIndex = 0;
+
   TestSessionModel? get currentSession => _currentSession;
   TestModel? get availableTest => _availableTest;
   bool get isLoading => _isLoading;
@@ -49,6 +52,7 @@ class TestProvider extends ChangeNotifier {
   bool get hasResumableAttempt => _hasResumableAttempt;
   String? get savedResultId => _savedResultId;
   bool get showResults => _availableTest?.showResults ?? _showResults;
+  int get currentQuestionIndex => _currentQuestionIndex;
 
   Future<void> fetchAvailableTest(String course) async {
     _setLoading(true);
@@ -142,11 +146,13 @@ class TestProvider extends ChangeNotifier {
         durationMinutes: _availableTest!.durationMinutes,
         marksPerQuestion: _availableTest!.marksPerQuestion,
         negativeMarksPerWrong: _availableTest!.effectiveNegativeMarks,
+        secondsPerQuestion: _availableTest!.secondsPerQuestion,
         questions: questions,
       );
 
-      // Reset submission guard for the new session
+      // Reset submission guard and question index for the new session
       _submissionInProgress = false;
+      _currentQuestionIndex = 0;
 
       _log.info(_tag,
           'Test session created: ${questions.length} questions, '
@@ -179,16 +185,30 @@ class TestProvider extends ChangeNotifier {
         return;
       }
 
+      // Global timer countdown
       if (session.timeRemainingSeconds > 0) {
         session.timeRemainingSeconds--;
-        notifyListeners();
       } else {
         timer.cancel();
         _log.info(_tag, 'Timer expired — auto-submitting test',
             requestId: _sessionRequestId, persist: true);
         submitTest();
         notifyListeners();
+        return;
       }
+
+      // Per-question timer countdown (MCQ only)
+      if (session.hasPerQuestionTimer(_currentQuestionIndex)) {
+        if (session.questionTimeRemaining > 0) {
+          session.questionTimeRemaining--;
+        } else {
+          // Time's up for this question — lock it and auto-advance
+          _log.debug(_tag, 'Per-question timer expired for Q${_currentQuestionIndex + 1}');
+          _lockAndAdvance();
+        }
+      }
+
+      notifyListeners();
     });
   }
 
@@ -223,6 +243,91 @@ class TestProvider extends ChangeNotifier {
       _currentSession!.clearAnswer(questionIndex);
       notifyListeners();
     }
+  }
+
+  // ─── Per-question timer navigation ─────────────────────────────────
+
+  /// Lock the current question and advance to the next unlocked one.
+  /// If no unlocked questions remain, auto-submit.
+  void _lockAndAdvance() {
+    final session = _currentSession;
+    if (session == null || session.isSubmitted) return;
+
+    session.lockQuestion(_currentQuestionIndex);
+
+    final nextIndex = _findNextUnlockedIndex(_currentQuestionIndex);
+    if (nextIndex == null) {
+      // All questions locked — auto-submit
+      _log.info(_tag, 'All questions locked — auto-submitting test',
+          requestId: _sessionRequestId, persist: true);
+      submitTest();
+    } else {
+      _currentQuestionIndex = nextIndex;
+      // Reset per-question timer for the new question (if applicable)
+      if (session.hasPerQuestionTimer(nextIndex)) {
+        session.resetQuestionTimer();
+      }
+    }
+    notifyListeners();
+  }
+
+  /// Navigate to a specific question (user-initiated).
+  /// Only allowed for unlocked questions.
+  void goToQuestion(int index) {
+    final session = _currentSession;
+    if (session == null || session.isSubmitted) return;
+    if (index < 0 || index >= session.totalQuestions) return;
+    if (session.isLocked(index)) return;
+
+    // Lock the current MCQ question when moving away
+    if (session.hasPerQuestionTimer(_currentQuestionIndex)) {
+      session.lockQuestion(_currentQuestionIndex);
+    }
+
+    _currentQuestionIndex = index;
+    // Reset per-question timer for the new question (if applicable)
+    if (session.hasPerQuestionTimer(index)) {
+      session.resetQuestionTimer();
+    }
+    notifyListeners();
+  }
+
+  /// Advance to the next question (student clicks "Next").
+  /// Locks the current question and moves forward.
+  void advanceQuestion() {
+    final session = _currentSession;
+    if (session == null || session.isSubmitted) return;
+
+    // Lock current MCQ question
+    if (session.hasPerQuestionTimer(_currentQuestionIndex)) {
+      session.lockQuestion(_currentQuestionIndex);
+    }
+
+    final nextIndex = _findNextUnlockedIndex(_currentQuestionIndex);
+    if (nextIndex == null) {
+      // All remaining questions are locked — auto-submit
+      _log.info(_tag, 'No more unlocked questions — auto-submitting',
+          requestId: _sessionRequestId, persist: true);
+      submitTest();
+    } else {
+      _currentQuestionIndex = nextIndex;
+      if (session.hasPerQuestionTimer(nextIndex)) {
+        session.resetQuestionTimer();
+      }
+      notifyListeners();
+    }
+  }
+
+  /// Find the next unlocked question index after [fromIndex].
+  /// Returns null if all remaining questions are locked.
+  int? _findNextUnlockedIndex(int fromIndex) {
+    final session = _currentSession;
+    if (session == null) return null;
+
+    for (int i = fromIndex + 1; i < session.totalQuestions; i++) {
+      if (!session.isLocked(i)) return i;
+    }
+    return null;
   }
 
   /// Submits the test via the scoreSubmission Cloud Function.
@@ -309,6 +414,7 @@ class TestProvider extends ChangeNotifier {
     _showResults = true;
     _sessionRequestId = null;
     _submissionInProgress = false;
+    _currentQuestionIndex = 0;
     notifyListeners();
   }
 

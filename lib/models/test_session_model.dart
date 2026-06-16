@@ -8,7 +8,9 @@ class TestSessionModel {
   final int durationMinutes;
   final double marksPerQuestion;
   final double negativeMarksPerWrong;
+  final int secondsPerQuestion;
   int timeRemainingSeconds;
+  int questionTimeRemaining;
 
   /// Answers map: questionIndex -> answer value.
   /// For MCQ: int (option index). For short answer: String.
@@ -17,6 +19,9 @@ class TestSessionModel {
   bool isSubmitted;
   DateTime? submittedAt;
   List<QuestionModel> questions;
+
+  /// Indices of questions that have been locked (timer expired or manually advanced).
+  final Set<int> lockedQuestions;
 
   /// Server-authoritative score overrides.
   int? _serverCorrect;
@@ -33,10 +38,13 @@ class TestSessionModel {
     required this.durationMinutes,
     this.marksPerQuestion = 1.0,
     this.negativeMarksPerWrong = 0.25,
+    this.secondsPerQuestion = 30,
     List<QuestionModel>? questions,
   })  : timeRemainingSeconds = durationMinutes * 60,
+        questionTimeRemaining = secondsPerQuestion,
         answers = {},
         isSubmitted = false,
+        lockedQuestions = {},
         questions = questions ?? [];
 
   void setServerScores({
@@ -122,6 +130,27 @@ class TestSessionModel {
 
   void clearAnswer(int questionIndex) {
     answers.remove(questionIndex);
+  }
+
+  /// Whether a question is locked (timer expired or student moved on).
+  bool isLocked(int index) => lockedQuestions.contains(index);
+
+  /// Lock a question so it can't be revisited.
+  void lockQuestion(int index) {
+    lockedQuestions.add(index);
+  }
+
+  /// Reset the per-question countdown (called when navigating to a new question).
+  void resetQuestionTimer() {
+    questionTimeRemaining = secondsPerQuestion;
+  }
+
+  /// Whether the per-question timer applies to the given question index.
+  /// Short answer questions are exempt from the timer.
+  bool hasPerQuestionTimer(int index) {
+    if (secondsPerQuestion <= 0) return false;
+    if (index < 0 || index >= questions.length) return false;
+    return !questions[index].isShortAnswer;
   }
 
   int getQuestionState(int questionIndex, int currentQuestionIndex) {

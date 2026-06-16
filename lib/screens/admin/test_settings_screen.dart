@@ -157,6 +157,7 @@ class _TestSettingsScreenState extends State<TestSettingsScreen> {
                 ..._tests.map((test) => _TestCard(
                       test: test,
                       onToggleField: _toggleField,
+                      onUpdateField: _updateField,
                     )),
             ],
           ),
@@ -164,16 +165,66 @@ class _TestSettingsScreenState extends State<TestSettingsScreen> {
       ),
     );
   }
+
+  Future<void> _updateField(String testId, String field, dynamic value) async {
+    try {
+      await _testMgmtService.updateTestFields(testId, {field: value});
+      setState(() {
+        _successMessage = 'Updated successfully';
+      });
+      await _fetchTests();
+      _clearMessageAfterDelay();
+    } catch (e) {
+      setState(() {
+        _error = 'Failed to update. Please try again.';
+      });
+      _clearMessageAfterDelay();
+    }
+  }
 }
 
-class _TestCard extends StatelessWidget {
+class _TestCard extends StatefulWidget {
   final TestModel test;
   final Future<void> Function(String testId, String field, bool currentValue) onToggleField;
+  final Future<void> Function(String testId, String field, dynamic value) onUpdateField;
 
-  const _TestCard({required this.test, required this.onToggleField});
+  const _TestCard({
+    required this.test,
+    required this.onToggleField,
+    required this.onUpdateField,
+  });
+
+  @override
+  State<_TestCard> createState() => _TestCardState();
+}
+
+class _TestCardState extends State<_TestCard> {
+  late final TextEditingController _secondsController;
+
+  @override
+  void initState() {
+    super.initState();
+    _secondsController =
+        TextEditingController(text: widget.test.secondsPerQuestion.toString());
+  }
+
+  @override
+  void didUpdateWidget(_TestCard old) {
+    super.didUpdateWidget(old);
+    if (old.test.secondsPerQuestion != widget.test.secondsPerQuestion) {
+      _secondsController.text = widget.test.secondsPerQuestion.toString();
+    }
+  }
+
+  @override
+  void dispose() {
+    _secondsController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final test = widget.test;
     final courseLabel = _courseDisplayLabels[test.course] ?? test.course;
 
     return Padding(
@@ -233,7 +284,7 @@ class _TestCard extends StatelessWidget {
               label: 'Publish test',
               description: 'Students can take this test',
               value: test.isPublished,
-              onToggle: () => onToggleField(test.id, 'isPublished', test.isPublished),
+              onToggle: () => widget.onToggleField(test.id, 'isPublished', test.isPublished),
             ),
 
             const Divider(height: 1, color: AppColors.line2),
@@ -243,7 +294,7 @@ class _TestCard extends StatelessWidget {
               label: 'View results',
               description: 'Students see their score after submission',
               value: test.showResults,
-              onToggle: () => onToggleField(test.id, 'showResults', test.showResults),
+              onToggle: () => widget.onToggleField(test.id, 'showResults', test.showResults),
             ),
 
             const Divider(height: 1, color: AppColors.line2),
@@ -253,7 +304,7 @@ class _TestCard extends StatelessWidget {
               label: 'Edit results',
               description: 'Admins can edit results for this test',
               value: test.allowEditResults,
-              onToggle: () => onToggleField(test.id, 'allowEditResults', test.allowEditResults),
+              onToggle: () => widget.onToggleField(test.id, 'allowEditResults', test.allowEditResults),
             ),
 
             const Divider(height: 1, color: AppColors.line2),
@@ -263,7 +314,72 @@ class _TestCard extends StatelessWidget {
               label: 'Admin view results',
               description: 'Admins can view results for this test',
               value: test.allowViewResults,
-              onToggle: () => onToggleField(test.id, 'allowViewResults', test.allowViewResults),
+              onToggle: () => widget.onToggleField(test.id, 'allowViewResults', test.allowViewResults),
+            ),
+
+            const Divider(height: 1, color: AppColors.line2),
+
+            // Numeric: Seconds per question
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Seconds per question',
+                          style: AppTheme.body(
+                            size: 12.5,
+                            color: AppColors.ink,
+                            weight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 1),
+                        Text(
+                          'MCQ timer per question (0 to disable)',
+                          style: AppTheme.body(size: 10.5, color: AppColors.ink4),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(
+                    width: 64,
+                    height: 34,
+                    child: TextField(
+                      controller: _secondsController,
+                      keyboardType: TextInputType.number,
+                      textAlign: TextAlign.center,
+                      style: AppTheme.mono(size: 13, color: AppColors.ink),
+                      cursorColor: AppColors.forest,
+                      decoration: InputDecoration(
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 6),
+                        isDense: true,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: const BorderSide(color: AppColors.line),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: const BorderSide(color: AppColors.forest),
+                        ),
+                      ),
+                      onSubmitted: (value) {
+                        final parsed = int.tryParse(value);
+                        if (parsed != null && parsed >= 0) {
+                          widget.onUpdateField(
+                              test.id, 'secondsPerQuestion', parsed);
+                        } else {
+                          _secondsController.text =
+                              test.secondsPerQuestion.toString();
+                        }
+                      },
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),

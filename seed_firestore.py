@@ -35,7 +35,7 @@ import openpyxl
 # NPF returns specific courses; question papers are per SCHOOL (UG/PG split).
 # Source: https://niu.edu.in/courses-fee-structure-for-2026-27/
 #
-# Paper keys: soahs_ug, soahs_pg, son, set_ug, set_pg, sbm_ug, sbm_pg,
+# Paper keys: soahs_ug, soahs_pg, son_bsc, son_gnm, set_ug, set_pg, sbm_ug, sbm_pg,
 #             solla_ug, solla_pg, sjmc, sos_ug, sos_pg, sola, sofad, soe, sop
 COURSE_KEY_MAP = {
     # SOAHS UG: School of Allied Health & Care Sciences (Undergraduate)
@@ -52,10 +52,11 @@ COURSE_KEY_MAP = {
     "MMRIT": "soahs_pg", "MPH": "soahs_pg", "PGDEMS": "soahs_pg",
     "soahs_pg": "soahs_pg",
 
-    # SON: School of Nursing
-    "GNM": "son", "B.Sc Nursing": "son", "B.Sc-N": "son",
-    "B.Sc. Nursing": "son", "B.Sc (Nursing)": "son", "ANM": "son",
-    "son": "son",
+    # SON: School of Nursing (split: B.Sc Nursing + GNM)
+    "GNM": "son_gnm", "ANM": "son_gnm",
+    "B.Sc Nursing": "son_bsc", "B.Sc-N": "son_bsc",
+    "B.Sc. Nursing": "son_bsc", "B.Sc (Nursing)": "son_bsc",
+    "son_gnm": "son_gnm", "son_bsc": "son_bsc",
 
     # SET UG: School of Engineering & Technology (Undergraduate)
     "B.Tech": "set_ug", "B.Tech / Engineering": "set_ug",

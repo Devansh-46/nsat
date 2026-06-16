@@ -25,6 +25,11 @@ class TestModel {
   /// Defaults to `true` for backward compatibility.
   final bool allowViewResults;
 
+  /// Seconds allocated per MCQ question. Short answer questions are exempt.
+  /// Defaults to `30` for backward compatibility. Set to `0` to disable
+  /// the per-question timer entirely.
+  final int secondsPerQuestion;
+
   TestModel({
     required this.id,
     required this.title,
@@ -38,6 +43,7 @@ class TestModel {
     this.showResults = true,
     this.allowEditResults = false,
     this.allowViewResults = true,
+    this.secondsPerQuestion = 30,
   });
 
   double get effectiveNegativeMarks =>
@@ -58,6 +64,7 @@ class TestModel {
       showResults: data['showResults'] ?? true,
       allowEditResults: data['allowEditResults'] ?? false,
       allowViewResults: data['allowViewResults'] ?? true,
+      secondsPerQuestion: (data['secondsPerQuestion'] ?? 30) as int,
     );
   }
 
@@ -73,5 +80,6 @@ class TestModel {
         'showResults': showResults,
         'allowEditResults': allowEditResults,
         'allowViewResults': allowViewResults,
+        'secondsPerQuestion': secondsPerQuestion,
       };
 }
