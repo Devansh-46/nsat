@@ -54,13 +54,25 @@ void main() {
       );
 
       // App Check — ensures requests come from the genuine NSAT app.
-      // Pre-exam: debug providers so local/CI builds pass while we soft-enforce
-      // (consumeAppCheckToken) on the backend. After the June 14 exam, switch to
-      // production providers (playIntegrity / appAttest) and fill in the real
-      // reCAPTCHA Enterprise site key below.
+      //
+      // iOS: release builds use App Attest (real device attestation); debug
+      // builds keep the debug provider because App Attest cannot run in the
+      // Simulator or without provisioning. Requires the App Attest entitlement
+      // (ios/Runner/Runner.entitlements) and the App Attest provider registered
+      // in Firebase Console → App Check for this iOS app.
+      //
+      // Backend currently soft-enforces (consumeAppCheckToken, not
+      // enforceAppCheck), so a missing/invalid token never blocks requests —
+      // it only weakens the anti-abuse signal until enforcement is turned on.
+      //
+      // Android stays on the debug provider for now; switch to
+      // AndroidProvider.playIntegrity once Play Integrity is configured. Web
+      // still needs a real reCAPTCHA Enterprise site key below before web
+      // App Check produces valid tokens.
       await FirebaseAppCheck.instance.activate(
         androidProvider: AndroidProvider.debug,
-        appleProvider: AppleProvider.debug,
+        appleProvider:
+            kDebugMode ? AppleProvider.debug : AppleProvider.appAttest,
         webProvider: ReCaptchaEnterpriseProvider('YOUR_RECAPTCHA_SITE_KEY'),
       );
     } catch (e) {
@@ -151,23 +163,30 @@ class _AppRootState extends State<AppRoot> {
 
   Future<void> _initServices() async {
     try {
-      await RemoteConfigService.instance.init();
+      await RemoteConfigService.instance.init().timeout(const Duration(seconds: 10));
     } catch (e) {
-      _log.error('Main', 'RemoteConfig init failed', error: e);
+      _log.error('Main', 'RemoteConfig init failed or timed out', error: e);
     }
 
     // Check if force update is needed
     try {
-      _updateRequired = await VersionCheck.isUpdateRequired();
+      _updateRequired = await VersionCheck.isUpdateRequired().timeout(const Duration(seconds: 5));
     } catch (e) {
-      _log.error('Main', 'Version check failed', error: e);
+      _log.error('Main', 'Version check failed or timed out', error: e);
     }
 
-    try {
-      await FcmService().initializeForStudent('');
-    } catch (e) {
-      _log.error('Main', 'FCM init failed', error: e);
-    }
+    // FCM init must NOT block app startup. On iOS/TestFlight, subscribeToTopic
+    // waits for an APNs token, which can hang indefinitely (no timeout in the
+    // SDK) — leaving the app stuck on the post-splash spinner (blank screen).
+    // Fire-and-forget with a timeout so the UI proceeds regardless.
+    unawaited(
+      FcmService()
+          .initializeForStudent('')
+          .timeout(const Duration(seconds: 8))
+          .catchError((e) {
+        _log.error('Main', 'FCM init failed or timed out', error: e);
+      }),
+    );
 
     if (mounted) {
       setState(() => _servicesReady = true);

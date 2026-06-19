@@ -24,11 +24,18 @@ class RemoteConfigService {
 
   /// Initialize with defaults and fetch latest values.
   /// Call once at app startup (main.dart), after Firebase.initializeApp.
+  ///
+  /// Defaults are applied first so the getters return sane values even if
+  /// the network calls below hang or fail. On iOS, `ensureInitialized` and
+  /// `fetchAndActivate` wait on an App Check token; with the debug Apple
+  /// provider on a real device/TestFlight build that token can never be
+  /// minted, so each network call is bounded by its own timeout to guarantee
+  /// init() always returns and never blocks app startup.
   Future<void> init() async {
     _log.debug(_tag, 'Initialising Remote Config');
 
-    await _rc.ensureInitialized();
-
+    // Apply defaults + settings FIRST. These are local/synchronous-ish and
+    // ensure the getters work even if the network calls below never complete.
     await _rc.setDefaults({
       'exam_window_open': true,
       'maintenance_mode': false,
@@ -41,17 +48,30 @@ class RemoteConfigService {
     });
 
     await _rc.setConfigSettings(RemoteConfigSettings(
-      fetchTimeout: const Duration(seconds: 10),
+      fetchTimeout: const Duration(seconds: 6),
       minimumFetchInterval: const Duration(minutes: 5),
     ));
 
+    // Bound ensureInitialized — on iOS it can stall on App Check.
+    // Inner timeouts (4s + 6s) stay within the 10s cap the caller applies in
+    // main.dart so each step can fail cleanly before the outer cap fires.
     try {
-      await _rc.fetchAndActivate();
+      await _rc.ensureInitialized().timeout(const Duration(seconds: 4));
+    } catch (e, st) {
+      _log.error(_tag, 'Remote Config ensureInitialized failed/timed out',
+          error: e, stackTrace: st);
+      // Defaults are already set above, so it is safe to continue.
+    }
+
+    try {
+      // Defensive outer timeout: fetchTimeout governs the network call, but
+      // the App Check token wait that precedes it is not covered by it.
+      await _rc.fetchAndActivate().timeout(const Duration(seconds: 6));
       _log.info(_tag,
           'Remote Config fetched — exam_window=$isExamWindowOpen, '
           'maintenance=$isMaintenanceMode');
     } catch (e, st) {
-      _log.error(_tag, 'Remote Config fetch failed, using defaults',
+      _log.error(_tag, 'Remote Config fetch failed/timed out, using defaults',
           error: e, stackTrace: st);
       // Silently use defaults if network is unavailable
     }
