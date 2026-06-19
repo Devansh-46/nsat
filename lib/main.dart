@@ -155,6 +155,21 @@ class _AppRootState extends State<AppRoot> {
   bool _servicesReady = false;
   bool _updateRequired = false;
 
+  // On-screen diagnostics: shows which init stage we're on (and any caught
+  // error) under the post-splash spinner. If startup ever hangs on a device
+  // we can't attach a debugger to, the screen tells us exactly where.
+  String _stage = 'Starting…';
+  String? _stageError;
+
+  void _setStage(String s, [String? err]) {
+    if (mounted) {
+      setState(() {
+        _stage = s;
+        _stageError = err;
+      });
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -162,17 +177,33 @@ class _AppRootState extends State<AppRoot> {
   }
 
   Future<void> _initServices() async {
+    // Absolute safety net: no matter what happens below, force the app to
+    // proceed after this deadline so it can never sit on the spinner forever.
+    Timer(const Duration(seconds: 18), () {
+      if (mounted && !_servicesReady) {
+        _log.error('Main', 'Init watchdog fired — forcing app to proceed');
+        setState(() => _servicesReady = true);
+      }
+    });
+
+    _setStage('Loading config…');
     try {
-      await RemoteConfigService.instance.init().timeout(const Duration(seconds: 10));
+      await RemoteConfigService.instance
+          .init()
+          .timeout(const Duration(seconds: 10));
     } catch (e) {
       _log.error('Main', 'RemoteConfig init failed or timed out', error: e);
+      _setStage('Config skipped', e.toString());
     }
 
     // Check if force update is needed
+    _setStage('Checking version…', _stageError);
     try {
-      _updateRequired = await VersionCheck.isUpdateRequired().timeout(const Duration(seconds: 5));
+      _updateRequired = await VersionCheck.isUpdateRequired()
+          .timeout(const Duration(seconds: 5));
     } catch (e) {
       _log.error('Main', 'Version check failed or timed out', error: e);
+      _setStage('Version check skipped', e.toString());
     }
 
     // FCM init must NOT block app startup. On iOS/TestFlight, subscribeToTopic
@@ -188,6 +219,7 @@ class _AppRootState extends State<AppRoot> {
       }),
     );
 
+    _setStage('Finishing…', _stageError);
     if (mounted) {
       setState(() => _servicesReady = true);
     }
@@ -223,8 +255,33 @@ class _AppRootState extends State<AppRoot> {
             brightness: Brightness.light,
           ).copyWith(surface: AppColors.bgBase),
         ),
-        home: const Scaffold(
-          body: Center(child: CircularProgressIndicator()),
+        home: Scaffold(
+          body: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const CircularProgressIndicator(),
+                const SizedBox(height: 20),
+                Text(
+                  _stage,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 13, color: AppColors.ink4),
+                ),
+                if (_stageError != null)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(32, 10, 32, 0),
+                    child: Text(
+                      _stageError!,
+                      textAlign: TextAlign.center,
+                      maxLines: 4,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          fontSize: 10, color: AppColors.ink5),
+                    ),
+                  ),
+              ],
+            ),
+          ),
         ),
       );
     }

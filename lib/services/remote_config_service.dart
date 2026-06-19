@@ -78,30 +78,69 @@ class RemoteConfigService {
   }
 
   // ── Getters ──
+  //
+  // All getters are defensive: if the native Remote Config layer failed to
+  // initialise (e.g. ensureInitialized timed out on iOS while waiting for an
+  // App Check token), `_rc.getBool/getString/getInt` can throw. A throw here
+  // would crash the build() of any widget reading config (e.g.
+  // RoleSelectionScreen reads isMaintenanceMode), freezing the UI on the last
+  // painted frame — the post-splash spinner. Falling back to the hardcoded
+  // defaults keeps the app rendering no matter what.
 
   /// Whether students are allowed to start new tests right now.
-  bool get isExamWindowOpen => _rc.getBool('exam_window_open');
+  bool get isExamWindowOpen => _boolOr('exam_window_open', true);
 
   /// Whether the app is in maintenance mode (blocks student login).
-  bool get isMaintenanceMode => _rc.getBool('maintenance_mode');
+  bool get isMaintenanceMode => _boolOr('maintenance_mode', false);
 
   /// Custom maintenance message from the Console.
-  String get maintenanceMessage => _rc.getString('maintenance_message');
+  String get maintenanceMessage => _stringOr('maintenance_message',
+      'NSAT is temporarily unavailable for scheduled maintenance. Please try again shortly.');
 
   /// Display date for the exam (shown on test category screen etc).
-  String get examDateDisplay => _rc.getString('exam_date_display');
+  String get examDateDisplay => _stringOr('exam_date_display', '14 June 2026');
 
   /// Returns the list of super admin emails allowed to view logs
-  String get superAdminEmails => _rc.getString('super_admin_emails');
+  String get superAdminEmails =>
+      _stringOr('super_admin_emails', 'devansh.chaubey@niu.edu.in');
 
   /// Minimum versionCode required. App below this must update.
-  int get minVersionCode => _rc.getInt('min_version_code');
+  int get minVersionCode => _intOr('min_version_code', 1);
 
   /// Message shown on the force update screen.
-  String get forceUpdateMessage => _rc.getString('force_update_message');
+  String get forceUpdateMessage => _stringOr('force_update_message',
+      'A new version of NSAT is available with important updates. Please update to continue.');
 
   /// Play Store URL for the update button.
-  String get playStoreUrl => _rc.getString('play_store_url');
+  String get playStoreUrl => _stringOr('play_store_url',
+      'https://play.google.com/store/apps/details?id=in.edu.niu.nsat');
+
+  // ── Safe accessors ──
+
+  bool _boolOr(String key, bool fallback) {
+    try {
+      return _rc.getBool(key);
+    } catch (_) {
+      return fallback;
+    }
+  }
+
+  String _stringOr(String key, String fallback) {
+    try {
+      final v = _rc.getString(key);
+      return v.isEmpty ? fallback : v;
+    } catch (_) {
+      return fallback;
+    }
+  }
+
+  int _intOr(String key, int fallback) {
+    try {
+      return _rc.getInt(key);
+    } catch (_) {
+      return fallback;
+    }
+  }
   
   /// Helper to check if a specific email is a super admin
   bool isSuperAdmin(String email) {
