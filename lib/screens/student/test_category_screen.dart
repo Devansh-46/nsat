@@ -14,6 +14,8 @@ import '../../widgets/note_box.dart';
 import '../../services/remote_config_service.dart';
 import '../../services/analytics_service.dart';
 import '../../widgets/web_split_layout.dart';
+import 'package:flutter/foundation.dart';
+import '../../utils/web_helpers/web_helpers.dart';
 
 /// Step 3 — Shows the student's published test and lets them start it.
 /// Identity from AuthProvider (verifiedStudent + leadDetails).
@@ -93,6 +95,11 @@ class _TestCategoryScreenState extends State<TestCategoryScreen> {
         course: lead.courseKey,
         testId: testProvider.availableTest?.id ?? '',
       );
+      
+      if (kIsWeb) {
+        requestWebFullscreen();
+      }
+      
       Navigator.pushReplacementNamed(context, AppRoutes.liveTest);
       return;
     }

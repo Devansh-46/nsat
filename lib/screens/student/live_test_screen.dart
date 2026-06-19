@@ -9,6 +9,10 @@ import '../../providers/auth_provider.dart';
 import '../../services/analytics_service.dart';
 import '../../widgets/web_split_layout.dart';
 import '../../utils/clipboard_guard.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
+import 'package:window_manager/window_manager.dart';
+import '../../utils/web_helpers/web_helpers.dart';
 
 /// Live test — one question per screen, progress bar, timer, palette.
 /// FIXES Issue #19: Back navigation is intercepted with PopScope to prevent
@@ -20,7 +24,107 @@ class LiveTestScreen extends StatefulWidget {
   State<LiveTestScreen> createState() => _LiveTestScreenState();
 }
 
-class _LiveTestScreenState extends State<LiveTestScreen> {
+class _LiveTestScreenState extends State<LiveTestScreen> with WidgetsBindingObserver, WindowListener {
+  int _blurWarnings = 0;
+  bool _isAutoSubmitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    if (kIsWeb) {
+      setupWebVisibilityListeners(_handleViolation);
+    }
+    _enterFullScreen();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    if (kIsWeb) {
+      removeWebVisibilityListeners();
+    }
+    _exitFullScreen();
+    super.dispose();
+  }
+
+  Future<void> _enterFullScreen() async {
+    if (kIsWeb) {
+      requestWebFullscreen();
+    } else if (defaultTargetPlatform == TargetPlatform.windows || 
+               defaultTargetPlatform == TargetPlatform.macOS || 
+               defaultTargetPlatform == TargetPlatform.linux) {
+      windowManager.addListener(this);
+      await windowManager.setFullScreen(true);
+      await windowManager.setAlwaysOnTop(true);
+    } else {
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    }
+  }
+
+  Future<void> _exitFullScreen() async {
+    if (kIsWeb) {
+      exitWebFullscreen();
+    } else if (defaultTargetPlatform == TargetPlatform.windows || 
+               defaultTargetPlatform == TargetPlatform.macOS || 
+               defaultTargetPlatform == TargetPlatform.linux) {
+      windowManager.removeListener(this);
+      await windowManager.setFullScreen(false);
+      await windowManager.setAlwaysOnTop(false);
+    } else {
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    }
+  }
+
+  void _handleViolation() {
+    if (_isAutoSubmitting) return;
+
+    _blurWarnings++;
+    if (_blurWarnings == 1) {
+      _showWarningDialog();
+    } else if (_blurWarnings >= 2) {
+      _isAutoSubmitting = true;
+      _submitTest(autoSubmit: true);
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.hidden) {
+      _handleViolation();
+    }
+  }
+
+  @override
+  void onWindowBlur() {
+    _handleViolation();
+  }
+
+  void _showWarningDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.ivory,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: Text('Warning', style: AppTheme.displaySm(size: 18, color: AppColors.clay)),
+        content: Text(
+          'You have switched away from the test window. This is a violation of the test rules.\n\n'
+          'If you switch away again, your test will be automatically submitted.',
+          style: AppTheme.body(size: 14, color: AppColors.ink3),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _enterFullScreen(); // re-enter full screen if they exited
+            },
+            child: Text('I Understand', style: AppTheme.body(size: 14, color: AppColors.forest, weight: FontWeight.w600)),
+          ),
+        ],
+      ),
+    );
+  }
 
   String _formatTime(int seconds) {
     if (seconds < 0) seconds = 0;
@@ -29,13 +133,13 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
     return '$m:$s';
   }
 
-  void _submitTest() async {
+  void _submitTest({bool autoSubmit = false}) async {
     final provider = context.read<TestProvider>();
     final auth = context.read<AuthProvider>();
     try {
       await provider.submitTest();
     } catch (e) {
-      if (mounted) {
+      if (mounted && !autoSubmit) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(provider.error ?? 'Test submission failed. Please try again.'),
@@ -54,6 +158,15 @@ class _LiveTestScreenState extends State<LiveTestScreen> {
           course: session.categoryName,
           answeredCount: session.answeredCount,
           totalQuestions: session.totalQuestions,
+        );
+      }
+      if (autoSubmit) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Test automatically submitted due to rules violation.'),
+            backgroundColor: AppColors.clay,
+            duration: Duration(seconds: 5),
+          ),
         );
       }
     }

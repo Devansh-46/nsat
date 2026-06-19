@@ -92,3 +92,12 @@ node_modules/
 # iOS/macOS Firebase Config
 **/ios/Runner/GoogleService-Info.plist
 **/macos/Runner/GoogleService-Info.plist
+
+# Scratch / build artifacts
+out.js
+out.js.deps
+out.js.map
+scratch.dart
+for_testing.txt
+publish_test.js
+publish_test.py
