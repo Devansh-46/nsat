@@ -17,6 +17,8 @@ export const scoreSubmission = onCall(
     const testId = request.data?.test_id as string | undefined;
     const answers = request.data?.answers as
       Record<string, number | string> | undefined;
+    const violationCount = (request.data?.violationCount as number) ?? 0;
+    const autoSubmittedDueToViolation = (request.data?.autoSubmittedDueToViolation as boolean) ?? false;
 
     if (!applicationNo || !testId || !answers || !studentName) {
       throw new HttpsError(
@@ -128,6 +130,8 @@ export const scoreSubmission = onCall(
       netScore,
       maxScore,
       showResults: test.showResults !== false,
+      violationCount,
+      autoSubmittedDueToViolation,
       submittedAt: admin.firestore.FieldValue.serverTimestamp(),
     };
 
