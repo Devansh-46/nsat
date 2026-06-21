@@ -81,6 +81,36 @@ void main() {
 
     _log.init();
 
+    // TEMP DIAGNOSTIC (remove once the post-splash black-screen is fixed):
+    // In release builds a thrown widget renders as a blank/black screen with no
+    // detail. This paints the actual exception on screen so a device we can't
+    // attach a debugger to can still tell us what failed during build.
+    ErrorWidget.builder = (FlutterErrorDetails details) {
+      return Material(
+        color: const Color(0xFFF4EFE3),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 60),
+                const Text('Something went wrong rendering this screen',
+                    style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF8B2E2E))),
+                const SizedBox(height: 12),
+                Text(details.exceptionAsString(),
+                    style: const TextStyle(
+                        fontSize: 12, color: Color(0xFF5A4A3A))),
+              ],
+            ),
+          ),
+        ),
+      );
+    };
+
     if (!kIsWeb) {
       FlutterError.onError = (details) {
         _log.error(

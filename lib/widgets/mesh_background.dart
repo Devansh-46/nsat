@@ -45,22 +45,27 @@ class _MeshBackgroundState extends State<MeshBackground>
       child: Stack(
         children: [
           // The animated mesh layer.
+          //
+          // NOTE: the CustomPaint MUST have an explicit size (Size.infinite),
+          // matching the splash-screen mesh. A bare CustomPaint with no size
+          // and no child resolves to Size.zero, which (combined with a
+          // Transform) made the whole mesh layer — and therefore every screen
+          // that uses MeshBackground — paint black after the splash. The drift
+          // uses a plain Transform.scale (the proven splash approach) instead
+          // of a hand-built Matrix4, which could collapse the layer off-screen.
           Positioned.fill(
             child: AnimatedBuilder(
               animation: _controller,
               builder: (context, _) {
                 final t = reduceMotion ? 0.5 : _controller.value;
-                // Drift by ±1% on each axis, scale up to 1.02.
-                final dx = (t - 0.5) * 0.02;
-                final dy = (0.5 - t) * 0.02;
+                // Subtle scale drift up to 1.02; no translation (kept simple
+                // and robust — the radial gradients already bleed past edges).
                 final scale = 1 + (t * 0.02);
 
-                return Transform(
-                  transform: Matrix4.identity()
-                    ..translateByDouble(dx * 100, dy * 100, 0, 1)
-                    ..scaleByDouble(scale, scale, 1, 1),
-                  alignment: Alignment.center,
+                return Transform.scale(
+                  scale: scale,
                   child: CustomPaint(
+                    size: Size.infinite,
                     painter: _MeshPainter(),
                   ),
                 );
@@ -79,6 +84,10 @@ class _MeshBackgroundState extends State<MeshBackground>
 class _MeshPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
+    // Guard against a zero/invalid canvas size: with no painted gradients the
+    // base bg color (set on the parent Container) shows through, never black.
+    if (size.isEmpty || !size.width.isFinite || !size.height.isFinite) return;
+
     // Extend a touch past the edges so the drift never reveals base bg.
     final inset = -size.shortestSide * 0.1;
     final rect = Rect.fromLTRB(
