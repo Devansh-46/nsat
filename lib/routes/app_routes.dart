@@ -5,6 +5,7 @@ class AppRoutes {
   static const String studentLogin = '/student-login';
   static const String feeGate = '/fee-gate';
   static const String testCategory = '/test-category';
+  static const String rules = '/rules';
   static const String liveTest = '/live-test';
   static const String result = '/result';
   static const String adminDashboard = '/admin-dashboard';

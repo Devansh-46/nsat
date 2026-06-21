@@ -46,6 +46,8 @@ class ScoringService {
     // These params kept for API compat but no longer used locally
     List<QuestionModel>? questions,
     TestModel? test,
+    int violationCount = 0,
+    bool autoSubmittedDueToViolation = false,
   }) async {
     final reqId = AppLogger.generateRequestId();
     _log.info(_tag,
@@ -64,6 +66,8 @@ class ScoringService {
         'student_name': studentName,
         'test_id': testId,
         'answers': stringAnswers,
+        'violationCount': violationCount,
+        'autoSubmittedDueToViolation': autoSubmittedDueToViolation,
       });
 
       final data = result.data;

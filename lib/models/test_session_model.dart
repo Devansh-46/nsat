@@ -23,6 +23,10 @@ class TestSessionModel {
   /// Indices of questions that have been locked (timer expired or manually advanced).
   final Set<int> lockedQuestions;
 
+  /// Violation tracking — stored in the result document.
+  int violationCount;
+  bool autoSubmittedDueToViolation;
+
   /// Server-authoritative score overrides.
   int? _serverCorrect;
   int? _serverWrong;
@@ -45,6 +49,8 @@ class TestSessionModel {
         answers = {},
         isSubmitted = false,
         lockedQuestions = {},
+        violationCount = 0,
+        autoSubmittedDueToViolation = false,
         questions = questions ?? [];
 
   void setServerScores({
@@ -183,6 +189,8 @@ class TestSessionModel {
       'netScore': netScore,
       'maxScore': maxScore,
       'submittedAt': submittedAt?.toIso8601String(),
+      'violationCount': violationCount,
+      'autoSubmittedDueToViolation': autoSubmittedDueToViolation,
     };
   }
 

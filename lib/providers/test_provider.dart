@@ -251,6 +251,28 @@ class TestProvider extends ChangeNotifier {
     }
   }
 
+  // ─── Violation tracking ───────────────────────────────────────────────
+
+  /// Record a violation (tab-switch, app-switch, etc.).
+  void recordViolation() {
+    if (_currentSession != null && !_currentSession!.isSubmitted) {
+      _currentSession!.violationCount++;
+      _log.info(_tag,
+          'Violation #${_currentSession!.violationCount} for ${_currentSession!.studentId}',
+          requestId: _sessionRequestId, persist: true);
+    }
+  }
+
+  /// Mark that the test was auto-submitted due to violation.
+  void markAutoSubmitViolation() {
+    if (_currentSession != null) {
+      _currentSession!.autoSubmittedDueToViolation = true;
+      _log.info(_tag,
+          'Test auto-submitted due to violation for ${_currentSession!.studentId}',
+          requestId: _sessionRequestId, persist: true);
+    }
+  }
+
   // ─── Per-question timer navigation ─────────────────────────────────
 
   /// Lock the current question and advance to the next unlocked one.
@@ -371,6 +393,8 @@ class TestProvider extends ChangeNotifier {
         studentName: session.studentName,
         testId: _availableTest!.id,
         answers: session.answers,
+        violationCount: session.violationCount,
+        autoSubmittedDueToViolation: session.autoSubmittedDueToViolation,
       );
 
       session.submit();

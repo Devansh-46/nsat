@@ -40,6 +40,15 @@ class _TestCategoryScreenState extends State<TestCategoryScreen> {
     });
   }
 
+  /// Navigate to the Rules screen first; only start the test if the
+  /// student reads and accepts all rules.
+  void _showRulesThenStart() async {
+    final accepted = await Navigator.pushNamed(context, AppRoutes.rules);
+    if (accepted == true && mounted) {
+      _startTest();
+    }
+  }
+
   void _startTest() async {
     // Check if exam window is open
     await RemoteConfigService.instance.refresh();
@@ -291,7 +300,7 @@ class _TestCategoryScreenState extends State<TestCategoryScreen> {
                     label: 'Start test',
                     variant: NiuButtonVariant.forest,
                     showArrow: true,
-                    onTap: _startTest,
+                    onTap: () => _showRulesThenStart(),
                   ),
                 ] else ...[
                   // ── Empty state ──
@@ -547,7 +556,7 @@ class _TestCategoryScreenState extends State<TestCategoryScreen> {
             label: 'Start test',
             variant: NiuButtonVariant.forest,
             showArrow: true,
-            onTap: _startTest,
+            onTap: () => _showRulesThenStart(),
           ),
         ] else ...[
           // ── Empty state ──

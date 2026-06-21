@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../theme/app_colors.dart';
@@ -27,6 +28,9 @@ class LiveTestScreen extends StatefulWidget {
 class _LiveTestScreenState extends State<LiveTestScreen> with WidgetsBindingObserver, WindowListener {
   int _blurWarnings = 0;
   bool _isAutoSubmitting = false;
+  /// Debounce timer to prevent multiple lifecycle states (hidden → paused)
+  /// from counting as separate violations on a single app-switch.
+  Timer? _violationDebounce;
 
   @override
   void initState() {
@@ -40,6 +44,7 @@ class _LiveTestScreenState extends State<LiveTestScreen> with WidgetsBindingObse
 
   @override
   void dispose() {
+    _violationDebounce?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     if (kIsWeb) {
       removeWebVisibilityListeners();
@@ -79,11 +84,24 @@ class _LiveTestScreenState extends State<LiveTestScreen> with WidgetsBindingObse
   void _handleViolation() {
     if (_isAutoSubmitting) return;
 
+    // Debounce: on iOS/Android a single app-switch fires both
+    // `hidden` and `paused` in quick succession. Without this guard,
+    // one close → reopen would count as TWO violations and auto-submit
+    // on the very first switch.
+    if (_violationDebounce?.isActive ?? false) return;
+    _violationDebounce = Timer(const Duration(seconds: 2), () {});
+
     _blurWarnings++;
+
+    // Record violation in the provider so it gets saved to Firestore
+    final provider = context.read<TestProvider>();
+    provider.recordViolation();
+
     if (_blurWarnings == 1) {
       _showWarningDialog();
     } else if (_blurWarnings >= 2) {
       _isAutoSubmitting = true;
+      provider.markAutoSubmitViolation();
       _submitTest(autoSubmit: true);
     }
   }

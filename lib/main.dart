@@ -22,6 +22,7 @@ import 'screens/student/role_selection_screen.dart';
 import 'screens/student/student_login_screen.dart';
 import 'screens/student/fee_gate_screen.dart';
 import 'screens/student/test_category_screen.dart';
+import 'screens/student/rules_screen.dart';
 import 'screens/student/live_test_screen.dart';
 import 'screens/student/result_screen.dart';
 import 'screens/student/email_verification_screen.dart';
@@ -157,6 +158,7 @@ class NiuSatApp extends StatelessWidget {
         AppRoutes.emailVerification: (_) => const EmailVerificationScreen(),
         AppRoutes.feeGate: (_) => const FeeGateScreen(),
         AppRoutes.testCategory: (_) => const TestCategoryScreen(),
+        AppRoutes.rules: (_) => const RulesScreen(),
         AppRoutes.liveTest: (_) => const LiveTestScreen(),
         AppRoutes.result: (_) => const ResultScreen(),
         AppRoutes.adminLogin: (_) => const AdminLoginScreen(),
