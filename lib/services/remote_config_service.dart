@@ -48,6 +48,7 @@ class RemoteConfigService {
       'ios_app_live': false,
       'android_app_live': true,
       'app_store_url': 'https://apps.apple.com/app/id6779738702',
+      'brochure_url': '',
     });
 
     await _rc.setConfigSettings(RemoteConfigSettings(
@@ -117,6 +118,10 @@ class RemoteConfigService {
   /// Play Store URL for the update button.
   String get playStoreUrl => _stringOr('play_store_url',
       'https://play.google.com/store/apps/details?id=in.edu.niu.nsat');
+
+  /// Admissions brochure / prospectus PDF URL.
+  /// Empty string (default) = brochure button is hidden.
+  String get brochureUrl => _stringOr('brochure_url', '');
 
   /// True once the iOS app is live on the App Store. Default false =
   /// iOS users continue in the browser instead of hitting a dead listing.

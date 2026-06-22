@@ -9,6 +9,8 @@ import '../../widgets/niu_button.dart';
 import '../../widgets/note_box.dart';
 import '../../services/remote_config_service.dart';
 import '../../widgets/web_split_layout.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'dart:math' as math;
 
 /// App entry point — choose Student or Admin.
 /// Verdant Daylight reskin.
@@ -18,6 +20,7 @@ class RoleSelectionScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final topPad = MediaQuery.of(context).padding.top;
+    final brochureUrl = RemoteConfigService.instance.brochureUrl;
 
     final mobileView = Scaffold(
       backgroundColor: AppColors.bgBase,
@@ -136,6 +139,20 @@ class RoleSelectionScreen extends StatelessWidget {
                       ],
                     ),
                   ),
+                  if (brochureUrl.isNotEmpty) ...[
+                    const SizedBox(height: 14),
+                    _GlowingWrapper(
+                      borderRadius: 999,
+                      child: Padding(
+                        padding: const EdgeInsets.all(6.0),
+                        child: NiuButton(
+                          label: 'Download brochure',
+                          variant: NiuButtonVariant.outline,
+                          onTap: () => _openBrochure(context),
+                        ),
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 32),
 
                   Text(
@@ -248,6 +265,24 @@ class RoleSelectionScreen extends StatelessWidget {
                 subtitle: 'Manage tests & results',
                 onTap: () => Navigator.pushNamed(context, AppRoutes.adminLogin),
               ),
+              if (brochureUrl.isNotEmpty) ...[
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  child: Container(height: 1, color: AppColors.line2),
+                ),
+                _GlowingWrapper(
+                  borderRadius: 16,
+                  child: Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: _ActionRow(
+                      icon: Icons.description_outlined,
+                      title: 'Download brochure',
+                      subtitle: '2026 — 27 prospectus · PDF',
+                      onTap: () => _openBrochure(context),
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
         ),
@@ -259,6 +294,27 @@ class RoleSelectionScreen extends StatelessWidget {
       rightChild: rightPanel,
       mobileChild: mobileView,
     );
+  }
+
+  Future<void> _openBrochure(BuildContext context) async {
+    final url = RemoteConfigService.instance.brochureUrl;
+    if (url.isEmpty) return;
+    final uri = Uri.tryParse(url);
+    if (uri == null) return;
+    // Capture before await to avoid use_build_context_synchronously.
+    final messenger = ScaffoldMessenger.of(context);
+    final ok = await launchUrl(
+      uri,
+      mode: LaunchMode.externalApplication,
+      webOnlyWindowName: '_blank',
+    );
+    if (!ok) {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Could not open the brochure. Please try again.'),
+        ),
+      );
+    }
   }
 }
 
@@ -310,5 +366,92 @@ class _ActionRow extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+class _GlowingWrapper extends StatefulWidget {
+  final Widget child;
+  final double borderRadius;
+  
+  const _GlowingWrapper({
+    required this.child,
+    required this.borderRadius,
+  });
+
+  @override
+  State<_GlowingWrapper> createState() => _GlowingWrapperState();
+}
+
+class _GlowingWrapperState extends State<_GlowingWrapper> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return CustomPaint(
+          painter: _GlowingBorderPainter(
+            animationValue: _controller.value,
+            borderRadius: widget.borderRadius,
+          ),
+          child: child,
+        );
+      },
+      child: widget.child,
+    );
+  }
+}
+
+class _GlowingBorderPainter extends CustomPainter {
+  final double animationValue;
+  final double borderRadius;
+
+  _GlowingBorderPainter({
+    required this.animationValue,
+    this.borderRadius = 999,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    final rrect = RRect.fromRectAndRadius(rect, Radius.circular(borderRadius));
+    
+    final paint = Paint()
+      ..shader = SweepGradient(
+        transform: GradientRotation(animationValue * 2 * math.pi),
+        colors: const [
+          Colors.transparent,
+          AppColors.forest,
+          AppColors.forest2,
+          AppColors.forest,
+          Colors.transparent,
+        ],
+        stops: const [0.0, 0.4, 0.5, 0.6, 1.0],
+      ).createShader(rect)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3.0;
+
+    canvas.drawRRect(rrect, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _GlowingBorderPainter oldDelegate) {
+    return oldDelegate.animationValue != animationValue;
   }
 }

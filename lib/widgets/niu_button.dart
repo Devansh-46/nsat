@@ -52,6 +52,7 @@ class NiuButton extends StatefulWidget {
 
 class _NiuButtonState extends State<NiuButton> {
   bool _pressed = false;
+  bool _hovered = false;
 
   @override
   Widget build(BuildContext context) {
@@ -88,49 +89,67 @@ class _NiuButtonState extends State<NiuButton> {
             : null,
         boxShadow: disabled ? null : palette.shadows,
       ),
-      child: Row(
-        mainAxisSize: widget.fullWidth ? MainAxisSize.max : MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            widget.label,
-            style: AppTheme.body(
-              size: labelSize,
-              color: disabled
-                  ? palette.foreground.withValues(alpha: 0.5)
-                  : palette.foreground,
-              weight: FontWeight.w500,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOutCubic,
+        transform: Matrix4.identity()..translate(_hovered && !_pressed ? 2.0 : 0.0, 0.0),
+        child: Row(
+          mainAxisSize: widget.fullWidth ? MainAxisSize.max : MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              widget.label,
+              style: AppTheme.body(
+                size: labelSize,
+                color: disabled
+                    ? palette.foreground.withValues(alpha: 0.5)
+                    : palette.foreground,
+                weight: FontWeight.w500,
+              ),
             ),
-          ),
-          if (widget.showArrow) ...[
-            const SizedBox(width: 10),
-            Icon(
-              Icons.arrow_forward,
-              size: 16,
-              color: disabled
-                  ? palette.foreground.withValues(alpha: 0.5)
-                  : palette.foreground,
-            ),
+            if (widget.showArrow) ...[
+              const SizedBox(width: 10),
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOutCubic,
+                transform: Matrix4.identity()..translate(_hovered && !_pressed ? 4.0 : 0.0, 0.0),
+                child: Icon(
+                  Icons.arrow_forward,
+                  size: 16,
+                  color: disabled
+                      ? palette.foreground.withValues(alpha: 0.5)
+                      : palette.foreground,
+                ),
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
 
     final wrapped = AnimatedContainer(
-      duration: const Duration(milliseconds: 150),
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeOutCubic,
+      transformAlignment: Alignment.center,
       transform: Matrix4.identity()
-        ..translateByDouble(0, _pressed ? 0 : -1, 0, 1),
+        ..translate(0.0, _pressed ? 0.0 : (_hovered ? -3.0 : -1.0))
+        ..scale(_hovered && !_pressed ? 1.02 : 1.0),
       child: child,
     );
 
-    return GestureDetector(
-      onTap: disabled ? null : widget.onTap,
-      onTapDown: disabled ? null : (_) => setState(() => _pressed = true),
-      onTapCancel: () => setState(() => _pressed = false),
-      onTapUp: (_) => setState(() => _pressed = false),
-      child: widget.fullWidth
-          ? SizedBox(width: double.infinity, child: wrapped)
-          : wrapped,
+    return MouseRegion(
+      onEnter: disabled ? null : (_) => setState(() => _hovered = true),
+      onExit: disabled ? null : (_) => setState(() => _hovered = false),
+      cursor: disabled ? SystemMouseCursors.basic : SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: disabled ? null : widget.onTap,
+        onTapDown: disabled ? null : (_) => setState(() => _pressed = true),
+        onTapCancel: () => setState(() => _pressed = false),
+        onTapUp: (_) => setState(() => _pressed = false),
+        child: widget.fullWidth
+            ? SizedBox(width: double.infinity, child: wrapped)
+            : wrapped,
+      ),
     );
   }
 

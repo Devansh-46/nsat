@@ -169,8 +169,9 @@ class _PlatformBoxState extends State<_PlatformBox> {
         onTap: widget.onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
-          width: 140,
-          padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 12),
+          width: 144,
+          height: 168,
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
           decoration: BoxDecoration(
             color: _hovered ? Colors.white.withValues(alpha: 0.6) : Colors.white.withValues(alpha: 0.3),
             borderRadius: BorderRadius.circular(16),
@@ -189,7 +190,7 @@ class _PlatformBoxState extends State<_PlatformBox> {
                 : [],
           ),
           child: Column(
-            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(widget.icon, size: 42, color: widget.color),
               const SizedBox(height: 16),
@@ -197,7 +198,7 @@ class _PlatformBoxState extends State<_PlatformBox> {
                 widget.label,
                 textAlign: TextAlign.center,
                 style: AppTheme.body(
-                  size: 13,
+                  size: 12.5,
                   color: AppColors.ink,
                   weight: FontWeight.w600,
                 ),

@@ -786,6 +786,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
               : NiuButton(
                   label: 'Verify email',
                   showArrow: true,
+                  variant: NiuButtonVariant.forest,
                   onTap: _verifyEmailOtp),
         ];
 
