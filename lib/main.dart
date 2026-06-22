@@ -18,6 +18,7 @@ import 'providers/admin_provider.dart';
 import 'theme/app_colors.dart';
 import 'theme/app_theme.dart';
 import 'routes/app_routes.dart';
+import 'screens/student/platform_gate_screen.dart';
 import 'screens/student/role_selection_screen.dart';
 import 'screens/student/student_login_screen.dart';
 import 'screens/student/fee_gate_screen.dart';
@@ -151,8 +152,9 @@ class NiuSatApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       navigatorObservers: [AnalyticsService.instance.observer],
       theme: AppTheme.lightTheme,
-      initialRoute: AppRoutes.roleSelection,
+      initialRoute: kIsWeb ? AppRoutes.platformGate : AppRoutes.roleSelection,
       routes: {
+        AppRoutes.platformGate: (_) => const PlatformGateScreen(),
         AppRoutes.roleSelection: (_) => const RoleSelectionScreen(),
         AppRoutes.studentLogin: (_) => const StudentLoginScreen(),
         AppRoutes.emailVerification: (_) => const EmailVerificationScreen(),

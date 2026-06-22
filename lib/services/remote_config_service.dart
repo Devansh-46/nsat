@@ -45,6 +45,9 @@ class RemoteConfigService {
       'min_version_code': 1,
       'force_update_message': 'A new version of NSAT is available with important updates. Please update to continue.',
       'play_store_url': 'https://play.google.com/store/apps/details?id=in.edu.niu.nsat',
+      'ios_app_live': false,
+      'android_app_live': true,
+      'app_store_url': 'https://apps.apple.com/app/id6779738702',
     });
 
     await _rc.setConfigSettings(RemoteConfigSettings(
@@ -114,6 +117,18 @@ class RemoteConfigService {
   /// Play Store URL for the update button.
   String get playStoreUrl => _stringOr('play_store_url',
       'https://play.google.com/store/apps/details?id=in.edu.niu.nsat');
+
+  /// True once the iOS app is live on the App Store. Default false =
+  /// iOS users continue in the browser instead of hitting a dead listing.
+  bool get isIosAppLive => _boolOr('ios_app_live', false);
+
+  /// True while the Android app is live on the Play Store (default true).
+  /// Flip to false from the Console to route Android users to web instead.
+  bool get isAndroidAppLive => _boolOr('android_app_live', true);
+
+  /// App Store URL for the iOS app (used only when isIosAppLive is true).
+  String get appStoreUrl =>
+      _stringOr('app_store_url', 'https://apps.apple.com/app/id6779738702');
 
   // ── Safe accessors ──
 

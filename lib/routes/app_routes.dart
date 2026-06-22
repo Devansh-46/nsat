@@ -1,7 +1,8 @@
 class AppRoutes {
   AppRoutes._();
 
-  static const String roleSelection = '/';
+  static const String platformGate = '/';
+  static const String roleSelection = '/role-selection';
   static const String studentLogin = '/student-login';
   static const String feeGate = '/fee-gate';
   static const String testCategory = '/test-category';
