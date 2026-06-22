@@ -61,6 +61,11 @@ export const scoreSubmission = onCall(
       return seqA - seqB;
     });
 
+    const answerRefs = questions.map((q) => db.collection("answers").doc(q.id));
+    const answerSnaps = answerRefs.length ? await db.getAll(...answerRefs) : [];
+    const answerMap = new Map<string, FirebaseFirestore.DocumentData>();
+    for (const s of answerSnaps) if (s.exists) answerMap.set(s.id, s.data()!);
+
     let correct = 0;
     let wrong = 0;
     let gradedCount = 0;
@@ -83,7 +88,9 @@ export const scoreSubmission = onCall(
       gradedCount++;
       if (submitted === undefined || submitted === null) continue; // skipped
 
-      const correctIdx = qData.correctAnswerIndex as number;
+      const correctIdx = (answerMap.get(questions[i].id)?.correctAnswerIndex
+        ?? qData.correctAnswerIndex ?? -1) as number;
+      if (correctIdx < 0) continue; // ungradable, treat as skipped
       if (typeof submitted === "number" && submitted === correctIdx) {
         correct++;
       } else if (typeof submitted === "number") {

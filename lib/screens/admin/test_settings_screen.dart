@@ -4,8 +4,10 @@ import '../../theme/app_theme.dart';
 import '../../widgets/glass_card.dart';
 import '../../widgets/eyebrow.dart';
 import '../../widgets/note_box.dart';
+import '../../widgets/niu_button.dart';
 import '../../services/test_management_service.dart';
 import '../../models/test_model.dart';
+import '../../routes/app_routes.dart';
 
 /// Superadmin screen to manage per-test settings:
 /// - Publish / unpublish test
@@ -115,6 +117,18 @@ class _TestSettingsScreenState extends State<TestSettingsScreen> {
               Text(
                 'Toggle publish status, view results, and edit results for each test.',
                 style: AppTheme.body(size: 12.5, color: AppColors.ink4),
+              ),
+              const SizedBox(height: 16),
+              NiuButton(
+                label: 'New test',
+                variant: NiuButtonVariant.primary,
+                fullWidth: false,
+                onTap: () async {
+                  final created = await Navigator.pushNamed(context, AppRoutes.createTest);
+                  if (created == true) {
+                    _fetchTests();
+                  }
+                },
               ),
               const SizedBox(height: 24),
 

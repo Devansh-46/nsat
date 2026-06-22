@@ -11,6 +11,20 @@ const db = admin.firestore();
 const ADMINS_COLLECTION = "admins";
 const SUPERADMINS_COLLECTION = "superadmins";
 
+// Granular per-feature permission keys (mirror in Dart: lib/constants/admin_permissions.dart).
+// Managing admins is NOT a grantable permission — it remains superadmin-only.
+const PERMISSION_KEYS = [
+  "manage_tests",
+  "manage_questions",
+  "import_questions",
+  "grade_short_answers",
+  "view_results",
+  "export_results",
+  "send_notifications",
+  "view_logs",
+  "manage_course_access",
+];
+
 function assertSuperadmin(request: CallableRequest): void {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "Authentication required");
@@ -68,6 +82,7 @@ export const setAdminClaim = onCall(
           addedAt: admin.firestore.FieldValue.serverTimestamp(),
           forcePasswordChange: tempPassword ? true : false,
           allowedCourses: [],
+          permissions: [],
         };
         await db.collection(ADMINS_COLLECTION).doc(email).set(adminDoc);
 
@@ -294,6 +309,51 @@ export const updateAdminCourses = onCall(
   }
 );
 
+export const updateAdminPermissions = onCall(
+  { region: "asia-south1", consumeAppCheckToken: true },
+  async (request) => {
+    assertSuperadmin(request);
+
+    const email = (request.data?.email as string | undefined)?.trim().toLowerCase();
+    const permissions = request.data?.permissions as string[] | undefined;
+
+    if (!email) {
+      throw new HttpsError("invalid-argument", "email is required");
+    }
+    if (!permissions || !Array.isArray(permissions)) {
+      throw new HttpsError("invalid-argument", "permissions array is required");
+    }
+
+    const unknown = permissions.filter((p) => !PERMISSION_KEYS.includes(p));
+    if (unknown.length > 0) {
+      throw new HttpsError(
+        "invalid-argument",
+        `Unknown permission keys: ${unknown.join(", ")}`
+      );
+    }
+
+    if (await isSuperadminEmail(email)) {
+      throw new HttpsError("permission-denied", "Superadmins have all permissions");
+    }
+
+    try {
+      const docRef = db.collection(ADMINS_COLLECTION).doc(email);
+      const doc = await docRef.get();
+      if (!doc.exists) {
+        throw new HttpsError("not-found", "Admin not found");
+      }
+
+      await docRef.update({ permissions });
+      console.log(`Updated permissions for ${email}: ${permissions.join(", ")}`);
+      return { success: true, permissions };
+    } catch (error) {
+      console.error("Failed to update admin permissions:", error);
+      if (error instanceof HttpsError) throw error;
+      throw new HttpsError("internal", "Failed to update permissions");
+    }
+  }
+);
+
 export const listAdmins = onCall(
   { region: "asia-south1", consumeAppCheckToken: true },
   async (request) => {
@@ -307,6 +367,7 @@ export const listAdmins = onCall(
       addedBy: string;
       addedAt?: string;
       allowedCourses: string[];
+      permissions: string[];
       forcePasswordChange?: boolean;
     }> = [];
 
@@ -316,6 +377,7 @@ export const listAdmins = onCall(
         role: "superAdmin",
         addedBy: "root",
         allowedCourses: ["*"],
+        permissions: ["*"],
       });
     }
 
@@ -329,6 +391,7 @@ export const listAdmins = onCall(
         addedBy: data.addedBy ?? "unknown",
         addedAt: data.addedAt?.toDate?.()?.toISOString() ?? "",
         allowedCourses: ["*"],
+        permissions: ["*"],
       });
     }
 
@@ -346,6 +409,7 @@ export const listAdmins = onCall(
         addedBy: data.addedBy ?? "unknown",
         addedAt: data.addedAt?.toDate?.()?.toISOString() ?? "",
         allowedCourses: (data.allowedCourses as string[]) ?? [],
+        permissions: (data.permissions as string[]) ?? [],
         forcePasswordChange: (data.forcePasswordChange as boolean) ?? false,
       });
     }

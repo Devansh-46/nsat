@@ -139,6 +139,30 @@ class AdminManagementService {
     }
   }
 
+  /// Update the granular feature permissions for an admin.
+  Future<void> updateAdminPermissions(String email, List<String> permissions) async {
+    final reqId = AppLogger.generateRequestId();
+    _log.info(_tag, 'Updating permissions for $email: ${permissions.join(", ")}',
+        requestId: reqId, persist: true);
+
+    try {
+      final callable = FirebaseFunctions.instanceFor(region: 'asia-south1')
+          .httpsCallable('updateAdminPermissions');
+      await callable.call({
+        'email': email,
+        'permissions': permissions,
+      });
+      _log.info(_tag, 'Permissions updated for $email', requestId: reqId, persist: true);
+    } on FirebaseFunctionsException catch (e) {
+      _log.error(_tag, 'Failed to update permissions: ${e.code}: ${e.message}',
+          error: e, requestId: reqId);
+      throw Exception(_mapCfError(e));
+    } catch (e, st) {
+      _log.error(_tag, 'Failed to update permissions', error: e, stackTrace: st, requestId: reqId);
+      throw Exception('Failed to update permissions.');
+    }
+  }
+
   String _mapCfError(FirebaseFunctionsException e) {
     switch (e.code) {
       case 'unauthenticated':

@@ -133,30 +133,45 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 const Eyebrow('quick actions'),
                 const SizedBox(height: 10),
 
-                _ActionCard(
-                  icon: Icons.bar_chart_rounded,
-                  tint: AppColors.forestTint,
-                  iconColor: AppColors.forest,
-                  title: 'View results',
-                  subtitle: 'All student submissions',
-                  onTap: () => Navigator.pushNamed(
-                      context, AppRoutes.resultsDashboard),
-                ),
-                const SizedBox(height: 10),
-                _ActionCard(
-                  icon: Icons.notifications_outlined,
-                  tint: AppColors.goldTint,
-                  iconColor: const Color(0xFF8A6516),
-                  title: 'Send notification',
-                  subtitle: 'Push to students',
-                  onTap: () {
-                    admin.clearMessages();
-                    Navigator.pushNamed(
-                        context, AppRoutes.pushNotification);
-                  },
-                ),
-                if (auth.isSuperAdmin) ...[
+                if (admin.hasPermission('view_results')) ...[
+                  _ActionCard(
+                    icon: Icons.bar_chart_rounded,
+                    tint: AppColors.forestTint,
+                    iconColor: AppColors.forest,
+                    title: 'View results',
+                    subtitle: 'All student submissions',
+                    onTap: () => Navigator.pushNamed(
+                        context, AppRoutes.resultsDashboard),
+                  ),
                   const SizedBox(height: 10),
+                ],
+                if (admin.hasPermission('send_notifications')) ...[
+                  _ActionCard(
+                    icon: Icons.notifications_outlined,
+                    tint: AppColors.goldTint,
+                    iconColor: const Color(0xFF8A6516),
+                    title: 'Send notification',
+                    subtitle: 'Push to students',
+                    onTap: () {
+                      admin.clearMessages();
+                      Navigator.pushNamed(
+                          context, AppRoutes.pushNotification);
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                ],
+                if (admin.hasPermission('manage_questions')) ...[
+                  _ActionCard(
+                    icon: Icons.quiz_outlined,
+                    tint: AppColors.forestTint,
+                    iconColor: AppColors.forest,
+                    title: 'Manage questions',
+                    subtitle: 'Author or import questions',
+                    onTap: () => Navigator.pushNamed(context, AppRoutes.manageQuestions),
+                  ),
+                  const SizedBox(height: 10),
+                ],
+                if (admin.hasPermission('manage_tests')) ...[
                   _ActionCard(
                     icon: Icons.tune_outlined,
                     tint: AppColors.goldTint,
@@ -167,6 +182,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         context, AppRoutes.testSettings),
                   ),
                   const SizedBox(height: 10),
+                ],
+                if (admin.hasPermission('view_logs')) ...[
                   _ActionCard(
                     icon: Icons.bug_report_outlined,
                     tint: Colors.red.withValues(alpha: 0.1),
@@ -176,18 +193,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     onTap: () => Navigator.pushNamed(context, AppRoutes.adminLogs),
                   ),
                   const SizedBox(height: 10),
-                  _ActionCard(
-                    icon: Icons.admin_panel_settings_outlined,
-                    tint: AppColors.forestTint,
-                    iconColor: AppColors.forest,
-                    title: 'Manage admins',
-                    subtitle: 'Add or remove admin users',
-                    onTap: () {
-                      admin.clearMessages();
-                      Navigator.pushNamed(context, AppRoutes.manageAdmins);
-                    },
-                  ),
-                  const SizedBox(height: 10),
+                ],
+                if (admin.hasPermission('manage_course_access')) ...[
                   _ActionCard(
                     icon: Icons.school_outlined,
                     tint: AppColors.goldTint,
@@ -199,7 +206,21 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       Navigator.pushNamed(context, AppRoutes.courseAccess);
                     },
                   ),
+                  const SizedBox(height: 10),
                 ],
+                // Managing admins remains superadmin-only.
+                if (auth.isSuperAdmin)
+                  _ActionCard(
+                    icon: Icons.admin_panel_settings_outlined,
+                    tint: AppColors.forestTint,
+                    iconColor: AppColors.forest,
+                    title: 'Manage admins',
+                    subtitle: 'Add or remove admin users',
+                    onTap: () {
+                      admin.clearMessages();
+                      Navigator.pushNamed(context, AppRoutes.manageAdmins);
+                    },
+                  ),
                 const SizedBox(height: 28),
 
                 NiuButton(

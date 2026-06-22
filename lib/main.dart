@@ -36,6 +36,8 @@ import 'screens/admin/manage_admins_screen.dart';
 import 'screens/admin/course_access_screen.dart';
 import 'screens/admin/change_password_screen.dart';
 import 'screens/admin/test_settings_screen.dart';
+import 'screens/admin/create_test_screen.dart';
+import 'screens/admin/manage_questions_screen.dart';
 import 'screens/force_update_screen.dart';
 import 'utils/version_check.dart';
 import 'widgets/splash_screen.dart';
@@ -172,6 +174,8 @@ class NiuSatApp extends StatelessWidget {
         AppRoutes.courseAccess: (_) => const CourseAccessScreen(),
         AppRoutes.changePassword: (_) => const ChangePasswordScreen(),
         AppRoutes.testSettings: (_) => const TestSettingsScreen(),
+        AppRoutes.createTest: (_) => const CreateTestScreen(),
+        AppRoutes.manageQuestions: (_) => const ManageQuestionsScreen(),
       },
     );
   }

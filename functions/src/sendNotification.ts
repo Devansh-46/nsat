@@ -19,6 +19,18 @@ export const sendNotification = onCall(
     }
 
     const db = admin.firestore();
+
+    // Permission gate: superadmins pass implicitly; regular admins need
+    // the `send_notifications` permission on their admins/{email} doc.
+    if (request.auth.token.superAdmin !== true) {
+      const email = (request.auth.token.email as string | undefined)?.toLowerCase();
+      const perms = email
+        ? (((await db.collection("admins").doc(email).get()).data()?.permissions) as string[] | undefined) ?? []
+        : [];
+      if (!perms.includes("send_notifications")) {
+        throw new HttpsError("permission-denied", "Missing permission: send_notifications");
+      }
+    }
     const title = request.data?.title as string | undefined;
     const body = request.data?.body as string | undefined;
     const target = (request.data?.target as string) ?? "all";

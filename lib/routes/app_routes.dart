@@ -19,4 +19,6 @@ class AppRoutes {
   static const String changePassword = '/change-password';
   static const String emailVerification = '/email-verification';
   static const String testSettings = '/test-settings';
+  static const String createTest = '/admin/create-test';
+  static const String manageQuestions = '/admin/manage-questions';
 }

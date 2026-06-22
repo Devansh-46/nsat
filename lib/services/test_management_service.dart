@@ -44,4 +44,17 @@ class TestManagementService {
       rethrow;
     }
   }
+
+  /// Creates a new test.
+  Future<String> createTest(TestModel t) async {
+    final reqId = AppLogger.generateRequestId();
+    try {
+      final docRef = await _db.collection(_collection).add(t.toMap());
+      _log.info(_tag, 'Created new test ${docRef.id}', requestId: reqId, persist: true);
+      return docRef.id;
+    } catch (e, st) {
+      _log.error(_tag, 'Failed to create test', error: e, stackTrace: st, requestId: reqId);
+      rethrow;
+    }
+  }
 }

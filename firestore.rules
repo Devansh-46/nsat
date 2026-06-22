@@ -11,6 +11,19 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.token.admin == true;
     }
 
+    function isSuperadmin() {
+      return isAuthenticated() && request.auth.token.superAdmin == true;
+    }
+
+    // Granular per-feature permission check. Superadmins implicitly have all
+    // permissions; regular admins must list the key in their admins/{email} doc.
+    function hasPerm(p) {
+      return isAdmin() && (
+        isSuperadmin() ||
+        get(/databases/$(database)/documents/admins/$(request.auth.token.email)).data.permissions.hasAll([p])
+      );
+    }
+
     // ── students ─────────────────────────────────────────────────────
     // Read: anyone (fee-gate login step, no auth needed)
     // Write: Cloud Functions only (syncStudents)
@@ -24,7 +37,7 @@ service cloud.firestore {
     // Write: admin only
     match /tests/{testId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if hasPerm('manage_tests');
     }
 
     // ── questions ────────────────────────────────────────────────────
@@ -34,7 +47,13 @@ service cloud.firestore {
     // QuestionService strips it when _stripAnswers = true.
     match /questions/{questionId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if hasPerm('manage_questions');
+    }
+
+    // ── answers ────────────────────────────────────────────────────
+    match /answers/{id} {
+      allow read: if isAdmin();
+      allow write: if hasPerm('manage_questions');
     }
 
     // ── attempts ─────────────────────────────────────────────────────

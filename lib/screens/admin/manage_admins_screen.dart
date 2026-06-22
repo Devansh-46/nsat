@@ -9,6 +9,7 @@ import '../../widgets/eyebrow.dart';
 import '../../widgets/niu_field.dart';
 import '../../widgets/niu_button.dart';
 import '../../widgets/note_box.dart';
+import '../../constants/admin_permissions.dart';
 
 class ManageAdminsScreen extends StatefulWidget {
   const ManageAdminsScreen({super.key});
@@ -20,6 +21,9 @@ class ManageAdminsScreen extends StatefulWidget {
 class _ManageAdminsScreenState extends State<ManageAdminsScreen> {
   final _emailController = TextEditingController();
   bool _emailValid = false;
+
+  /// Emails with a permission write currently in flight (checkboxes disabled).
+  final Set<String> _savingPermissions = {};
 
   @override
   void initState() {
@@ -143,47 +147,82 @@ class _ManageAdminsScreenState extends State<ManageAdminsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final admin = context.watch<AdminProvider>();
     final topPad = MediaQuery.of(context).padding.top;
-    final currentEmail = FirebaseAuth.instance.currentUser?.email ?? '';
 
-    return Scaffold(
-      backgroundColor: AppColors.bgBase,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(22, topPad > 0 ? 12 : 24, 22, 32),
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        backgroundColor: AppColors.bgBase,
+        body: SafeArea(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              GestureDetector(
-                onTap: () => Navigator.pop(context),
-                child: Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: AppColors.bone,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(Icons.arrow_back, size: 18, color: AppColors.ink3),
+              Padding(
+                padding: EdgeInsets.fromLTRB(22, topPad > 0 ? 12 : 24, 22, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: AppColors.bone,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.arrow_back, size: 18, color: AppColors.ink3),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Eyebrow('user management'),
+                    const SizedBox(height: 4),
+                    Text.rich(
+                      TextSpan(
+                        text: 'Manage ',
+                        style: AppTheme.display(size: 26),
+                        children: [AppTheme.italicSpan('admins.')],
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                  ],
                 ),
               ),
-              const SizedBox(height: 16),
-              const Eyebrow('user management'),
-              const SizedBox(height: 4),
-              Text.rich(
-                TextSpan(
-                  text: 'Manage ',
-                  style: AppTheme.display(size: 26),
-                  children: [AppTheme.italicSpan('admins.')],
+              TabBar(
+                labelColor: AppColors.forest,
+                unselectedLabelColor: AppColors.ink4,
+                indicatorColor: AppColors.forest,
+                labelStyle: AppTheme.body(size: 13.5, weight: FontWeight.w600),
+                unselectedLabelStyle: AppTheme.body(size: 13.5),
+                tabs: const [
+                  Tab(text: 'Admins'),
+                  Tab(text: 'Permissions'),
+                ],
+              ),
+              Expanded(
+                child: TabBarView(
+                  children: [
+                    _buildAdminsTab(context),
+                    _buildPermissionsTab(context),
+                  ],
                 ),
               ),
-              const SizedBox(height: 6),
-              Text(
-                'Grant or revoke admin access. Super admins can manage other admins and access everything.',
-                style: AppTheme.body(size: 12.5, color: AppColors.ink4),
-              ),
-              const SizedBox(height: 24),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
+  Widget _buildAdminsTab(BuildContext context) {
+    final admin = context.watch<AdminProvider>();
+    final currentEmail = FirebaseAuth.instance.currentUser?.email ?? '';
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(22, 18, 22, 32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
               // Success / error
               if (admin.error != null)
                 Padding(
@@ -370,9 +409,170 @@ class _ManageAdminsScreenState extends State<ManageAdminsScreen> {
                     ),
                   );
                 }),
-            ],
+        ],
+      ),
+    );
+  }
+
+  Future<void> _togglePermission(
+      String email, String key, List<String> current, bool enabled) async {
+    final next = List<String>.from(current);
+    if (enabled) {
+      if (!next.contains(key)) next.add(key);
+    } else {
+      next.remove(key);
+    }
+    setState(() => _savingPermissions.add(email));
+    await context.read<AdminProvider>().updateAdminPermissions(email, next);
+    if (mounted) {
+      setState(() => _savingPermissions.remove(email));
+    }
+  }
+
+  Widget _buildPermissionsTab(BuildContext context) {
+    final admin = context.watch<AdminProvider>();
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(22, 18, 22, 32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (admin.error != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: NoteBox.clay(icon: Icons.error_outline, body: admin.error!),
+            ),
+          if (admin.successMessage != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: NoteBox.green(icon: Icons.check_circle, body: admin.successMessage!),
+            ),
+
+          const Eyebrow('feature permissions'),
+          const SizedBox(height: 4),
+          Text(
+            'Grant each admin granular access to dashboard features. '
+            'Super admins always have full access.',
+            style: AppTheme.body(size: 12.5, color: AppColors.ink4),
           ),
-        ),
+          const SizedBox(height: 16),
+
+          if (admin.isLoading && admin.admins.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 20),
+              child: Center(
+                child: SizedBox(
+                  width: 22, height: 22,
+                  child: CircularProgressIndicator(strokeWidth: 2.5, color: AppColors.forest),
+                ),
+              ),
+            )
+          else if (admin.admins.isEmpty)
+            GlassCard(
+              padding: const EdgeInsets.all(22),
+              child: Center(
+                child: Text(
+                  'No admins found.',
+                  style: AppTheme.body(size: 13.5, color: AppColors.ink4),
+                ),
+              ),
+            )
+          else
+            ...admin.admins.map((a) {
+              final email = a['email'] as String? ?? '';
+              final role = a['role'] as String? ?? 'admin';
+              final isSuper = role == 'superAdmin';
+              final perms = (a['permissions'] as List?)?.cast<String>() ?? const [];
+              final saving = _savingPermissions.contains(email);
+
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: GlassCard(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  child: Theme(
+                    data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                    child: ExpansionTile(
+                      tilePadding: const EdgeInsets.symmetric(horizontal: 12),
+                      childrenPadding:
+                          const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                      leading: Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: isSuper ? AppColors.forestTint : AppColors.bone,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(
+                          isSuper ? Icons.shield_outlined : Icons.person_outline,
+                          size: 18,
+                          color: isSuper ? AppColors.forest : AppColors.ink3,
+                        ),
+                      ),
+                      title: Text(
+                        email,
+                        style: AppTheme.body(size: 13.5, color: AppColors.ink),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      subtitle: Text(
+                        isSuper ? 'Super Admin' : 'Admin',
+                        style: AppTheme.body(
+                          size: 11,
+                          color: isSuper ? AppColors.forest : AppColors.ink4,
+                          weight: FontWeight.w600,
+                        ),
+                      ),
+                      children: [
+                        if (isSuper)
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 12),
+                            decoration: BoxDecoration(
+                              color: AppColors.forestTint,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.verified_outlined,
+                                    size: 16, color: AppColors.forest),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'All access (super admin)',
+                                    style: AppTheme.body(
+                                        size: 12.5, color: AppColors.forest),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        else
+                          ...kAdminPermissions.entries.map((entry) {
+                            final checked = perms.contains(entry.key);
+                            return CheckboxListTile(
+                              dense: true,
+                              contentPadding: EdgeInsets.zero,
+                              controlAffinity: ListTileControlAffinity.leading,
+                              activeColor: AppColors.forest,
+                              value: checked,
+                              onChanged: saving
+                                  ? null
+                                  : (val) => _togglePermission(
+                                      email, entry.key, perms, val ?? false),
+                              title: Text(
+                                entry.value,
+                                style: AppTheme.body(
+                                    size: 13, color: AppColors.ink),
+                              ),
+                            );
+                          }),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }),
+        ],
       ),
     );
   }

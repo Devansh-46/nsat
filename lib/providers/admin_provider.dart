@@ -21,6 +21,7 @@ class AdminProvider extends ChangeNotifier {
   List<AppLogModel> _logs = [];
   List<Map<String, dynamic>> _admins = [];
   List<String> _myCourses = ['*'];
+  List<String> _myPermissions = ['*'];
 
   bool _isLoading = false;
   String? _error;
@@ -31,7 +32,12 @@ class AdminProvider extends ChangeNotifier {
   List<NotificationModel> get notifications => _notifications;
   List<Map<String, dynamic>> get admins => _admins;
   List<String> get myCourses => _myCourses;
+  List<String> get myPermissions => _myPermissions;
   List<AppLogModel> get logs => _logs;
+
+  /// Whether the current admin has [key] (super admins implicitly have all).
+  bool hasPermission(String key) =>
+      _myPermissions.contains('*') || _myPermissions.contains(key);
   bool get isLoading => _isLoading;
   String? get error => _error;
   String? get successMessage => _successMessage;
@@ -40,6 +46,7 @@ class AdminProvider extends ChangeNotifier {
     _setLoading(true);
     try {
       _myCourses = await _adminService.getMyAllowedCourses();
+      _myPermissions = await _adminService.getMyPermissions();
       _dashboardStats = await _adminService.getDashboardStats(_myCourses);
     } catch (e, st) {
       _log.error(_tag, 'Failed to load dashboard stats', error: e, stackTrace: st);
@@ -133,6 +140,23 @@ class AdminProvider extends ChangeNotifier {
       return true;
     } catch (e, st) {
       _log.error(_tag, 'Failed to update courses: $email', error: e, stackTrace: st);
+      _error = e.toString().replaceFirst('Exception: ', '');
+      _setLoading(false);
+      return false;
+    }
+  }
+
+  Future<bool> updateAdminPermissions(String email, List<String> permissions) async {
+    _setLoading(true);
+    try {
+      await _adminMgmtService.updateAdminPermissions(email, permissions);
+      _successMessage = 'Permissions updated for $email';
+      _log.info(_tag, 'Permissions updated: $email → ${permissions.join(", ")}', persist: true);
+      await fetchAdmins();
+      _setLoading(false);
+      return true;
+    } catch (e, st) {
+      _log.error(_tag, 'Failed to update permissions: $email', error: e, stackTrace: st);
       _error = e.toString().replaceFirst('Exception: ', '');
       _setLoading(false);
       return false;

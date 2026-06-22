@@ -36,6 +36,22 @@ class AdminService {
     return (doc.data()?['allowedCourses'] as List?)?.cast<String>() ?? [];
   }
 
+  /// Get the granular feature permissions for the currently logged-in admin.
+  /// Super admins get ["*"] (all access); regular admins get their list.
+  Future<List<String>> getMyPermissions() async {
+    final email = firebase_auth.FirebaseAuth.instance.currentUser?.email?.toLowerCase();
+    if (email == null) return [];
+
+    final token = await firebase_auth.FirebaseAuth.instance.currentUser!.getIdTokenResult();
+    if (token.claims?['superAdmin'] == true) {
+      return ['*'];
+    }
+
+    final doc = await _db.collection('admins').doc(email).get();
+    if (!doc.exists) return [];
+    return (doc.data()?['permissions'] as List?)?.cast<String>() ?? [];
+  }
+
   /// Dashboard stats filtered by allowed courses.
   Future<Map<String, int>> getDashboardStats(List<String> courses) async {
     final reqId = AppLogger.generateRequestId();
