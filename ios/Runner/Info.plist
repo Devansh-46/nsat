@@ -73,6 +73,8 @@
 	</array>
 	<key>FirebaseMessagingAutoInitEnabled</key>
 	<true/>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>NSAT needs access to your photo library to let you select files for CSV question import.</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 </dict>
