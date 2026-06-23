@@ -7,7 +7,7 @@
 [![Flutter](https://img.shields.io/badge/Flutter-3.41-02569B?logo=flutter&logoColor=white)](https://flutter.dev)
 [![Firebase](https://img.shields.io/badge/Firebase-Blaze-FFCA28?logo=firebase&logoColor=black)](https://firebase.google.com)
 [![Platform](https://img.shields.io/badge/Platform-Android%20%7C%20Web%20%7C%20iOS-blueviolet)]()
-[![Functions](https://img.shields.io/badge/Cloud%20Functions-16%20deployed-4285F4?logo=googlecloud&logoColor=white)]()
+[![Functions](https://img.shields.io/badge/Cloud%20Functions-17%20deployed-4285F4?logo=googlecloud&logoColor=white)]()
 [![NPF Sync](https://img.shields.io/badge/NPF%20Sync-Live-brightgreen)]()
 [![Status](https://img.shields.io/badge/Status-Live-brightgreen)]()
 
@@ -21,7 +21,7 @@
 
 Built once in **Flutter**, runs on **Android, Web, and iOS** from a single codebase, with **Firebase Cloud Functions** handling all server-side logic including NPF integration, OTP delivery (email + WhatsApp), scoring, admin management, and push notifications.
 
-**Exam date:** June 14, 2026  
+**Exam windows:** monthly (typically the 10th & 20th, morning + evening slots)  
 **Package:** `in.edu.niu.nsat`  
 **Firebase project:** `nsat-niu-app` (Blaze, `asia-south1`)  
 **Domain:** [nsat.niu.edu.in](https://nsat.niu.edu.in)  
@@ -36,13 +36,13 @@ Built once in **Flutter**, runs on **Android, Web, and iOS** from a single codeb
 | 🔐 **NIU ID Login** | Students log in with their NIU ID (application number). No Firebase Auth for students. |
 | 💳 **Automatic Fee Check** | Real-time fee verification via NoPaperForms — synced every 30 minutes. |
 | 🔄 **Live NPF Integration** | Student data auto-synced from Meritto/NPF; lead details fetched live at login. |
-| 📧 **Two-Factor Verification** | Email OTP (6-digit, SHA-256 hashed, 10-min expiry, 5-attempt limit) + WhatsApp OTP via Twilio. Channel-specific OTP documents prevent overwrite conflicts. |
+| 📧 **Two-Factor Verification** | Email OTP (6-digit, SHA-256 hashed, 10-min expiry, 5-attempt limit) + WhatsApp OTP via **MSG91**, with an **SMS resend** fallback. Channel-specific OTP documents prevent overwrite conflicts. |
 | 📝 **Timed Test** | Multiple-choice + short-answer test with countdown timer, question palette, and auto-submit. |
 | 🔒 **Server-Side Scoring** | Answers scored by Cloud Function — the client never sees the answer key. Short-answer responses saved ungraded for review. |
 | 📊 **Instant Results** | Score breakdown shown immediately after submission (configurable per test). |
 | 🔒 **One Attempt Lock** | Transactional attempt lock with crash-safe status tracking (`in_progress` → `completed`). |
 | 📋 **Admin Dashboard** | Real-time Firestore-backed stats, results list with course filtering, CSV export, per-result detail view. |
-| 🎨 **Verdant Daylight UI** | Custom design system — mesh backgrounds, glass-morphism cards, 59 color tokens, animated splash screen. |
+| 🎨 **Verdant Daylight UI** | Custom design system — mesh backgrounds, glass-morphism cards, 61 color tokens, animated splash screen. |
 | 🌐 **Cross-Platform** | Single codebase for Android, Web, and iOS. Web uses responsive split-layout (dark left panel + light right panel on desktop). |
 | ✍️ **Short-Answer Questions** | Descriptive questions with configurable min/max word count, live word counter, and ungraded responses stored for admissions review. |
 | 📱 **FCM Push Notifications** | Topic-based push notifications to all students or per-school (16 school topics + `all_students`). |
@@ -115,7 +115,7 @@ Built once in **Flutter**, runs on **Android, Web, and iOS** from a single codeb
 | **Database** | Cloud Firestore |
 | **Server Logic** | Cloud Functions v2 (TypeScript, Node 20) |
 | **Email OTP** | Nodemailer via SMTP |
-| **WhatsApp OTP** | Twilio WhatsApp API |
+| **WhatsApp / SMS OTP** | MSG91 (WhatsApp + SMS fallback) · Twilio legacy |
 | **Fee Data Source** | Meritto / NoPaperForms API |
 | **Crash Reporting** | Firebase Crashlytics |
 | **Analytics** | Firebase Analytics |
@@ -128,7 +128,7 @@ Built once in **Flutter**, runs on **Android, Web, and iOS** from a single codeb
 
 ## ☁️ Cloud Functions
 
-All 16 functions deployed in `asia-south1`.
+All 17 functions deployed in `asia-south1`.
 
 | Function | Type | Purpose |
 |---|---|---|
@@ -136,7 +136,9 @@ All 16 functions deployed in `asia-south1`.
 | `fetchLeadDetails` | Callable | NPF lead lookup by `lead_id`, returns name/course/email with course-key mapping |
 | `sendOtp` | Callable | Generates 6-digit code, SHA-256 hashes to `otps/{id}/channels/email`, sends email via SMTP |
 | `verifyOtp` | Callable | Validates hash per channel, enforces 5-attempt limit and 10-min expiry |
-| `sendWhatsAppOtp` | Callable | Generates 6-digit code, hashes to `otps/{id}/channels/whatsapp`, sends via Twilio WhatsApp API |
+| `sendWhatsAppOtp` | Callable | Generates 6-digit code, hashes to `otps/{id}/channels/whatsapp`, sends via **MSG91 WhatsApp** API |
+| `resendOtpViaSms` | Callable | SMS fallback — resends the OTP over MSG91 SMS when WhatsApp delivery fails |
+| `updateAdminPermissions` | Callable | Superadmin-gated — sets the granular nine-permission matrix on an `admins/{email}` doc |
 | `scoreSubmission` | Callable | Reads questions server-side by course + testId, scores MCQ answers, saves short-answer responses ungraded, writes result, flips attempt lock |
 | `sendNotification` | Callable | Sends FCM push to topic (`all_students` or `school_{key}`), writes to `notifications` collection |
 | `setAdminClaim` | Callable | Creates admin with custom claim, optionally creates Firebase Auth user with force-password-change flag |
@@ -147,9 +149,9 @@ All 16 functions deployed in `asia-south1`.
 | `promoteSuperadmin` | Callable | Grants superadmin custom claim + adds to `superadmins` collection |
 | `demoteSuperadmin` | Callable | Removes superadmin claim + deletes from `superadmins` collection |
 | `autoSubmitExpired` | Scheduled (every 2 min) | Safety net — finds expired `in_progress` attempts, reads saved answers from `saved_answers/{applicationNo}`, scores them server-side, writes results with `autoSubmitted: true`, and flips attempt status to `completed`. Includes 2-minute grace period to avoid racing with client-side submit. |
-| (App Check enforcement) | Per-function config | `consumeAppCheckToken: true` added to all callable functions — logs App Check token presence without blocking. Switch to `enforceAppCheck: true` post-launch. |
+| (App Check) | Per-function config | `consumeAppCheckToken: true` set on all callables — App Check tokens are verified and consumed (replay-protected) on every call. **Verify Cloud Firestore App Check enforcement is set to _Enforced_ in the Console** — the open client-write rules depend on it. |
 
-> **WhatsApp OTP** uses Twilio's WhatsApp API via a Cloud Function (`sendWhatsAppOtp`). Email and WhatsApp OTPs use channel-specific sub-documents (`otps/{applicationNo}/channels/{email|whatsapp}`) to prevent overwrite conflicts.
+> **WhatsApp OTP** uses the **MSG91 WhatsApp** API via `sendWhatsAppOtp`, with `resendOtpViaSms` as an SMS fallback. (Twilio was the original provider and was migrated away from after throttling issues; legacy Twilio env vars remain in `config.ts` but are unused.) Email and WhatsApp OTPs use channel-specific sub-documents (`otps/{applicationNo}/channels/{email|whatsapp}`) to prevent overwrite conflicts.
 
 ### Environment Variables (`functions/.env`)
 
@@ -162,9 +164,18 @@ SMTP_PORT=587
 SMTP_USER=...                   # Email address for sending OTPs
 SMTP_PASS=...                   # Gmail app password
 OTP_FROM_NAME=NSAT NIU
-TWILIO_ACCOUNT_SID=...          # Twilio account SID
-TWILIO_AUTH_TOKEN=...           # Twilio auth token
-TWILIO_WHATSAPP_FROM=...        # Twilio WhatsApp sender number
+# --- WhatsApp + SMS OTP (MSG91, active) ---
+MSG91_AUTHKEY=...               # MSG91 auth key
+MSG91_INTEGRATED_NUM=...        # MSG91 WhatsApp integrated number
+MSG91_WA_TEMPLATE=...           # Approved WhatsApp template name
+MSG91_WA_NAMESPACE=...          # WhatsApp template namespace
+MSG91_SMS_TEMPLATE_ID=...       # DLT-approved SMS template id (fallback)
+# --- Twilio (legacy / deprecated, unused) ---
+TWILIO_ACCOUNT_SID=...
+TWILIO_AUTH_TOKEN=...
+TWILIO_WHATSAPP_FROM=...
+# --- App review bypass (remove before live windows) ---
+REVIEW_BYPASS_ID=...            # Demo applicationNo that skips OTP for store reviewers
 ADMIN_EMAILS=...                # Comma-separated admin email allowlist
 ROOT_SUPERADMIN_EMAIL=...       # Root superadmin (cannot be demoted)
 ```
@@ -177,7 +188,8 @@ ROOT_SUPERADMIN_EMAIL=...       # Root superadmin (cannot be demoted)
 |---|---|---|---|
 | `students` | Synced from NPF every 30 min | `application_no` | Cloud Function |
 | `tests` | Test config per course (publish, showResults, editResults flags) | Auto | Seed script / Admin |
-| `questions` | Question bank (text, options, answer, course, type, sequence) | Auto | Seed script |
+| `questions` | Public question bank (text, options, course, type, sequence) — **answer keys migrated out** | Auto | Seed script / Admin |
+| `answers` | **Private** answer keys (`correctAnswerIndex` / `correctAnswerTexts`); admin-read only, never sent to clients | matches question id | Seed / migration / Admin |
 | `results` | Score breakdown per submission (incl. short-answer responses) | Auto | Cloud Function |
 | `attempts` | One-attempt lock (`in_progress` → `completed`) | `application_no` | Client + Cloud Function |
 | `otps` | Parent doc per student; sub-collection `channels/{email\|whatsapp}` for hashed OTP codes | `application_no` | Cloud Function |
@@ -396,13 +408,14 @@ python setup_admin.py
 
 ## 🔒 Security
 
-- **Firestore rules** cover 14 collections with role-based access (authenticated, admin, superadmin, Cloud Function only)
+- **Firestore rules** cover 15 collections with role-based access (anyone / authenticated / admin / superadmin / Cloud-Function-only), plus a granular `hasPerm()` permission check for admin writes
 - **OTP** codes are SHA-256 hashed before storage; 5-attempt limit + 10-min expiry
-- **Questions** collection: `correctAnswerIndex` stripped client-side; scoring is server-only
+- **Answer keys** live in a **private `answers/` collection** (admin-read only) — migrated out of the public `questions` docs; scoring is server-only and reads from `answers/`
+  - ⚠️ Verify the migration *cleanup* has run (no `correctAnswerIndex` left in public `questions` docs) and drop the `qData.correctAnswerIndex` fallback in `scoreSubmission.ts` once confirmed
 - **Results** collection: write-locked to Cloud Functions; read-locked to admins
 - **Admin claims** managed through Cloud Functions with email allowlist + superadmin hierarchy
 - **Release build** uses ProGuard/R8 with minification and resource shrinking enabled
-- **App Check** monitors all callable Cloud Functions (Play Integrity / App Attest / reCAPTCHA Enterprise) — hard enforcement enabled post-launch
+- **App Check** — tokens consumed (`consumeAppCheckToken: true`) on all callable Cloud Functions (Play Integrity / App Attest / reCAPTCHA Enterprise). Open client-write rules (`saved_answers`, `attempts`, `device_fingerprints`, `app_logs`) rely on **Cloud Firestore App Check enforcement being _Enforced_ in the Console** — confirm before each live window
 - **FLAG_SECURE** (Android) blocks screenshots and screen recording app-wide
 - **Clipboard lockdown** — paste operations blocked in all text inputs; text selection disabled during live test
 - **Device fingerprinting** captures device metadata at test start for post-exam audit trail
@@ -513,18 +526,21 @@ python setup_admin.py
 |---|---|
 | **Student screens** — 7 (Verdant Daylight) | ✅ |
 | **Admin screens** — 10 (dashboard, results, logs, admin mgmt, test settings) | ✅ |
-| **Design system** — 12 widgets + 59 color tokens + 3 fonts | ✅ |
+| **Design system** — 13 widgets + 61 color tokens + 3 fonts | ✅ |
 | **Firebase Blaze + Firestore** (11 collections) | ✅ |
-| **Cloud Functions** — 16 deployed | ✅ |
+| **Cloud Functions** — 17 deployed | ✅ |
 | **NPF sync** — live, paginated | ✅ |
 | **Email OTP** — send + verify + 60s cooldown | ✅ |
-| **WhatsApp OTP** — Twilio + channel-specific storage | ✅ |
+| **WhatsApp/SMS OTP** — MSG91 + channel-specific storage | ✅ |
 | **Server-side scoring** | ✅ |
 | **Security rules** — tightened (14 collection rules) | ✅ |
 | **Question bank** (MCQ + short-answer) | ✅ |
 | **FCM push notifications** | ✅ |
 | **Admin custom claims + superadmin hierarchy** | ✅ |
 | **Course-scoped admin access** | ✅ |
+| **Granular admin RBAC** — 9-permission matrix (`manage_tests`, `manage_questions`, `import_questions`, `grade_short_answers`, `view_results`, `export_results`, `send_notifications`, `view_logs`, `manage_course_access`) | ✅ |
+| **Private answer-key collection** (`answers/`) — migrated out of public `questions` | ✅ |
+| **SMS OTP fallback** (`resendOtpViaSms`, MSG91) | ✅ |
 | **CSV bulk import script** | ✅ |
 | **Admin setup script** | ✅ |
 | **Show/hide results toggle** | ✅ |
@@ -542,7 +558,7 @@ python setup_admin.py
 | **Custom domain** (nsat.niu.edu.in) | ✅ |
 | **Code audit** (45 issues, critical resolved) | ✅ |
 | **Auto-submit safety net** (autoSubmitExpired) | ✅ |
-| **App Check** — monitoring mode on all callable CFs | ✅ |
+| **App Check** — tokens consumed on all callable CFs (verify Firestore enforcement in Console) | ✅ |
 | **Screenshot blocking** (Android FLAG_SECURE + web) | ✅ |
 | **Clipboard lockdown** (NoPasteFormatter + SelectionContainer) | ✅ |
 | **Device fingerprinting** (device_info_plus → Firestore) | ✅ |
@@ -551,7 +567,7 @@ python setup_admin.py
 | **End-to-end dry run** | ✅ |
 | Release AAB | ✅ |
 | Google Play listing | ✅ |
-| iOS build | 🔧 |
+| iOS build — submitted to App Store, **Waiting for Review** (expedited requested) | 🔧 |
 | App Check (Cloud Functions) | ✅ |
 
 ---
