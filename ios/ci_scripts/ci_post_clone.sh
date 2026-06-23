@@ -8,16 +8,17 @@ cd "$CI_PRIMARY_REPOSITORY_PATH"
 git clone https://github.com/flutter/flutter.git --depth 1 -b stable "$HOME/flutter"
 export PATH="$PATH:$HOME/flutter/bin"
 
+# Force CocoaPods (matches your local build). SPM integration fails on CI
+# because there's no committed Package.resolved.
+flutter config --no-enable-swift-package-manager
+
 flutter precache --ios
 flutter pub get
 
-# CocoaPods is usually present; install only if missing.
 if ! command -v pod >/dev/null 2>&1; then
   HOMEBREW_NO_AUTO_UPDATE=1 brew install cocoapods
 fi
 
-# Generates ios/Flutter/Generated.xcconfig and bumps the pod/SPM
-# deployment target (important for Firebase). Then install pods.
 flutter build ios --config-only --release
 cd ios && pod install
 
