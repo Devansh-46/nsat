@@ -433,3 +433,119 @@ export const resendOtpViaSms = onCall(
     }
   }
 );
+// ─── Primary SMS OTP send (iOS channel chooser) ────────────────────
+// Mirrors sendWhatsAppOtp. Review account bypasses to a fixed code.
+// Real SMS requires an approved DLT template (MSG91_SMS_TEMPLATE_ID);
+// until that env var is set, real users get a clear "not available yet"
+// and should use WhatsApp. The day DLT clears, set the env var — no code change.
+export const sendSmsOtp = onCall(
+  { region: "asia-south1", consumeAppCheckToken: true },
+  async (request) => {
+    const db = admin.firestore();
+    const applicationNo = request.data?.application_no as string | undefined;
+    const rawPhone = request.data?.phone as string | undefined;
+
+    if (!applicationNo || !rawPhone) {
+      throw new HttpsError("invalid-argument", "application_no and phone are required");
+    }
+
+    // ── App Store / Play review bypass (review account ONLY) ──
+    // REMOVE BEFORE exam. Never make this apply to all users — a fixed
+    // code for everyone would let anyone sign in with a known OTP.
+    if (REVIEW_BYPASS_ID && applicationNo === REVIEW_BYPASS_ID) {
+      const channelRef = getChannelRef(db, applicationNo, "sms");
+      const hashed = hashOtp(REVIEW_BYPASS_CODE);
+      await channelRef.set({
+        hashedCode: hashed,
+        expiresAt: Date.now() + OTP_EXPIRY_MS,
+        attempts: 0,
+        channel: "sms",
+        phone: rawPhone,
+        createdAtMs: Date.now(),
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      console.log(`[REVIEW BYPASS] SMS OTP set for ${applicationNo}, code: ${REVIEW_BYPASS_CODE}`);
+      return { success: true };
+    }
+
+    // Real SMS not available until DLT template is configured.
+    if (!MSG91_SMS_TEMPLATE_ID || !MSG91_AUTHKEY) {
+      console.error("[sendSmsOtp] MSG91_SMS_TEMPLATE_ID not set — SMS unavailable");
+      throw new HttpsError(
+        "failed-precondition",
+        "SMS is not available yet. Please verify on WhatsApp."
+      );
+    }
+
+    // MSG91 requires country code with no leading '+'
+    let phoneForMsg91 = rawPhone.trim().replace(/^\+/, "");
+    if (/^\d{10}$/.test(phoneForMsg91)) {
+      phoneForMsg91 = "91" + phoneForMsg91;
+    }
+
+    const channelRef = getChannelRef(db, applicationNo, "sms");
+
+    const existing = await channelRef.get();
+    if (existing.exists) {
+      const data = existing.data()!;
+      const createdAt = data.createdAtMs as number | undefined;
+      if (createdAt && Date.now() - createdAt < 60_000) {
+        const secondsLeft = Math.ceil((60_000 - (Date.now() - createdAt)) / 1000);
+        throw new HttpsError(
+          "resource-exhausted",
+          `Please wait ${secondsLeft} seconds before requesting a new code.`
+        );
+      }
+    }
+
+    const code = generateOtp();
+    const hashed = hashOtp(code);
+    await channelRef.set({
+      hashedCode: hashed,
+      expiresAt: Date.now() + OTP_EXPIRY_MS,
+      attempts: 0,
+      channel: "sms",
+      phone: phoneForMsg91,
+      createdAtMs: Date.now(),
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10_000);
+
+    try {
+      const smsUrl = "https://api.msg91.com/api/v5/flow/";
+      const smsBody = {
+        template_id: MSG91_SMS_TEMPLATE_ID,
+        recipients: [{ mobiles: phoneForMsg91, otp: code }],
+      };
+
+      const response = await fetch(smsUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", authkey: MSG91_AUTHKEY },
+        body: JSON.stringify(smsBody),
+        signal: controller.signal as unknown as AbortSignal,
+      });
+
+      clearTimeout(timeout);
+      const json = await response.json() as Record<string, unknown>;
+      console.log("[sendSmsOtp] MSG91 SMS response:", JSON.stringify(json));
+
+      if (!response.ok || json["type"] === "error") {
+        throw new Error(`MSG91 SMS error: ${JSON.stringify(json)}`);
+      }
+
+      console.log(`[sendSmsOtp] SMS OTP sent to ${phoneForMsg91} for ${applicationNo}`);
+      return { success: true };
+    } catch (error) {
+      clearTimeout(timeout);
+      // NOTE: do NOT delete the channel doc here — deleting on failure wipes
+      // the resend cooldown and can trigger retry storms.
+      console.error("[sendSmsOtp] Failed:", error);
+      if ((error as Error).name === "AbortError") {
+        throw new HttpsError("deadline-exceeded", "SMS service timed out. Please try again.");
+      }
+      throw new HttpsError("internal", "Failed to send SMS verification code");
+    }
+  }
+);
