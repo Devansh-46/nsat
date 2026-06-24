@@ -25,7 +25,7 @@ class EmailVerificationScreen extends StatefulWidget {
       _EmailVerificationScreenState();
 }
 
-enum _VerifyStage { sendingEmail, emailOtp, sendingPhone, phoneOtp, done }
+enum _VerifyStage { sendingEmail, emailOtp, sendingPhone, phoneOtp, done, choosePhoneChannel }
 
 class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
   final _emailOtpController = TextEditingController();
@@ -37,6 +37,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
   String? _maskedEmail;
   String? _maskedPhone;
   String? _fullPhone;
+  String _phoneChannel = 'whatsapp'; // 'whatsapp' | 'sms'
 
   // ── Resend cooldown timers ──
   static const _cooldownSeconds = 60;
@@ -257,7 +258,21 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
       }
 
       if (!mounted) return;
-      _startPhoneOtp();
+      // iOS (App Store, Guideline 4.2.3): show a phone-verification channel
+      // choice (SMS or WhatsApp) so the app never *requires* WhatsApp/another
+      // app. Web and Android keep the existing direct WhatsApp flow, unchanged.
+      // kIsWeb is checked first so dart:io Platform is never touched on web.
+      final iosChooser =
+          !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
+      if (iosChooser) {
+        setState(() {
+          _busy = false;
+          _error = null;
+          _stage = _VerifyStage.choosePhoneChannel;
+        });
+      } else {
+        _startPhoneOtp();
+      }
     } on FirebaseFunctionsException catch (e) {
       if (!mounted) return;
       setState(() {
@@ -284,6 +299,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
     }
 
     setState(() {
+      _phoneChannel = 'whatsapp';
       _stage = _VerifyStage.sendingPhone;
       _busy = true;
       _error = null;
@@ -356,6 +372,70 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
         _busy = false;
         _error = 'Failed to send WhatsApp code. Check your connection.';
         _stage = _VerifyStage.phoneOtp;
+      });
+    }
+  }
+
+  // ── Step 3 (SMS): Send SMS OTP (iOS chooser) ──
+
+  Future<void> _startSmsOtp() async {
+    if (_fullPhone == null || _fullPhone!.isEmpty) {
+      _onFullyVerified();
+      return;
+    }
+
+    setState(() {
+      _phoneChannel = 'sms';
+      _stage = _VerifyStage.sendingPhone;
+      _busy = true;
+      _error = null;
+    });
+
+    final auth = context.read<app.AuthProvider>();
+    final student = auth.verifiedStudent;
+    if (student == null) {
+      setState(() {
+        _busy = false;
+        _error = 'Session expired. Please start over.';
+        _stage = _VerifyStage.choosePhoneChannel;
+      });
+      return;
+    }
+
+    try {
+      final isTestAccount = student.applicationNo == 'NIU-26-00001' ||
+          student.applicationNo == 'NIU-26-00002';
+
+      if (!isTestAccount) {
+        final callable = FirebaseFunctions.instanceFor(region: 'asia-south1')
+            .httpsCallable('sendSmsOtp');
+        await callable.call({
+          'application_no': student.applicationNo,
+          'phone': _fullPhone,
+        });
+      }
+
+      if (!mounted) return;
+      _startPhoneCooldown();
+      setState(() {
+        _stage = _VerifyStage.phoneOtp;
+        _busy = false;
+        if (isTestAccount) _phoneOtpController.text = '123456';
+      });
+    } on FirebaseFunctionsException catch (e) {
+      if (!mounted) return;
+      // e.g. "SMS is not available yet" until DLT template is configured.
+      setState(() {
+        _busy = false;
+        _error = e.message ?? 'Failed to send SMS code.';
+        _stage = _VerifyStage.choosePhoneChannel;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _error = 'Failed to send SMS code. Check your connection.';
+        _stage = _VerifyStage.choosePhoneChannel;
       });
     }
   }
@@ -451,7 +531,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
         await callable.call({
           'application_no': student.applicationNo,
           'code': code,
-          'channel': 'whatsapp',
+          'channel': _phoneChannel,
         });
       }
 
@@ -803,7 +883,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                       strokeWidth: 2.5, color: AppColors.forest))),
           const SizedBox(height: 8),
           Center(
-              child: Text('Sending WhatsApp code…',
+              child: Text('Sending ${_phoneChannel == 'sms' ? 'SMS' : 'WhatsApp'} code…',
                   style: AppTheme.body(size: 12.5, color: AppColors.ink4))),
         ];
 
@@ -813,16 +893,18 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
               icon: Icons.check_circle, body: 'Email verified successfully!'),
           const SizedBox(height: 16),
           if (_maskedPhone != null) ...[
-            const Eyebrow('whatsapp sent to'),
+            Eyebrow('${_phoneChannel == 'sms' ? 'SMS' : 'WhatsApp'} sent to'),
             const SizedBox(height: 4),
             Text(_maskedPhone!,
                 style: AppTheme.mono(size: 14, color: AppColors.ink)),
             const SizedBox(height: 16),
           ],
           NiuField(
-            label: 'WhatsApp verification code',
+            label: '${_phoneChannel == 'sms' ? 'SMS' : 'WhatsApp'} verification code',
             hint: '6-digit code',
-            icon: Icons.chat_bubble_outline,
+            icon: _phoneChannel == 'sms'
+                ? Icons.sms_outlined
+                : Icons.chat_bubble_outline,
             controller: _phoneOtpController,
             keyboardType: TextInputType.number,
             maxLength: 6,
@@ -830,12 +912,12 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
           ),
           const SizedBox(height: 10),
           _resendRow(
-            label: 'Resend WhatsApp',
+            label: 'Resend ${_phoneChannel == 'sms' ? 'SMS' : 'WhatsApp'}',
             cooldown: _phoneCooldown,
-            onTap: _startPhoneOtp,
+            onTap: _phoneChannel == 'sms' ? _startSmsOtp : _startPhoneOtp,
           ),
-          // ── "Didn't receive? Resend via SMS" (appears after 30s) ──
-          if (_smsAvailable) ...[
+          // ── "Didn't receive? Resend via SMS" (WhatsApp channel only) ──
+          if (_phoneChannel != 'sms' && _smsAvailable) ...[
             const SizedBox(height: 8),
             _smsBusy
                 ? const SizedBox(
@@ -867,6 +949,38 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                   showArrow: true,
                   variant: NiuButtonVariant.forest,
                   onTap: _verifyPhoneOtp),
+        ];
+
+      case _VerifyStage.choosePhoneChannel:
+        return [
+          const NoteBox.green(
+              icon: Icons.check_circle, body: 'Email verified successfully!'),
+          const SizedBox(height: 16),
+          if (_maskedPhone != null) ...[
+            const Eyebrow('verify your phone'),
+            const SizedBox(height: 4),
+            Text(_maskedPhone!,
+                style: AppTheme.mono(size: 14, color: AppColors.ink)),
+            const SizedBox(height: 14),
+          ],
+          Text('Choose how to receive your verification code:',
+              style: AppTheme.body(size: 12.5, color: AppColors.ink4)),
+          const SizedBox(height: 14),
+          NiuButton(
+              label: 'Get code by SMS',
+              showArrow: true,
+              variant: NiuButtonVariant.forest,
+              onTap: _startSmsOtp),
+          const SizedBox(height: 10),
+          NiuButton(
+              label: 'Get code on WhatsApp',
+              showArrow: true,
+              variant: NiuButtonVariant.outline,
+              onTap: _startPhoneOtp),
+          if (_error != null) ...[
+            const SizedBox(height: 14),
+            NoteBox.clay(icon: Icons.error_outline, body: _error!),
+          ],
         ];
 
       case _VerifyStage.done:
