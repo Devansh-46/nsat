@@ -45,9 +45,9 @@ class RemoteConfigService {
       'min_version_code': 1,
       'force_update_message': 'A new version of NSAT is available with important updates. Please update to continue.',
       'play_store_url': 'https://play.google.com/store/apps/details?id=in.edu.niu.nsat',
-      'ios_app_live': false,
+      'ios_app_live': true,
       'android_app_live': true,
-      'app_store_url': 'https://apps.apple.com/app/id6779738702',
+      'app_store_url': 'https://apps.apple.com/us/app/nsat-niu-aptitude-test/id6779738702',
       'brochure_url': '',
     });
 
