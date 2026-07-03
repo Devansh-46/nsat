@@ -399,7 +399,7 @@ export const resendOtpViaSms = onCall(
         recipients: [
           {
             mobiles: phoneForMsg91,
-            otp: code,
+            numeric: code,
           },
         ],
       };
@@ -517,7 +517,7 @@ export const sendSmsOtp = onCall(
       const smsUrl = "https://api.msg91.com/api/v5/flow/";
       const smsBody = {
         template_id: MSG91_SMS_TEMPLATE_ID,
-        recipients: [{ mobiles: phoneForMsg91, otp: code }],
+        recipients: [{ mobiles: phoneForMsg91, numeric: code }],
       };
 
       const response = await fetch(smsUrl, {
